@@ -1,0 +1,1603 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Enclave Backend",
+    "description": "Enclave v0.2.0: local authentication, community reports, and management workflows. Sign up, log in, and paste your access_token into Authorize. Use SQLite to test report review, maintenance statuses, and history locally. Supabase, photo uploads, AI assessment, maps, routing, and notifications are planned for later versions.",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Check API liveness",
+        "description": "Public liveness endpoint. It does not check database, AWS, or other dependency readiness.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "The API is responding.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register a resident account",
+        "description": "Public endpoint. Accepts only username and password; extra fields return 422. Log in after signing up.",
+        "operationId": "signup_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new resident account, without a password or token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The normalized username already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "detail": "Username already exists"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or query parameters failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "username"
+                      ],
+                      "msg": "String should have at least 3 characters",
+                      "type": "string_too_short",
+                      "input": "ab",
+                      "ctx": {
+                        "min_length": 3
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log in and obtain a token",
+        "description": "Log in with a JSON body. The opaque bearer token lasts 3600 seconds. Refresh tokens are not implemented.",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token for the Authorization header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or query parameters failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                },
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "username"
+                      ],
+                      "msg": "String should have at least 3 characters",
+                      "type": "string_too_short",
+                      "input": "ab",
+                      "ctx": {
+                        "min_length": 3
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Read the current user",
+        "operationId": "me_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "The user associated with the token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "EnclaveToken": []
+          }
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log out of the current session",
+        "description": "Revoke the current token. Other sessions remain valid. Reusing the revoked token returns 401.",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Logout succeeded. The response body is empty."
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "EnclaveToken": []
+          }
+        ]
+      }
+    },
+    "/reports": {
+      "post": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Submit a community issue report",
+        "description": "Residents and management can submit reports. Accepts only description, latitude, and longitude. The backend sets user_id, ticket_id, created_at, and the initial pending_review status. Photos, category, priority, and other extra fields are not accepted in this version.",
+        "operationId": "create_report_reports_post",
+        "security": [
+          {
+            "EnclaveToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The saved report. Saving a report does not mean it has been approved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or query parameters failed validation.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "latitude"
+                      ],
+                      "msg": "Input should be less than or equal to 90",
+                      "type": "less_than_equal",
+                      "input": 100,
+                      "ctx": {
+                        "le": 90
+                      }
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "List visible reports with pagination",
+        "description": "Residents see only their own reports. Management sees all reports, including legacy reports without an owner. Filter by status if needed. Ordered by created_at DESC, then ticket_id DESC. An offset beyond the total returns an empty items array.",
+        "operationId": "list_reports_reports_get",
+        "security": [
+          {
+            "EnclaveToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Page size: 1-100. Defaults to 10.",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Page size: 1-100. Defaults to 10."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of reports to skip. Defaults to 0. This is not a page number.",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of reports to skip. Defaults to 0. This is not a page number."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending_review",
+                    "approved",
+                    "rejected",
+                    "in_progress",
+                    "resolved"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional status filter. Omit it to include all visible statuses.",
+              "title": "Status"
+            },
+            "description": "Optional status filter. Omit it to include all visible statuses."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current page and total number of matching, visible reports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or query parameters failed validation.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "limit"
+                      ],
+                      "msg": "Input should be greater than or equal to 1",
+                      "type": "greater_than_equal",
+                      "input": "0",
+                      "ctx": {
+                        "ge": 1
+                      }
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{ticket_id}": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Read a report",
+        "description": "Pass ticket_id as a string. Residents can read their own reports; management can read all reports. Unknown IDs and reports belonging to another resident both return 404 to avoid revealing other residents' reports.",
+        "operationId": "get_report_reports__ticket_id__get",
+        "security": [
+          {
+            "EnclaveToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of a report visible to the current user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The report does not exist or is not visible to the resident. Both cases return 404.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Report not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{ticket_id}/history": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Read report review and maintenance history",
+        "description": "Residents can read their own report history; management can read all report histories. Events are ordered by event_id ASC. Legacy reports may have no creation event. Historical actions are not fabricated.",
+        "operationId": "get_report_history_reports__ticket_id__history_get",
+        "security": [
+          {
+            "EnclaveToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current status and recorded action history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportHistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The report does not exist or is not visible to the resident. Both cases return 404.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Report not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/management/reports": {
+      "get": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "List all reports for management",
+        "description": "Restricted to management. Uses the same listing rules as GET /reports for management users. Use status=pending_review to list reports awaiting review.",
+        "operationId": "list_management_reports_management_reports_get",
+        "security": [
+          {
+            "EnclaveToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Page size: 1-100. Defaults to 10.",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Page size: 1-100. Defaults to 10."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of reports to skip. Defaults to 0. This is not a page number.",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of reports to skip. Defaults to 0. This is not a page number."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending_review",
+                    "approved",
+                    "rejected",
+                    "in_progress",
+                    "resolved"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional status filter.",
+              "title": "Status"
+            },
+            "description": "Optional status filter."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current page and total number of matching reports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The user is authenticated but does not have the management role.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Management access required"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or query parameters failed validation.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "limit"
+                      ],
+                      "msg": "Input should be greater than or equal to 1",
+                      "type": "greater_than_equal",
+                      "input": "0",
+                      "ctx": {
+                        "ge": 1
+                      }
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/management/reports/{ticket_id}/status": {
+      "patch": {
+        "tags": [
+          "Management"
+        ],
+        "summary": "Review a report or update its maintenance status",
+        "description": "Restricted to management. Allowed transitions: pending_review to approved or rejected; approved to in_progress; in_progress to resolved. Rejected and resolved are terminal statuses. Every action requires a note. Resolving a report also requires repair_verified=true to record management's confirmation of the repair. The backend records a human confirmation; it does not inspect the repair. The status and history event are saved together.",
+        "operationId": "update_report_status_management_reports__ticket_id__status_patch",
+        "security": [
+          {
+            "EnclaveToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportStatusUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired token, or incorrect login credentials.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Authentication scheme.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "Bearer"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Invalid or expired credentials"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The user is authenticated but does not have the management role.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Management access required"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The report does not exist or is not visible to the resident. Both cases return 404.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Report not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The current status does not allow the requested transition, including duplicate or stale actions.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Cannot change report status from pending_review to resolved"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The status, note, or repair_verified value does not satisfy the workflow request contract.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "body",
+                        "note"
+                      ],
+                      "msg": "String should have at least 1 character",
+                      "type": "string_too_short",
+                      "input": "",
+                      "ctx": {
+                        "min_length": 1
+                      }
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "Error message for the frontend to display or handle."
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "examples": [
+          {
+            "status": "ok"
+          }
+        ]
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 3,
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Username",
+            "description": "After trimming and converting to lowercase, use 3-32 ASCII letters, digits, or underscores."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "format": "password",
+            "title": "Password",
+            "description": "Login password: 1-128 characters. Case and whitespace are preserved.",
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "examples": [
+          {
+            "password": "EnclaveTest123!",
+            "username": "alice"
+          }
+        ]
+      },
+      "ReportCreate": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Description",
+            "description": "Issue description: 1-1000 characters after trimming leading and trailing whitespace."
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "WGS84 latitude in decimal degrees."
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "WGS84 longitude in decimal degrees."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "description",
+          "latitude",
+          "longitude"
+        ],
+        "title": "ReportCreate",
+        "examples": [
+          {
+            "description": "The street light at the community park entrance is not working",
+            "latitude": 3.139,
+            "longitude": 101.687
+          }
+        ]
+      },
+      "ReportHistoryResponse": {
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "Status",
+            "description": "Current status of the report."
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportStatusEvent"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Recorded actions in ascending event_id order."
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "status",
+          "items"
+        ],
+        "title": "ReportHistoryResponse"
+      },
+      "ReportListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Reports on the current page, ordered from newest to oldest."
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total reports visible to the current user that match the status filter, independent of pagination."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "Page size requested by the client."
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset",
+            "description": "Number of reports skipped for this request."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ReportListResponse",
+        "examples": [
+          {
+            "items": [
+              {
+                "created_at": "2026-10-13T01:00:00Z",
+                "description": "The street light at the community park entrance is not working",
+                "latitude": 3.139,
+                "longitude": 101.687,
+                "status": "pending_review",
+                "ticket_id": "00000000-0000-4000-8000-000000000011",
+                "user_id": "00000000-0000-4000-8000-000000000001"
+              }
+            ],
+            "limit": 10,
+            "offset": 0,
+            "total": 1
+          }
+        ]
+      },
+      "ReportResponse": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Description",
+            "description": "Issue description: 1-1000 characters after trimming leading and trailing whitespace."
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "WGS84 latitude in decimal degrees."
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "WGS84 longitude in decimal degrees."
+          },
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id",
+            "description": "Backend-generated ticket ID. Treat it as an opaque string."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "Status",
+            "description": "Review and maintenance status. Only management can change it through the workflow.",
+            "default": "pending_review"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "UTC ISO 8601 timestamp generated by the backend."
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id",
+            "description": "ID of the submitting user. Legacy reports without an owner use null and are visible only to management."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "description",
+          "latitude",
+          "longitude",
+          "ticket_id",
+          "created_at"
+        ],
+        "title": "ReportResponse",
+        "examples": [
+          {
+            "created_at": "2026-10-13T01:00:00Z",
+            "description": "The street light at the community park entrance is not working",
+            "latitude": 3.139,
+            "longitude": 101.687,
+            "status": "pending_review",
+            "ticket_id": "00000000-0000-4000-8000-000000000011",
+            "user_id": "00000000-0000-4000-8000-000000000001"
+          }
+        ]
+      },
+      "ReportStatusEvent": {
+        "properties": {
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id",
+            "description": "Backend-generated history event sequence number."
+          },
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pending_review",
+                  "approved",
+                  "rejected",
+                  "in_progress",
+                  "resolved"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "to_status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "To Status"
+          },
+          "changed_by": {
+            "type": "string",
+            "title": "Changed By",
+            "description": "ID of the authenticated user performing the action. The request cannot choose this value."
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "repair_verified": {
+            "type": "boolean",
+            "title": "Repair Verified"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "ticket_id",
+          "from_status",
+          "to_status",
+          "changed_by",
+          "note",
+          "repair_verified",
+          "created_at"
+        ],
+        "title": "ReportStatusEvent"
+      },
+      "ReportStatusUpdate": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Note",
+            "description": "Required note explaining the review, maintenance action, or repair verification."
+          },
+          "repair_verified": {
+            "type": "boolean",
+            "title": "Repair Verified",
+            "description": "Must be the JSON boolean true for resolved. For other statuses, use false or omit the field.",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "note"
+        ],
+        "title": "ReportStatusUpdate",
+        "examples": [
+          {
+            "note": "The faulty street light has been confirmed and needs repair",
+            "repair_verified": false,
+            "status": "approved"
+          },
+          {
+            "note": "The street light has been repaired and checked on site",
+            "repair_verified": true,
+            "status": "resolved"
+          }
+        ]
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "Opaque token, not a JWT. The example is a placeholder and cannot authenticate requests."
+          },
+          "token_type": {
+            "type": "string",
+            "const": "bearer",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "description": "Token lifetime in seconds.",
+            "default": 3600
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token"
+        ],
+        "title": "TokenResponse",
+        "examples": [
+          {
+            "access_token": "<access_token_from_login>",
+            "expires_in": 3600,
+            "token_type": "bearer"
+          }
+        ]
+      },
+      "UserCreate": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 3,
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Username",
+            "description": "After trimming and converting to lowercase, use 3-32 ASCII letters, digits, or underscores."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 12,
+            "format": "password",
+            "title": "Password",
+            "description": "Signup password: 12-128 characters. Case and whitespace are preserved.",
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "UserCreate",
+        "examples": [
+          {
+            "password": "EnclaveTest123!",
+            "username": "alice"
+          }
+        ]
+      },
+      "UserResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "description": "Backend-generated user ID. Store it as a string on the frontend."
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "resident",
+              "management"
+            ],
+            "title": "Role",
+            "description": "Role assigned by the backend."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "UTC ISO 8601 timestamp with timezone information."
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "username",
+          "role",
+          "created_at"
+        ],
+        "title": "UserResponse",
+        "examples": [
+          {
+            "created_at": "2026-10-13T01:00:00Z",
+            "role": "resident",
+            "user_id": "00000000-0000-4000-8000-000000000001",
+            "username": "alice"
+          }
+        ]
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationErrorResponse": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ValidationErrorResponse"
+      },
+      "ValidationIssue": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Loc",
+            "description": "Location of the validation issue, for example ['body', 'latitude']."
+          },
+          "msg": {
+            "type": "string",
+            "title": "Msg",
+            "description": "Validation message. The frontend should not depend on its exact wording."
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Validation error type."
+          },
+          "input": {
+            "title": "Input",
+            "description": "Optional invalid input value."
+          },
+          "ctx": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctx",
+            "description": "Optional validation context."
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationIssue"
+      }
+    },
+    "securitySchemes": {
+      "EnclaveToken": {
+        "type": "http",
+        "description": "Paste access_token returned by POST /auth/login.",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Check whether the API is responding."
+    },
+    {
+      "name": "Authentication",
+      "description": "Sign up, log in, view the current user, and log out."
+    },
+    {
+      "name": "Reports",
+      "description": "Submit and read reports. Residents can only read their own reports."
+    },
+    {
+      "name": "Management",
+      "description": "Endpoints restricted to management accounts."
+    }
+  ]
+}
