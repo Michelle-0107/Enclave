@@ -108,6 +108,22 @@ python -B export_openapi.py
 
 This regenerates `openapi.json` from the code without starting the server or opening the database. Regenerate it whenever the API schema or documentation changes.
 
+## Check the Supabase connection
+
+The read-only probe checks the Enclave project's existing `public.reports` columns without requesting report rows. Follow [SUPABASE_CONNECTION_PRACTICE.md](SUPABASE_CONNECTION_PRACTICE.md), fill the local `.env` from `.env.example`, then run:
+
+```bash
+python -B check_supabase.py
+```
+
+To test the helper without network access or credentials:
+
+```bash
+python -B test_supabase_check.py
+```
+
+This is a connection check. The application continues to use SQLite and local authentication while the cloud schema and Auth integration are agreed upon.
+
 ## Repository contents
 
 | File | Purpose |
@@ -115,13 +131,17 @@ This regenerates `openapi.json` from the code without starting the server or ope
 | `main.py` | API models, authentication, SQLite persistence, and report workflows |
 | `create_manager.py` | Interactive management account creation |
 | `export_openapi.py` | OpenAPI snapshot export |
+| `check_supabase.py` | Read-only Supabase Data API connection probe |
 | `test_backend.py` | Automated backend tests |
+| `test_supabase_check.py` | Mocked connection probe tests |
 | `requirements.txt` | Runtime and test dependencies |
 | `openapi.json` | Shareable API schema snapshot |
 | `README.md` | Setup, commands, and project overview |
 | `API_CONTRACT.md` | Frontend integration contract |
 | `AUTH_PRACTICE.md` | Authentication testing guide |
 | `LOCAL_WORKFLOW_PRACTICE.md` | Maintenance workflow testing guide |
+| `SUPABASE_CONNECTION_PRACTICE.md` | Supabase connection setup and schema alignment notes |
+| `.env.example` | Blank shareable Supabase configuration template |
 | `.gitignore` | Excludes local environments, databases, configuration, and caches |
 
 Commit the source, dependencies, schema, and documentation. Local databases contain account and session data and must stay outside the repository. The ignore rules cover `enclave.db`, SQLite sidecar files, virtual environments, `.env` files, caches, and backups.
