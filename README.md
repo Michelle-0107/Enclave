@@ -46,3 +46,14 @@ python -m uvicorn main:app --reload
 
 - GET /health
 - GET /docs
+
+## Run Docker
+
+build and start container:
+docker compose up --build -d
+
+check runtime logs:
+docker compose logs -f
+
+stop container：
+docker compose down

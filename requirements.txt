@@ -8,3 +8,6 @@ supabase>=2.3.0
 boto3>=1.34.0
 networkx>=3.2.1
 requests>=2.31.0
+python-multipart>=0.0.9
+google-genai>=0.1.0
+pillow>=10.0.0

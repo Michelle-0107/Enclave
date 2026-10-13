@@ -1,0 +1,11 @@
+services:
+  enclave-backend:
+    build: .
+    container_name: enclave_backend_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
