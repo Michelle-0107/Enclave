@@ -1,0 +1,2 @@
+fastapi[standard]==0.143.0
+pwdlib[argon2]==0.3.1
