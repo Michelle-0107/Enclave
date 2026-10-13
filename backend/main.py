@@ -1,66 +1,56 @@
-
-from uuid import uuid4
-from typing import Literal
-
+import os
+import random
+import string
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from dotenv import load_dotenv
+from supabase import create_client, Client
 
-app = FastAPI(
-    title="Enclave API",
-    description="Community issue reporting and safety platform",
-    version="0.2.0",
-)
+# load environment variables
+load_dotenv()
 
-# Temporary storage for local development only.
-# Reports will disappear when the server restarts.
-reports: dict[str, dict] = {}
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+# initialize Supabase client side
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+app = FastAPI(title="Enclave Backend API")
+
+# define the request body format for submitting text reports from the frontend
 class ReportCreate(BaseModel):
-    category: Literal[
-        "streetlight",
-        "road_damage",
-        "flooding",
-        "waste",
-        "other",
-    ]
-    description: str = Field(min_length=5, max_length=500)
-    location: str | None = Field(default=None, max_length=200)
+    description: str
 
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Enclave API"}
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "ok",
-        "project": "JiranKita",
-    }
+    return {"status": "ok"}
 
-
-@app.post("/reports", status_code=201)
-def create_report(report: ReportCreate):
-    ticket_id = f"JK-{uuid4().hex[:8].upper()}"
-
-    new_report = {
-        "ticket_id": ticket_id,
-        "category": report.category,
-        "description": report.description,
-        "location": report.location,
-        "status": "submitted",
-    }
-
-    reports[ticket_id] = new_report
-
-    return new_report
-
-
-@app.get("/reports/{ticket_id}")
-def get_report(ticket_id: str):
-    report = reports.get(ticket_id)
-
-    if report is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Report not found",
-        )
-
-    return report
+# core testing interface: receive text reports -> store in Supabase -> return TicketID
+@app.post("/api/reports")
+def create_text_report(report: ReportCreate):
+    try:
+        # generate a random Ticket ID, e.g., TICK-8492
+        ticket_id = "TICK-" + "".join(random.choices(string.digits, k=4))
+        
+        # prepare the data to be inserted into the Supabase database
+        data = {
+            "ticket_id": ticket_id,
+            "description": report.description,
+            "status": "pending"
+        }
+        
+        # write to Supabase's reports table
+        response = supabase.table("reports").insert(data).execute()
+        
+        return {
+            "success": True,
+            "message": "Report submitted successfully",
+            "ticket_id": ticket_id,
+            "data": response.data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

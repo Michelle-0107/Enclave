@@ -1,5 +1,7 @@
 # Enclave
 
+AI-powered community issue reporting and safety platform
+
 ## Requirements
 
 - Python 3.12 or a compatible Python version
