@@ -1,0 +1,26 @@
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local configuration; keep sanitized examples if added later
+.env
+.env.*
+!.env.example
+
+# Local SQLite data, account/session records, and sidecar files
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Local backups, logs, and temporary Office files
+backups/
+*.log
+~$*
