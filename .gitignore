@@ -1,0 +1,46 @@
+# ==========================================
+# 1. sensitive information and environment variables
+# ==========================================
+.env
+.env*.local
+*.pem
+*.key
+
+# ==========================================
+# 2. Python & Backend (.venv, venv, __pycache__, .pytest_cache, .mypy_cache...)
+# ==========================================
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# ==========================================
+# 3. Node.js & React Native / Expo frontend (node_modules, cache, build...)
+# ==========================================
+node_modules/
+.expo/
+.next/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# 4. system and editor generated files
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
