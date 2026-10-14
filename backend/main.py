@@ -118,7 +118,7 @@ def analyze_report_with_ai(image_bytes: bytes, description: str):
     except (ClientError, Exception) as e:
         print(f"⚠️ [AI Warning] Bedrock invocation failed ({e}). Switching to Google Gemini fallback...")
 
-    # Strategy B: Fallback to Google Gemini API (gemini-3.6-flash)
+    # Strategy B: Fallback to Google Gemini API (gemini-3.6-flash-lite)
     try:
         img = Image.open(io.BytesIO(image_bytes))
         response = gemini_client.models.generate_content(
