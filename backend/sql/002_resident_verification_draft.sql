@@ -1,3 +1,5 @@
+-- ARCHIVED ALTERNATIVE: current single-community proposal is 003_single_community_registration_draft.sql.
+-- Do not apply both drafts. Review any already-created tables and data before migrating.
 -- PROPOSAL ONLY: review existing tables and roles with the Enclave project owner.
 -- FastAPI manages six-digit OTPs; Resend delivers the email; Supabase Auth keeps accounts/passwords.
 -- No OTP plaintext, password, API key, or HMAC secret is stored in these tables.

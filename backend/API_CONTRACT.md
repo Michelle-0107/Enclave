@@ -87,7 +87,21 @@ Review [sql/001_report_ownership.sql](sql/001_report_ownership.sql) with the pro
 
 [sql/test_report_ownership.sql](sql/test_report_ownership.sql) checks two synthetic users, cross-owner reads and inserts, approval tampering, and anonymous visibility in a rolled-back transaction. Review first and run in a staging project where possible. These scripts have not been applied automatically to your project; zero-row column probes do not verify live RLS policies.
 
-## Run and test
+## Resident registration (v0.4.0)
+
+See [REGISTRATION_TESTING.md](REGISTRATION_TESTING.md) for the local sandbox, SQL 005, server settings, and full lifecycle.
+
+| Method/path | Authentication | Contract |
+| --- | --- | --- |
+| POST `/api/v1/registration/request-otp` | Public, invitation-bound, rate limited | `email`, `invitation_token`; 202 generic message + `challenge_id`, no OTP/provider response. |
+| POST `/api/v1/registration/verify-and-signup` | OTP + same-request proof + password | `challenge_id`, six-digit OTP string, password; `Idempotency-Key` header; session/resident/user IDs only after committed binding. |
+| GET `/api/v1/me/residency` | Supabase JWT | Own resident ID, unit, active/inactive state, verification timestamp; 404 if unbound. |
+| POST `/api/v1/management/residents` | JWT + trusted profile role management | Approved roster fields; 201 resident ID. |
+| POST `/api/v1/management/residents/{id}/invitations` | JWT + trusted profile role management | 201 invitation token (once), ID, resident ID, expiry. |
+
+POST `/api/send-verification-email` is a deprecated alias of request-OTP with the same invitation requirement. It never returns generated_code. Registration responses/errors containing proof/session data use Cache-Control no-store, and validation errors do not echo secret inputs. Registration is 503 when configuration/SQL is unavailable; invalid proof is 400, rate exhaustion 429, account/provisioning conflict 409, unauthorized management 403. The API never accepts a caller-selected role, user ID, approval flag, or email-confirmation flag.
+
+## Existing report setup and tests
 
 From repository root, in an activated virtual environment:
 

@@ -9,6 +9,8 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Path, Query, Re
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 import httpx
 from pydantic import ValidationError
 
@@ -17,6 +19,10 @@ from .config import ConfigurationError, Settings, load_settings
 from .media import MediaServices, MediaUnavailable
 from .models import AIAnalysis, CurrentUserResponse, ReportCreatedResponse, ReportListResponse, ReportResponse
 from .reports import ReportAccessDenied, ReportsRepository, ReportsUnavailable
+from .registration import RegistrationRejected, RegistrationService
+from .registration_clients import RegistrationUnavailable
+from .registration_config import load_registration_settings
+from .routers.auth import router as registration_router
 
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -48,6 +54,7 @@ def current_user(
 def create_app(
     settings: Settings | None = None, *, auth_transport: httpx.BaseTransport | None = None,
     reports_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
+    registration_service: RegistrationService | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -60,16 +67,44 @@ def create_app(
         application.state.verifier = verifier
         application.state.reports = repository
         application.state.media = media_services if media_services is not None else MediaServices(configured)
+        application.state.registration = registration_service
+        if registration_service is None and settings is None:
+            try:
+                application.state.registration = RegistrationService(load_registration_settings(configured))
+            except ConfigurationError:
+                # Existing health/report/auth routes do not depend on optional signup settings.
+                application.state.registration = None
         try:
             yield
         finally:
             verifier.close()
             await repository.close()
+            if application.state.registration is not None:
+                application.state.registration.close()
 
     application = FastAPI(
-        title="Enclave Backend API", version="0.3.0", lifespan=lifespan,
-        description="Supabase JWT authentication, owner-only cloud reports, and S3/AI report submission.",
+        title="Enclave Backend API", version="0.4.0", lifespan=lifespan,
+        description="Supabase JWT authentication, resident OTP registration, owner-only reports, and S3/AI submission.",
     )
+    application.include_router(registration_router)
+
+    @application.exception_handler(RegistrationRejected)
+    async def registration_rejected(request, error):
+        return JSONResponse(status_code=error.status, content={"detail": error.message},
+                            headers={"Cache-Control": "no-store"})
+
+    @application.exception_handler(RegistrationUnavailable)
+    async def registration_unavailable(request, error):
+        return JSONResponse(status_code=503, content={"detail": "Registration service unavailable"},
+                            headers={"Cache-Control": "no-store"})
+
+    @application.exception_handler(RequestValidationError)
+    async def sanitized_registration_validation(request, error):
+        if request.url.path.startswith(("/api/v1/registration/", "/api/v1/management/")) or request.url.path == "/api/send-verification-email":
+            # FastAPI's default validation output includes input values, including passwords/OTPs.
+            details = [{"loc": e["loc"], "type": e["type"], "msg": "Invalid request field"} for e in error.errors()]
+            return JSONResponse(status_code=422, content={"detail": details}, headers={"Cache-Control": "no-store"})
+        return await request_validation_exception_handler(request, error)
 
     @application.exception_handler(ReportsUnavailable)
     async def unavailable_handler(request, error):

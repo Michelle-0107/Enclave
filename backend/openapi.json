@@ -2,10 +2,268 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Enclave Backend API",
-    "description": "Supabase JWT authentication, owner-only cloud reports, and S3/AI report submission.",
-    "version": "0.3.0"
+    "description": "Supabase JWT authentication, resident OTP registration, owner-only reports, and S3/AI submission.",
+    "version": "0.4.0"
   },
   "paths": {
+    "/api/v1/registration/request-otp": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "Request Otp",
+        "operationId": "request_otp_api_v1_registration_request_otp_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestOTP"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OTPAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/send-verification-email": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "Request Otp",
+        "operationId": "request_otp_api_send_verification_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestOTP"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OTPAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/v1/registration/verify-and-signup": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "Verify Signup",
+        "operationId": "verify_signup_api_v1_registration_verify_and_signup_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifySignup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/residency": {
+      "get": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "My Residency",
+        "operationId": "my_residency_api_v1_me_residency_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Residency"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/management/residents": {
+      "post": {
+        "tags": [
+          "Registration",
+          "Management"
+        ],
+        "summary": "Create Resident",
+        "operationId": "create_resident_api_v1_management_residents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResidentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/management/residents/{resident_id}/invitations": {
+      "post": {
+        "tags": [
+          "Registration",
+          "Management"
+        ],
+        "summary": "Issue Invitation",
+        "operationId": "issue_invitation_api_v1_management_residents__resident_id__invitations_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resident Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -313,6 +571,40 @@
         ],
         "title": "AIAnalysis"
       },
+      "AuthSession": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "maxLength": 16384,
+            "minLength": 1,
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "type": "string",
+            "const": "bearer",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "refresh_token",
+          "expires_in"
+        ],
+        "title": "AuthSession"
+      },
       "Body_submit_report_api_v1_reports_post": {
         "properties": {
           "description": {
@@ -386,6 +678,56 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "InvitationResult": {
+        "properties": {
+          "invitation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Invitation Id"
+          },
+          "resident_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Resident Id"
+          },
+          "invitation_token": {
+            "type": "string",
+            "title": "Invitation Token"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invitation_id",
+          "resident_id",
+          "invitation_token",
+          "expires_at"
+        ],
+        "title": "InvitationResult"
+      },
+      "OTPAccepted": {
+        "properties": {
+          "challenge_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Challenge Id"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "If the invitation is eligible, a verification email will be sent."
+          }
+        },
+        "type": "object",
+        "required": [
+          "challenge_id"
+        ],
+        "title": "OTPAccepted"
       },
       "ReportCreatedResponse": {
         "properties": {
@@ -543,6 +885,136 @@
         ],
         "title": "ReportResponse"
       },
+      "RequestOTP": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "invitation_token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 40,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Invitation Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "invitation_token"
+        ],
+        "title": "RequestOTP"
+      },
+      "Residency": {
+        "properties": {
+          "resident_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Resident Id"
+          },
+          "unit_number": {
+            "type": "string",
+            "title": "Unit Number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "title": "Status"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resident_id",
+          "unit_number",
+          "status",
+          "verified_at"
+        ],
+        "title": "Residency"
+      },
+      "ResidentInput": {
+        "properties": {
+          "resident_reference": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Resident Reference"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "unit_number": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit Number"
+          },
+          "registered_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Registered Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "resident_reference",
+          "full_name",
+          "unit_number",
+          "registered_email"
+        ],
+        "title": "ResidentInput"
+      },
+      "SignupResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "registered",
+            "title": "Status",
+            "default": "registered"
+          },
+          "resident_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Resident Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "session": {
+            "$ref": "#/components/schemas/AuthSession"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resident_id",
+          "user_id",
+          "session"
+        ],
+        "title": "SignupResult"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -582,6 +1054,36 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VerifySignup": {
+        "properties": {
+          "challenge_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Challenge Id"
+          },
+          "otp": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$",
+            "title": "Otp"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "challenge_id",
+          "otp",
+          "password"
+        ],
+        "title": "VerifySignup"
       }
     },
     "securitySchemes": {

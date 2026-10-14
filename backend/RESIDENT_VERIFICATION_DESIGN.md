@@ -1,5 +1,7 @@
 # Resident registration with FastAPI, Resend, and Supabase Auth
 
+Archived multi-community alternative. The current single-community MVP proposal is [RESIDENT_REGISTRATION_MVP.md](RESIDENT_REGISTRATION_MVP.md), which reuses profiles and completes signup/sign-in in the OTP submission action. Do not apply both SQL drafts. This older proposal is retained for review if its tables have already been created.
+
 Status: proposed database design. The SQL is not applied, and these signup routes are not implemented or deployed. Existing report routes currently verify JWTs and ownership; they do not yet enforce verified residency.
 
 ## Responsibility and proof
