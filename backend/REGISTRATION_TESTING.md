@@ -2,6 +2,8 @@
 
 The API is implemented in `backend.main:app` (v0.4.0). Real delivery/account creation is disabled when registration settings are incomplete. No real email or account was created while implementing this feature.
 
+See [REGISTRATION_HANDOFF.md](REGISTRATION_HANDOFF.md) for the prepared private environment, teammate configuration, management bootstrap, and the first real signup. Run `python -m backend.setup_registration` once to prepare a private secret without displaying it. The tool preserves existing secrets/settings; `python -m backend.check_registration` then reports only missing names and configuration status.
+
 ## Local sandbox without cloud credentials
 
 From the repository root, with the existing environment active:
@@ -76,6 +78,7 @@ An existing account must authenticate with its own password and confirmed matchi
 
 ```powershell
 python -B -m unittest -q backend.tests.test_registration backend.tests.test_cloud backend.tests.test_storage backend.tests.test_entrypoint
+python -B -m unittest -q backend.tests.test_registration_setup
 python -B -m backend.export_openapi
 ```
 

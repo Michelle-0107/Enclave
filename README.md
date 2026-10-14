@@ -4,7 +4,9 @@ AI-powered community issue reporting and safety platform
 
 The cloud API implements [single-community resident registration](backend/RESIDENT_REGISTRATION_MVP.md) with FastAPI-generated email OTPs and Resend delivery. After invitation-bound OTP verification, it authenticates or creates a Supabase account, signs in, and atomically binds the resident before returning the session. Start with the credential-free [local sandbox and setup guide](backend/REGISTRATION_TESTING.md).
 
-The supplied post-application schema metadata was reviewed in [REGISTRATION_SCHEMA_REVIEW.md](backend/REGISTRATION_SCHEMA_REVIEW.md). The user has applied the three registration tables and profile access SQL. Hosted registration additionally requires SQL 005 and server-only credentials. Local PostgreSQL transaction/RLS tests pass; live Resend/Supabase Auth integration and the other feature-table policies remain rollout work.
+For server setup, run `python -m backend.setup_registration` to prepare the private OTP secret, then `python -m backend.check_registration` to check configuration without sending email or creating accounts. The [registration handoff](backend/REGISTRATION_HANDOFF.md) covers the three remaining key/sender fields, trusted management initialization, and first real signup. Add `--check-database` to explicitly probe the installed RPC without changing rows.
+
+The supplied post-application schema metadata was reviewed in [REGISTRATION_SCHEMA_REVIEW.md](backend/REGISTRATION_SCHEMA_REVIEW.md). The user has applied the registration table/profile SQL and reports applying SQL 005; anonymous transition-RPC denial is verified. Hosted registration requires server-only credentials and the approved management register. Local PostgreSQL transaction/RLS tests pass; live Resend/Supabase Auth integration and the other feature-table policies remain rollout work.
 
 ## Requirements
 

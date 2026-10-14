@@ -1,6 +1,6 @@
 # Single-community resident registration
 
-Status: implemented in cloud API v0.4.0. The user applied the three-table DDL and profile-access SQL on 2026-10-14; the subsequent metadata snapshot matches the intended tables, constraints, grants, and policies. The new SQL 005 RPC/rate-limit infrastructure still needs installation in Supabase. Mock API/provider tests and dedicated PostgreSQL transaction/RLS tests pass. Live delivery/Auth integration remains unverified. See [REGISTRATION_TESTING.md](REGISTRATION_TESTING.md) for the local sandbox and configuration. This is the current design for Enclave's first community and supersedes the earlier six-table alternative in `RESIDENT_VERIFICATION_DESIGN.md`. Do not apply both drafts.
+Status: implemented in cloud API v0.4.0. The user applied the three-table DDL and profile-access SQL on 2026-10-14; the subsequent metadata snapshot matches the intended tables, constraints, grants, and policies. SQL 005 is reported applied on 2026-10-15, and a no-mutation probe confirms anonymous RPC denial. Mock API/provider tests and dedicated PostgreSQL transaction/RLS tests pass. Live delivery/Auth integration remains unverified. See [REGISTRATION_HANDOFF.md](REGISTRATION_HANDOFF.md) for prepared private settings and management setup, and [REGISTRATION_TESTING.md](REGISTRATION_TESTING.md) for local practice. This is the current design for Enclave's first community and supersedes the earlier six-table alternative in `RESIDENT_VERIFICATION_DESIGN.md`. Do not apply both drafts.
 
 ## Existing schema and scope
 

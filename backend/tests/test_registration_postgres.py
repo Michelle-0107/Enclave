@@ -61,7 +61,7 @@ class PostgresRegistrationTests(unittest.TestCase):
                         CREATE ROLE authenticated NOLOGIN;
                         CREATE ROLE service_role NOLOGIN BYPASSRLS;
                         CREATE SCHEMA auth;
-                        CREATE TABLE auth.users (id uuid PRIMARY KEY);
+                        CREATE TABLE auth.users (id uuid PRIMARY KEY, email text, email_confirmed_at timestamptz);
                         CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
                             'SELECT nullif(current_setting(''request.jwt.claim.sub'', true), '''')::uuid';
                         CREATE TABLE public.profiles (
@@ -251,6 +251,43 @@ class PostgresRegistrationTests(unittest.TestCase):
         self.assertTrue(self.store.call("remember_auth", id=str(identifier), lease=new_lease, user_id=str(RESIDENT))["recorded"])
         self.assertEqual(self.store.call("finish", id=str(identifier), lease=old_lease, user_id=str(RESIDENT))["state"], "invalid")
         self.assertEqual(self.store.call("finish", id=str(identifier), lease=new_lease, user_id=str(RESIDENT))["state"], "completed")
+
+    def bootstrap_sql(self, identifier, email):
+        source = (Path(__file__).resolve().parents[1] / "sql" / "bootstrap_management.sql").read_text(encoding="utf-8")
+        source = source.replace("v_user_id uuid := '00000000-0000-0000-0000-000000000000'", "v_user_id uuid := '" + str(identifier) + "'", 1)
+        return source.replace("v_expected_email text := 'REPLACE_WITH_MANAGEMENT_APP_EMAIL'", "v_expected_email text := '" + email + "'", 1)
+
+    def test_management_bootstrap_requires_placeholders_confirmed_account_and_matching_email(self):
+        source = (Path(__file__).resolve().parents[1] / "sql" / "bootstrap_management.sql").read_text(encoding="utf-8")
+        with self.assertRaises(psycopg2.errors.RaiseException):
+            self.sql(source)
+        identifier = str(uuid4())
+        self.sql("INSERT INTO auth.users(id,email) VALUES (%s,'approved-manager@example.com')", (identifier,))
+        with self.assertRaises(psycopg2.errors.RaiseException):
+            self.sql(self.bootstrap_sql(identifier, "approved-manager@example.com"))
+        self.sql("UPDATE auth.users SET email_confirmed_at=now() WHERE id=%s", (identifier,))
+        with self.assertRaises(psycopg2.errors.RaiseException):
+            self.sql(self.bootstrap_sql(identifier, "wrong-manager@example.com"))
+        self.assertEqual(self.sql("SELECT count(*) FROM public.profiles WHERE id=%s", (identifier,), fetch=True)[0][0], 0)
+
+    def test_management_bootstrap_provisions_only_the_approved_account_and_is_repeatable(self):
+        identifier = str(uuid4())
+        self.sql("INSERT INTO auth.users(id,email,email_confirmed_at) VALUES (%s,'approved-manager@example.com',now())", (identifier,))
+        source = self.bootstrap_sql(identifier, "approved-manager@example.com")
+        self.sql(source)
+        self.sql(source)
+        self.assertEqual(self.sql("SELECT email,role FROM public.profiles WHERE id=%s", (identifier,), fetch=True),
+                         [("approved-manager@example.com", "management")])
+        created = self.store.call("create_resident", actor_id=identifier, resident_reference="PG-NEW", full_name="Approved Resident",
+                                  unit_number="102", registered_email="new-resident@example.com")
+        self.assertEqual(created["state"], "created")
+
+    def test_management_bootstrap_refuses_accounts_with_resident_registration_history(self):
+        self.verify(self.request())
+        self.sql("UPDATE auth.users SET email='resident@example.com', email_confirmed_at=now() WHERE id=%s", (str(RESIDENT),))
+        with self.assertRaises(psycopg2.errors.RaiseException):
+            self.sql(self.bootstrap_sql(RESIDENT, "resident@example.com"))
+        self.assertEqual(self.sql("SELECT role FROM public.profiles WHERE id=%s", (str(RESIDENT),), fetch=True)[0][0], "resident")
 
 
 if __name__ == "__main__":

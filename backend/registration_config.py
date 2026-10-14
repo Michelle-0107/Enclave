@@ -34,7 +34,7 @@ class RegistrationSettings:
         _, address = parseaddr(self.sender)
         if "@" not in address or "\r" in self.sender or "\n" in self.sender:
             raise ConfigurationError("Set RESEND_FROM_EMAIL to an approved sender address.")
-        if not isinstance(self.pepper, bytes) or len(self.pepper) < 32 or self.pepper_version < 1:
+        if not isinstance(self.pepper, bytes) or len(self.pepper) < 32 or not 1 <= self.pepper_version <= 32767:
             raise ConfigurationError("Set a base64url OTP_HMAC_SECRET containing at least 32 random bytes.")
 
     def admin_headers(self):
