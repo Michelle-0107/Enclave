@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import threading
+from typing import Mapping
 
 from .config import Settings
 
@@ -16,6 +17,40 @@ class MediaUnavailable(RuntimeError):
     """Photo storage is missing configuration or failed."""
 
 
+def aws_client_options(values: Mapping[str, str]) -> dict:
+    """Accept standard AWS key names and the team's existing access-key alias."""
+    access_key = (values.get("AWS_ACCESS_KEY_ID") or "").strip()
+    legacy_key = (values.get("AWS_ACCESS_KEY") or "").strip()
+    secret_key = (values.get("AWS_SECRET_ACCESS_KEY") or "").strip()
+    session_token = (values.get("AWS_SESSION_TOKEN") or "").strip()
+    if access_key and legacy_key and access_key != legacy_key:
+        raise ValueError("AWS_ACCESS_KEY_ID and AWS_ACCESS_KEY must not specify different credentials.")
+    access_key = access_key or legacy_key
+    if bool(access_key) != bool(secret_key) or (session_token and not access_key):
+        raise ValueError("Configure both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
+    options = {"region_name": (values.get("AWS_REGION") or values.get("AWS_DEFAULT_REGION") or "us-east-1").strip()}
+    if access_key:
+        options.update(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+        if session_token:
+            options["aws_session_token"] = session_token
+    return options
+
+
+def create_aws_client(service: str, values: Mapping[str, str]):
+    """Use the same credential configuration for reports and the storage smoke test."""
+    import boto3
+    from botocore.config import Config
+
+    options = aws_client_options(values)
+    if service == "s3":
+        options["config"] = Config(
+            signature_version="s3v4", connect_timeout=5, read_timeout=10,
+            retries={"mode": "standard", "total_max_attempts": 2},
+            ignore_configured_endpoint_urls=True,
+        )
+    return boto3.client(service, **options)
+
+
 class MediaServices:
     def __init__(self, settings: Settings):
         self.values = settings.service_values
@@ -24,15 +59,7 @@ class MediaServices:
         self.lock = threading.Lock()
 
     def _client(self, service: str):
-        import boto3
-        options = {"region_name": self.values.get("AWS_REGION") or "us-east-1"}
-        access_key = self.values.get("AWS_ACCESS_KEY")
-        secret_key = self.values.get("AWS_SECRET_ACCESS_KEY")
-        if access_key and secret_key:
-            options.update(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
-            if self.values.get("AWS_SESSION_TOKEN"):
-                options["aws_session_token"] = self.values["AWS_SESSION_TOKEN"]
-        return boto3.client(service, **options)
+        return create_aws_client(service, self.values)
 
     def upload(self, file_name: str, file_bytes: bytes, content_type: str) -> str:
         bucket = self.values.get("S3_BUCKET_NAME")

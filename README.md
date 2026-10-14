@@ -61,6 +61,20 @@ python -B -m backend.check_session
 
 For local Swagger testing, explicitly request token output with `python -B -m backend.check_session --show-token`. The password stays hidden, and tokens are not printed by default.
 
+### Test photo storage independently
+
+Set `S3_BUCKET_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` in the root `.env`. Add `AWS_SESSION_TOKEN` only when using temporary credentials. The existing `AWS_ACCESS_KEY` alias remains supported; do not configure different IDs under both names. Keep keys out of Git.
+
+```powershell
+python -B -m backend.check_storage
+python -B -m backend.check_storage --upload-test
+python -B -m unittest -q backend.tests.test_cloud backend.tests.test_storage
+```
+
+The first command validates configuration without contacting AWS. The explicit upload test writes one generated 2x2 PNG with a new `report_storage_check_<uuid>.png` key, verifies its bytes using authenticated S3 download, and attempts to delete only that test object. Versioned buckets use the exact version created by the test. No Supabase, Bedrock, Gemini, bucket-policy changes, bucket listing, or other-object operations are involved.
+
+The test needs `s3:PutObject` and `s3:GetObject` for its test key, plus `s3:DeleteObject` for cleanup in an unversioned bucket. Versioned buckets require `s3:GetObjectVersion` and `s3:DeleteObjectVersion` for the created version. Bucket encryption can require additional KMS permissions. If cleanup is denied, the command reports the remaining key for the bucket owner. A successful authenticated download does not establish public URL accessibility or report-level authorization.
+
 ## Run Docker
 
 build and start container:

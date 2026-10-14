@@ -59,6 +59,8 @@ This milestone retains the team's current storage behavior: report `description`
 
 An uploaded S3 object can remain if a later AI/database operation fails. S3 URL accessibility depends on the bucket's existing policy; report ownership rules do not establish private photo delivery. Photo content validation and private delivery can be refined with the storage owner.
 
+Configure photo storage with `S3_BUCKET_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`; temporary credentials also need `AWS_SESSION_TOKEN`. The existing `AWS_ACCESS_KEY` alias is supported, and the deployment's normal IAM credential chain remains available when no explicit pair is set. Incomplete or conflicting explicit key settings fail the storage operation without displaying credential values. Run `python -B -m backend.check_storage` for a configuration-only check, or explicitly add `--upload-test` to upload/read/clean up one generated test PNG independently of Supabase and AI. This is a developer CLI, not a new API endpoint.
+
 ### GET /api/v1/reports
 
 Query parameters: `limit` defaults to 10, range 1–100; `offset` defaults to 0, minimum 0. Ordered by `created_at DESC, ticket_id DESC`. No owner-selection parameter is supported; the owner filter always comes from the token.
@@ -93,6 +95,7 @@ From repository root, in an activated virtual environment:
 python -m pip install -r requirements.txt
 python -m uvicorn backend.main:app --reload
 python -B -m unittest -q backend.tests.test_cloud
+python -B -m unittest -q backend.tests.test_storage
 python -B -m backend.export_openapi
 ```
 
