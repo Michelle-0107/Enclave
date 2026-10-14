@@ -1,7 +1,7 @@
 import random
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
-from services.email_service import send_invite_email
+from backend.services.email_service import send_invite_email
 
 router = APIRouter(prefix="/api", tags=["Auth"])
 

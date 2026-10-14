@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from supabase import create_client, Client
 import os
 
-from services.aws_service import upload_image_to_s3, analyze_report_with_ai
+from backend.services.aws_service import upload_image_to_s3, analyze_report_with_ai
 
 router = APIRouter(prefix="/api/v1", tags=["Reports"])
 

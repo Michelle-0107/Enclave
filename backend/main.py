@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 # import the split-out routes
-from routers import auth, reports
+from backend.routers import auth, reports
 
 # Load environment variables
 load_dotenv()
