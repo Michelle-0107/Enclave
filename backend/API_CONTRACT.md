@@ -1,0 +1,117 @@
+# Enclave cloud API contract — v0.3.0
+
+The cloud application is `backend.main:app`. Run it from the repository root. The separate SQLite practice backend remains in `backend/local/`.
+
+## Authentication
+
+Frontend signup/login/refresh/signout use Supabase Auth directly. Send its ES256 access token on every protected API request:
+
+```http
+Authorization: Bearer <supabase_access_token>
+```
+
+The API validates the signature against the configured project's public JWKS, issuer, audience, expiry, issued-at time, required claims, authenticated database role, and UUID user ID. Keys are cached for five minutes; unknown key IDs have a 30-second refresh cooldown. This checks issued tokens without querying session revocation on every request. Signout does not immediately invalidate an already issued unexpired JWT.
+
+Use `SUPABASE_PUBLISHABLE_KEY`, not a secret/service-role key. The old `SUPABASE_KEY` variable is no longer read by this application. Database requests include the individual user's JWT in per-request headers, avoiding a shared mutable Supabase login session. Every report read also includes the verified owner filter, and mismatched upstream ownership is rejected.
+
+## Operations
+
+| Method | Path | Access | Success |
+| --- | --- | --- | --- |
+| GET | `/` | Public | 200 welcome message |
+| GET | `/health` | Public | 200 `{"status":"ok"}` |
+| GET | `/auth/me` | Authenticated | 200 user ID and email |
+| POST | `/api/v1/reports` | Authenticated | 201 report submission envelope |
+| GET | `/api/v1/reports` | Authenticated owner | 200 paginated own reports |
+| GET | `/api/v1/reports/{ticket_id}` | Authenticated owner | 200 own report, or 404 |
+
+Health is liveness only. Missing, malformed, invalid, or expired tokens return 401 with `WWW-Authenticate: Bearer`. Verification-key failures return 503. Database policy/grant rejection returns 403; other database failures return 503. Upstream error bodies and credentials are not echoed.
+
+### GET /auth/me
+
+```json
+{
+  "user_id": "00000000-0000-4000-8000-000000000001",
+  "email": "resident@example.com"
+}
+```
+
+The example is synthetic. Email can be null. The endpoint reads verified token claims, not the current Auth profile.
+
+### POST /api/v1/reports
+
+Content type: **multipart/form-data**. All four fields are required:
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| `description` | string | 1–1000 characters; whitespace-only text rejected; trimmed before processing |
+| `latitude` | number | −90 to 90 |
+| `longitude` | number | −180 to 180 |
+| `file` | uploaded photo | Declared MIME type image/jpeg or image/png; nonempty; maximum 10 MiB |
+
+Do not send `user_id`. Sending this form field returns 422 before S3/AI operations. The API assigns owner from the verified JWT.
+
+The existing workflow is retained: photo upload to S3, Bedrock analysis, Gemini fallback, manual-review fallback, and insertion into Supabase. Blocking storage and AI SDK calls run in a worker thread. External clients initialize lazily, allowing Auth and report reads without AWS/Gemini credentials. Only validated category/priority/summary values are accepted from AI; malformed analysis uses the manual-review fallback.
+
+The response retains `success`, `message`, `ticket_id`, `ai_analysis`, `image_url`, and `data`. `data` is an array containing exactly one created report. Owner is always the verified user, initial status is `pending`, and `is_approved` is false. New ticket IDs use `TICK-` followed by 32 hexadecimal characters, so the database column must support at least 37 characters. Treat IDs as opaque strings.
+
+This milestone retains the team's current storage behavior: report `description` is the AI summary or fallback description. Separately preserving the original text and resident confirmation of suggestions require a subsequent schema/contract change. The local SQLite workflow's `pending_review` status is not migrated in this change.
+
+An uploaded S3 object can remain if a later AI/database operation fails. S3 URL accessibility depends on the bucket's existing policy; report ownership rules do not establish private photo delivery. Photo content validation and private delivery can be refined with the storage owner.
+
+### GET /api/v1/reports
+
+Query parameters: `limit` defaults to 10, range 1–100; `offset` defaults to 0, minimum 0. Ordered by `created_at DESC, ticket_id DESC`. No owner-selection parameter is supported; the owner filter always comes from the token.
+
+```json
+{
+  "items": [],
+  "limit": 10,
+  "offset": 0
+}
+```
+
+There is no total count in this version. A signed-in user cannot read another owner's reports, including reviewed reports. Legacy reports without an owner remain in the database and are not included in My Reports.
+
+### GET /api/v1/reports/{ticket_id}
+
+Ticket IDs contain 1–128 ASCII letters, digits, underscores, or hyphens. Unknown and inaccessible IDs both return `404 {"detail":"Report not found"}`. Successful records expose only declared response fields: ticket ID, owner, description, status, creation time, coordinates, photo URL, category, priority, and approval flag. Creation time can be null for legacy data.
+
+## Database setup and validation
+
+The existing `public.reports` must contain `ticket_id`, `user_id`, `description`, `status`, `created_at`, `latitude`, `longitude`, `image_url`, `category`, `priority`, and `is_approved`. Ownership SQL expects UUID `user_id` and boolean `is_approved`; defaults, types, ticket length, and foreign keys must be reviewed in the project. The migration stops if key types are incompatible.
+
+Review [sql/001_report_ownership.sql](sql/001_report_ownership.sql) with the project owner before running it in Supabase SQL Editor. It enables RLS, grants signed-in select/insert, requires matching owner and unapproved pending submissions, and adds restrictive guards against broader existing policies. It disables anonymous access and signed-in update/delete for this milestone. Dashboard administration and service-role access are not changed. Business-role management writes and public map access need a later, explicit policy design.
+
+[sql/test_report_ownership.sql](sql/test_report_ownership.sql) checks two synthetic users, cross-owner reads and inserts, approval tampering, and anonymous visibility in a rolled-back transaction. Review first and run in a staging project where possible. These scripts have not been applied automatically to your project; zero-row column probes do not verify live RLS policies.
+
+## Run and test
+
+From repository root, in an activated virtual environment:
+
+```bash
+python -m pip install -r requirements.txt
+python -m uvicorn backend.main:app --reload
+python -B -m unittest -q backend.tests.test_cloud
+python -B -m backend.export_openapi
+```
+
+The 35 offline tests use ephemeral signing keys, two synthetic users, and mocked Supabase/S3/AI services. Real storage, AI provider availability, and live RLS are separate integration checks.
+
+In another terminal, test an existing confirmed Supabase App account:
+
+```bash
+python -B -m backend.check_session
+```
+
+To explicitly display the verified access token for local Swagger Authorize:
+
+```bash
+python -B -m backend.check_session --show-token
+```
+
+Tokens are hidden by default; the optional output is a real credential and should stay out of shared screenshots and files. The helper creates one login session but no accounts or reports. Its API target is loopback only, with optional `--port 8001` or `--port 8002`.
+
+The server reads the `.env` in the parent directory of the package, with explicit process environment values taking precedence. S3/Gemini secrets stay in local configuration. Docker continues to start `backend.main:app`.
+
+References: [Supabase JWTs](https://supabase.com/docs/guides/auth/jwts), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [PostgreSQL policy composition](https://www.postgresql.org/docs/current/sql-createpolicy.html).

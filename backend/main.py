@@ -1,201 +1,164 @@
-import os
-import random
-import string
-import json
-import base64
-import io
-import boto3
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
-from botocore.exceptions import ClientError
-from google import genai
-from PIL import Image
-from supabase import create_client, Client
+"""Authenticated Enclave cloud reports, preserving the S3 and AI submission pipeline."""
 
-# Load environment variables from .env file
-load_dotenv()
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from typing import Annotated
+from uuid import uuid4
 
-# Initialize Supabase client
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Path, Query, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+import httpx
+from pydantic import ValidationError
 
-# Initialize AWS S3 & Bedrock clients
-s3_client = boto3.client(
-    "s3",
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-    region_name=os.getenv("AWS_REGION", "us-east-1"),
-)
-
-bedrock_client = boto3.client(
-    "bedrock-runtime",
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-    region_name=os.getenv("AWS_REGION", "us-east-1"),
-)
-
-BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
-
-# Initialize Google Gemini client as a fallback AI provider
-gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
-app = FastAPI(title="Enclave Backend API")
+from .auth import AuthUnavailable, InvalidCredentials, TokenVerifier, VerifiedUser
+from .config import ConfigurationError, Settings, load_settings
+from .media import MediaServices, MediaUnavailable
+from .models import AIAnalysis, CurrentUserResponse, ReportCreatedResponse, ReportListResponse, ReportResponse
+from .reports import ReportAccessDenied, ReportsRepository, ReportsUnavailable
 
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to Enclave API"}
+MAX_PHOTO_BYTES = 10 * 1024 * 1024
+PHOTO_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
+bearer = HTTPBearer(scheme_name="SupabaseAccessToken", auto_error=False,
+                    description="Paste the Supabase Auth access_token, without the Bearer prefix.")
 
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+@dataclass(frozen=True)
+class AuthenticatedUser(VerifiedUser):
+    access_token: str = field(repr=False)
 
 
-# Helper 1: Upload image to AWS S3 storage
-def upload_image_to_s3(file_name: str, file_bytes: bytes, content_type: str):
+def current_user(
+    request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> AuthenticatedUser:
+    unauthorized = HTTPException(401, "Invalid or expired credentials", headers={"WWW-Authenticate": "Bearer"})
+    if credentials is None:
+        raise unauthorized
     try:
-        s3_client.put_object(
-            Bucket=BUCKET_NAME,
-            Key=file_name,
-            Body=file_bytes,
-            ContentType=content_type,
-        )
-        file_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{file_name}"
-        return file_url
-    except Exception as e:
-        print(f"S3 Upload Error: {e}")
-        return None
+        verified = request.app.state.verifier.verify(credentials.credentials)
+    except InvalidCredentials:
+        raise unauthorized from None
+    except AuthUnavailable:
+        raise HTTPException(503, "Authentication service unavailable") from None
+    return AuthenticatedUser(verified.user_id, verified.email, credentials.credentials)
 
 
-# Helper 2: Smart AI analysis with Bedrock -> Gemini fallback strategy
-def analyze_report_with_ai(image_bytes: bytes, description: str):
-    prompt_text = (
-        "You are a community issue management assistant. Please analyze the provided image and resident description, "
-        "and return a strict JSON response containing:\n"
-        "1. 'category': choose strictly from [Streetlight, Damaged Facility, Blocked Path, Drainage, Waste]\n"
-        "2. 'priority': 'high', 'medium', or 'low'\n"
-        "3. 'summary': a brief description summary\n"
-        f"Resident Description: {description}"
+def create_app(
+    settings: Settings | None = None, *, auth_transport: httpx.BaseTransport | None = None,
+    reports_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
+) -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        try:
+            configured = settings if settings is not None else load_settings()
+        except ConfigurationError:
+            raise RuntimeError("Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the root .env.") from None
+        verifier = TokenVerifier(configured, transport=auth_transport)
+        repository = ReportsRepository(configured, transport=reports_transport)
+        application.state.verifier = verifier
+        application.state.reports = repository
+        application.state.media = media_services if media_services is not None else MediaServices(configured)
+        try:
+            yield
+        finally:
+            verifier.close()
+            await repository.close()
+
+    application = FastAPI(
+        title="Enclave Backend API", version="0.3.0", lifespan=lifespan,
+        description="Supabase JWT authentication, owner-only cloud reports, and S3/AI report submission.",
     )
 
-    # Strategy A: Try Amazon Nova Lite (Bedrock) first
-    try:
-        print("🤖 [AI Route] Attempting to invoke AWS Bedrock (Nova Lite)...")
-        model_id = "amazon.nova-lite-v1:0"
-        base64_image = base64.b64encode(image_bytes).decode('utf-8')
-        
-        payload = {
-            "messages": [{
-                "role": "user",
-                "content": [
-                    {"image": {"format": "jpeg", "source": {"bytes": base64_image}}},
-                    {"text": prompt_text}
-                ],
-            }],
-            "inferenceConfig": {"max_new_tokens": 300, "temperature": 0.2},
+    @application.exception_handler(ReportsUnavailable)
+    async def unavailable_handler(request, error):
+        return JSONResponse(status_code=503, content={"detail": "Reports service unavailable"})
+
+    @application.exception_handler(ReportAccessDenied)
+    async def denied_handler(request, error):
+        return JSONResponse(status_code=403, content={"detail": "Report access denied by database policy"})
+
+    @application.get("/", tags=["Health"])
+    def root():
+        return {"message": "Welcome to Enclave API"}
+
+    @application.get("/health", tags=["Health"])
+    def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @application.get("/auth/me", response_model=CurrentUserResponse, tags=["Authentication"], responses={
+        401: {"description": "Missing, invalid, or expired access token."},
+        503: {"description": "Verification keys are unavailable."},
+    })
+    def me(user: AuthenticatedUser = Depends(current_user)):
+        return CurrentUserResponse(user_id=user.user_id, email=user.email)
+
+    errors = {401: {"description": "Invalid credentials."}, 403: {"description": "Database policy denied access."},
+              503: {"description": "Cloud service unavailable."}}
+
+    @application.post("/api/v1/reports", response_model=ReportCreatedResponse, status_code=201,
+                      tags=["Reports"], responses={**errors, 413: {"description": "Photo exceeds 10 MiB."},
+                                                   415: {"description": "Unsupported photo type."}})
+    async def submit_report(
+        request: Request, user: AuthenticatedUser = Depends(current_user),
+        description: str = Form(..., min_length=1, max_length=1000),
+        latitude: float = Form(..., ge=-90, le=90), longitude: float = Form(..., ge=-180, le=180),
+        file: UploadFile = File(...),
+    ):
+        description = description.strip()
+        if not description:
+            raise HTTPException(422, "Description must contain non-whitespace text")
+        if "user_id" in await request.form():
+            raise HTTPException(422, "user_id is assigned from the verified access token; omit this form field")
+        extension = PHOTO_TYPES.get(file.content_type)
+        if extension is None:
+            raise HTTPException(415, "Use a JPEG or PNG photo")
+        file_bytes = await file.read(MAX_PHOTO_BYTES + 1)
+        if len(file_bytes) > MAX_PHOTO_BYTES:
+            raise HTTPException(413, "Photo exceeds the 10 MiB limit")
+        if not file_bytes:
+            raise HTTPException(422, "Photo must not be empty")
+        media = request.app.state.media
+        try:
+            image_url = await run_in_threadpool(media.upload, "report_" + uuid4().hex + "." + extension,
+                                                 file_bytes, file.content_type)
+        except MediaUnavailable:
+            raise HTTPException(503, "Photo storage unavailable") from None
+        ai_result = await run_in_threadpool(media.analyze, file_bytes, description)
+        try:
+            analysis = AIAnalysis.model_validate(ai_result)
+        except ValidationError:
+            analysis = AIAnalysis(category="Damaged Facility", priority="medium", summary=description)
+        ticket_id = "TICK-" + uuid4().hex
+        row = {
+            "ticket_id": ticket_id, "user_id": str(user.user_id), "description": analysis.summary,
+            "status": "pending", "image_url": image_url, "category": analysis.category,
+            "priority": analysis.priority, "latitude": latitude, "longitude": longitude, "is_approved": False,
         }
+        record = await request.app.state.reports.create(row, user.access_token, user.user_id)
+        return ReportCreatedResponse(ticket_id=ticket_id, ai_analysis=analysis, image_url=image_url, data=[record])
 
-        response = bedrock_client.invoke_model(
-            modelId=model_id,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps(payload),
-        )
-        result = json.loads(response["body"].read())
-        answer = (
-            result.get("output", {})
-            .get("message", {})
-            .get("content", [{}])[0]
-            .get("text", "")
-        )
-        print("✅ [AI Success] Analysis successfully completed via Bedrock (Nova Lite)!")
-        cleaned_answer = answer.strip().removeprefix("```json").removesuffix("```").strip()
-        return json.loads(cleaned_answer)
+    @application.get("/api/v1/reports", response_model=ReportListResponse, tags=["Reports"], responses=errors)
+    async def my_reports(
+        request: Request, user: AuthenticatedUser = Depends(current_user),
+        limit: int = Query(10, ge=1, le=100), offset: int = Query(0, ge=0),
+    ):
+        records = await request.app.state.reports.list_for_owner(user.access_token, user.user_id, limit=limit, offset=offset)
+        return ReportListResponse(items=records, limit=limit, offset=offset)
 
-    except (ClientError, Exception) as e:
-        print(f"⚠️ [AI Warning] Bedrock invocation failed ({e}). Switching to Google Gemini fallback...")
+    @application.get("/api/v1/reports/{ticket_id}", response_model=ReportResponse, tags=["Reports"],
+                     responses={**errors, 404: {"description": "Unknown or inaccessible report."}})
+    async def report_detail(
+        request: Request, ticket_id: Annotated[str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")],
+        user: AuthenticatedUser = Depends(current_user),
+    ):
+        record = await request.app.state.reports.get_for_owner(user.access_token, user.user_id, ticket_id)
+        if record is None:
+            raise HTTPException(404, "Report not found")
+        return record
 
-    # Strategy B: Fallback to Google Gemini API (gemini-3.6-flash-lite)
-    try:
-        img = Image.open(io.BytesIO(image_bytes))
-        response = gemini_client.models.generate_content(
-            model='gemini-3.5-flash-lite',
-            contents=[img, prompt_text]
-        )
-        cleaned_text = response.text.strip().removeprefix("```json").removesuffix("```").strip()
-        print("✅ [AI Success] Analysis successfully completed via Google Gemini fallback!")
-        return json.loads(cleaned_text)
+    return application
 
-    except Exception as e:
-        print(f"❌ [AI Error] Fallback Gemini also failed: {e}. Using default rule-based fallback.")
-        return {
-            "category": "Damaged Facility",
-            "priority": "medium",
-            "summary": description or "Manual review required (AI pending approval)."
-        }
 
-# Core API: Receive image + description + location -> S3 -> AI Analysis -> Supabase Database
-@app.post("/api/v1/reports")
-async def create_report(
-    description: str = Form(...),
-    latitude: float = Form(0.0),
-    longitude: float = Form(0.0),
-    user_id: str = Form(None),
-    file: UploadFile = File(...)
-):
-    try:
-        # 1. Read image file bytes
-        file_bytes = await file.read()
-        file_ext = file.filename.split(".")[-1] if file.filename else "jpg"
-        unique_file_name = f"report_{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}.{file_ext}"
-
-        # 2. Upload image to AWS S3
-        image_url = upload_image_to_s3(unique_file_name, file_bytes, file.content_type or "image/jpeg")
-        if not image_url:
-            raise HTTPException(status_code=500, detail="Failed to upload image to S3 storage.")
-
-        # 3. Call AI Service (Bedrock with Gemini Fallback) for automated categorization and priority
-        ai_result = analyze_report_with_ai(file_bytes, description)
-
-        # 4. Generate unique Ticket ID
-        ticket_id = "TICK-" + "".join(random.choices(string.digits, k=4))
-
-        # 5. Prepare row data corresponding to our Supabase normalized schema
-        report_data = {
-            "ticket_id": ticket_id,
-            "description": ai_result.get("summary", description),
-            "status": "pending",
-            "image_url": image_url,
-            "category": ai_result.get("category", "Damaged Facility"),
-            "priority": ai_result.get("priority", "medium"),
-            "latitude": latitude,
-            "longitude": longitude,
-            "is_approved": False,  # Default unverified for public privacy protection
-        }
-
-        # Fix: Only add user_id if a valid UUID is provided and not placeholders
-        if user_id and user_id not in ["string", "None", ""]:
-            report_data["user_id"] = user_id
-
-        # Fix: Only include user_id if it's a valid UUID (ignore placeholder strings like "string" from Swagger)
-        if user_id and user_id != "string" and user_id.strip() != "":
-            report_data["user_id"] = user_id
-
-        # 6. Insert data into Supabase 'reports' table
-        response = supabase.table("reports").insert(report_data).execute()
-
-        return {
-            "success": True,
-            "message": "Report successfully created, analyzed by AI, and stored.",
-            "ticket_id": ticket_id,
-            "ai_analysis": ai_result,
-            "image_url": image_url,
-            "data": response.data
-        }
-
-    except Exception as e:
-        print(f"API Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+app = create_app()
