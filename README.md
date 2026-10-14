@@ -2,6 +2,8 @@
 
 AI-powered community issue reporting and safety platform
 
+Proposed next feature: [resident registration with FastAPI-generated email OTPs and Resend delivery](backend/RESIDENT_VERIFICATION_DESIGN.md). Includes a database draft for management's resident register, one-time invitations, OTP challenges, and account membership. This proposal is not an implemented API or an applied migration.
+
 ## Requirements
 
 - Python 3.11 or newer for the cloud API; Python 3.12 or newer for the SQLite practice backend.
