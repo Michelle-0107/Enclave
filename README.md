@@ -52,7 +52,7 @@ python -m uvicorn backend.main:app --reload
 
 Copy the blank root `.env.example` to `.env`, then set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. `SUPABASE_KEY` is no longer used by this application. JWT verification and report reads do not require AWS/Gemini settings; photo submission additionally requires configured S3 access and bucket settings.
 
-Review the [ownership migration](backend/sql/001_report_ownership.sql) and [transactional RLS tests](backend/sql/test_report_ownership.sql) with the project owner. Anonymous report access and signed-in update/delete are disabled by this migration; management roles and public map access are a later integration.
+Ask the project owner to run the [read-only schema and policy inspection](backend/sql/inspect_report_configuration.sql) in the Enclave project's SQL Editor first. Review its results before adapting the [proposed ownership migration](backend/sql/001_report_ownership.sql) and [transactional RLS tests](backend/sql/test_report_ownership.sql). The proposed migration disables anonymous report access and signed-in update/delete; review existing management and public map policies before applying it.
 
 ```powershell
 python -B -m unittest -q backend.tests.test_cloud
