@@ -1,5 +1,8 @@
 import os
 import resend
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # get the Resend API Key from the environment variables and configure it
 resend.api_key = os.environ.get("RESEND_API_KEY")
@@ -9,7 +12,7 @@ def send_invite_email(to_email: str, code: str):
     use Resend to send registration invitation/verification emails
     """
     params = {
-        "from": "noreply@enclave.com",
+        "from": "onboarding@resend.dev",
         "to": [to_email],
         "subject": "【Community Management】Your Registration Invitation Code",
         "html": f"""
