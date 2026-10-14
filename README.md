@@ -13,6 +13,7 @@ The supplied post-application schema metadata was reviewed in [REGISTRATION_SCHE
 ## Backend implementations
 
 - The cloud backend is `backend.main:app`, uses root `requirements.txt`, verifies Supabase JWTs, and exposes owner-only reports with the existing S3/AI submission pipeline. See its [API contract](backend/API_CONTRACT.md).
+- Root `main:app` re-exports that same application for the team's Render/Docker startup command. The older standalone report router is retained as source history and is not mounted; it must not be registered alongside the protected routes.
 - The local workflow backend is in `backend/local/` and uses its own `requirements.txt`, local authentication, and SQLite. It supports report ownership, management review, maintenance status changes, and action history without a cloud account.
 
 ### Run the local workflow backend

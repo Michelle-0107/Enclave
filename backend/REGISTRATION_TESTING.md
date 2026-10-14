@@ -75,7 +75,7 @@ An existing account must authenticate with its own password and confirmed matchi
 ## Tests and rate limits
 
 ```powershell
-python -B -m unittest -q backend.tests.test_registration backend.tests.test_cloud backend.tests.test_storage
+python -B -m unittest -q backend.tests.test_registration backend.tests.test_cloud backend.tests.test_storage backend.tests.test_entrypoint
 python -B -m backend.export_openapi
 ```
 

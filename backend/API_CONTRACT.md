@@ -1,10 +1,10 @@
-# Enclave cloud API contract — v0.3.0
+# Enclave cloud API contract — v0.4.0
 
 The cloud application is `backend.main:app`. Run it from the repository root. The separate SQLite practice backend remains in `backend/local/`.
 
 ## Authentication
 
-Frontend signup/login/refresh/signout use Supabase Auth directly. Send its ES256 access token on every protected API request:
+Invitation-bound signup uses the registration endpoints below and returns a Supabase session after binding. Frontend subsequent login/refresh/signout use Supabase Auth directly. Send its ES256 access token on every protected API request:
 
 ```http
 Authorization: Bearer <supabase_access_token>
@@ -12,7 +12,7 @@ Authorization: Bearer <supabase_access_token>
 
 The API validates the signature against the configured project's public JWKS, issuer, audience, expiry, issued-at time, required claims, authenticated database role, and UUID user ID. Keys are cached for five minutes; unknown key IDs have a 30-second refresh cooldown. This checks issued tokens without querying session revocation on every request. Signout does not immediately invalidate an already issued unexpired JWT.
 
-Use `SUPABASE_PUBLISHABLE_KEY`, not a secret/service-role key. The old `SUPABASE_KEY` variable is no longer read by this application. Database requests include the individual user's JWT in per-request headers, avoiding a shared mutable Supabase login session. Every report read also includes the verified owner filter, and mismatched upstream ownership is rejected.
+Normal Auth/report operations use `SUPABASE_PUBLISHABLE_KEY` and the individual user's JWT. Server-only registration clients separately require an Admin key; that key is never used for resident report requests. The old `SUPABASE_KEY` variable is no longer read by this application. Database report requests include the individual user's JWT in per-request headers, avoiding a shared mutable Supabase login session. Every report read also includes the verified owner filter, and mismatched upstream ownership is rejected.
 
 ## Operations
 
