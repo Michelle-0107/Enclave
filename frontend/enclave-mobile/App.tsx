@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -14,16 +14,32 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+import SignInScreen from './src/screens/SignInScreen';
+import SignUpScreen from './src/screens/SignUpScreen';
+import SignUpSuccessScreen from './src/screens/SignUpSuccessScreen';
+
 import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import AccountScreen from './src/screens/AccountScreen';
+
 import { colors } from './src/theme';
 
-type Tab = 'Home' | 'Map' | 'Report' | 'Notifications' | 'My Account';
+type Tab =
+  | 'Home'
+  | 'Map'
+  | 'Report'
+  | 'Notifications'
+  | 'My Account';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type Screen =
+  | 'signIn'
+  | 'signUp'
+  | 'signUpSuccess'
+  | 'resident';
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
 const tabs: { name: Tab; icon: IconName }[] = [
   { name: 'Home', icon: 'home-outline' },
@@ -43,7 +59,9 @@ function ResidentApp() {
         return (
           <HomeScreen
             onReportPress={() => setActiveTab('Report')}
-            onNotificationsPress={() => setActiveTab('Notifications')}
+            onNotificationsPress={() =>
+              setActiveTab('Notifications')
+            }
           />
         );
 
@@ -66,12 +84,16 @@ function ResidentApp() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar style="dark" />
-
+    <SafeAreaView
+      style={styles.container}
+      edges={['top', 'left', 'right']}
+    >
       <View style={styles.header}>
         <Text style={styles.brand}>ENCLAVE</Text>
-        <Text style={styles.tagline}>Your community, connected.</Text>
+
+        <Text style={styles.tagline}>
+          Your community, connected.
+        </Text>
       </View>
 
       <ScrollView
@@ -86,7 +108,9 @@ function ResidentApp() {
       <View
         style={[
           styles.tabBar,
-          { paddingBottom: Math.max(insets.bottom, 12) },
+          {
+            paddingBottom: Math.max(insets.bottom, 12),
+          },
         ]}
       >
         {tabs.map(({ name, icon }) => {
@@ -108,7 +132,9 @@ function ResidentApp() {
               <Ionicons
                 name={icon}
                 size={23}
-                color={selected ? colors.white : colors.muted}
+                color={
+                  selected ? colors.white : colors.muted
+                }
               />
             </Pressable>
           );
@@ -118,10 +144,44 @@ function ResidentApp() {
   );
 }
 
+function AppFlow() {
+  const [screen, setScreen] = useState<Screen>('signIn');
+
+  switch (screen) {
+    case 'signIn':
+      return (
+        <SignInScreen
+          onDemoSignIn={() => setScreen('resident')}
+          onSignUpPress={() => setScreen('signUp')}
+        />
+      );
+
+    case 'signUp':
+      return (
+        <SignUpScreen
+          onBack={() => setScreen('signIn')}
+          onSignInPress={() => setScreen('signIn')}
+          onRegistered={() => setScreen('signUpSuccess')}
+        />
+      );
+
+    case 'signUpSuccess':
+      return (
+        <SignUpSuccessScreen
+          onGoHome={() => setScreen('resident')}
+        />
+      );
+
+    case 'resident':
+      return <ResidentApp />;
+  }
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <ResidentApp />
+      <StatusBar style="dark" />
+      <AppFlow />
     </SafeAreaProvider>
   );
 }
