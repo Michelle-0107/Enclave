@@ -18,6 +18,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+import LandingScreen from './src/screens/LandingScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import SignUpSuccessScreen from './src/screens/SignUpSuccessScreen';
@@ -43,6 +44,7 @@ type Tab =
   | 'My Account';
 
 type Screen =
+  | 'landing'
   | 'signIn'
   | 'signUp'
   | 'signUpSuccess'
@@ -299,18 +301,22 @@ function ResidentApp() {
 
 function AppFlow() {
   const [screen, setScreen] =
-    useState<Screen>('signIn');
+    useState<Screen>('landing');
 
   switch (screen) {
+    case 'landing':
+      return (
+        <LandingScreen
+          onGetStarted={() => setScreen('signIn')}
+          onSignIn={() => setScreen('signIn')}
+        />
+      );
+
     case 'signIn':
       return (
         <SignInScreen
-          onDemoSignIn={() =>
-            setScreen('resident')
-          }
-          onSignUpPress={() =>
-            setScreen('signUp')
-          }
+          onDemoSignIn={() => setScreen('resident')}
+          onSignUpPress={() => setScreen('signUp')}
         />
       );
 
@@ -318,9 +324,7 @@ function AppFlow() {
       return (
         <SignUpScreen
           onBack={() => setScreen('signIn')}
-          onSignInPress={() =>
-            setScreen('signIn')
-          }
+          onSignInPress={() => setScreen('signIn')}
           onRegistered={() =>
             setScreen('signUpSuccess')
           }
@@ -330,9 +334,7 @@ function AppFlow() {
     case 'signUpSuccess':
       return (
         <SignUpSuccessScreen
-          onGoHome={() =>
-            setScreen('resident')
-          }
+          onGoHome={() => setScreen('resident')}
         />
       );
 
