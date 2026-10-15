@@ -42,13 +42,9 @@ The sandbox also accepts `demo-manager-token` for practicing management routes. 
 
 ## Hosted registration configuration
 
-<<<<<<< HEAD
-Keep the existing `SUPABASE_URL` and `SUPABASE_KEY`. Add these only to the server's `.env`/deployment secret settings:
-=======
 Copy the root `.env.example` to the private `.env` and fill its existing variables only. Registration requires `SUPABASE_URL`, `SUPABASE_KEY`, and `RESEND_API_KEY`; `SUPABASE_JWT_SECRET` is optional and is used only for legacy HS256 tokens. The code does not add OTP-secret, Admin-key, or sender variables. `SUPABASE_KEY` must be a backend-only secret/service-role key for the registration Admin API and RPC. Keep backend keys out of frontend configuration.
->>>>>>> bc4a793581274422ca7e8a5ee2773ad21503e417
 
-The server derives a purpose-specific OTP HMAC key from `SUPABASE_KEY`. Keep that key stable across app instances sharing challenges; rotating it invalidates outstanding OTP digests. The code-level Resend sender is currently `Enclave <onboarding@resend.dev>`, which Resend restricts to the account's own address. Before resident delivery, update the constant in `backend/registration/settings.py` to an address on a verified domain; this does not change the environment format.
+The server derives a purpose-specific OTP HMAC key from `SUPABASE_KEY`. Keep that key stable across app instances sharing challenges; rotating it invalidates outstanding OTP digests. The code-level Resend sender is `Enclave <noreply@enclavehomes.app>` in `backend/registration/settings.py`. The configured Resend key must have sending access to that verified domain. This does not change the environment format.
 
 Apply [sql/005_registration_transitions.sql](../../sql/005_registration_transitions.sql) after the already-created 003 tables and 004 profile access. Do not rerun 003. SQL 005 adds one private infrastructure table, `registration_rate_limits`, and one service-role-only RPC for atomic transitions. It creates no accounts or resident rows. No database connection string/password is required by the HTTP RPC client.
 

@@ -21,11 +21,7 @@ def check_configuration(*, env_file: Path = ENV_FILE, environ=None):
     values = _load_values(env_file, environ)
     messages = []
     missing = []
-<<<<<<< HEAD
-    for name in ("SUPABASE_URL", "SUPABASE_KEY", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "OTP_HMAC_SECRET"):
-=======
     for name in ("SUPABASE_URL", "SUPABASE_KEY", "RESEND_API_KEY"):
->>>>>>> bc4a793581274422ca7e8a5ee2773ad21503e417
         if not (values.get(name) or "").strip():
             missing.append(name)
     if missing:
