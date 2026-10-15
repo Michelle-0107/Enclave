@@ -92,6 +92,6 @@ An administrator can purge expired rate buckets after the operational retention 
 
 ## Remaining rollout work
 
-Live Resend/Supabase Auth delivery, credentials, and account creation require separate authorized integration testing. Report/notification/category policies still need the feature-table changes identified in the schema review. Registration does not itself add active-resident enforcement to those report APIs/policies. Do not enable resident-only release until both API and direct Data API access checks are reviewed. Frontend integration must install the returned real session with the Supabase SDK.
+Live Resend/Supabase Auth delivery, credentials, and account creation require separate authorized integration testing. Report API active-resident checks are implemented locally. Before live rollout, compare `sql/inspect_feature_access.sql` with the current hosted schema, review/apply `sql/006_active_resident_feature_rls.sql`, and run `sql/test_report_ownership.sql` in staging. Live hosted RLS behavior still needs integration testing. Frontend integration must install the returned real session with the Supabase SDK.
 
 References: [Resend send API](https://resend.com/docs/api-reference/emails/send-email), [Resend test-domain limits](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain), [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys).

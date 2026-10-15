@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Enclave Backend API",
-    "description": "Supabase JWT authentication, resident OTP registration, owner-only reports, and S3/AI submission.",
+    "description": "Supabase JWT authentication, resident OTP registration, active-resident report access, and S3/AI submission.",
     "version": "0.4.0"
   },
   "paths": {
@@ -346,6 +346,7 @@
           "Reports"
         ],
         "summary": "Submit Report",
+        "description": "Requires an active, verified resident binding. The report owner is assigned from the Supabase access token.",
         "operationId": "submit_report_api_v1_reports_post",
         "security": [
           {
@@ -377,10 +378,10 @@
             "description": "Invalid credentials."
           },
           "403": {
-            "description": "Database policy denied access."
+            "description": "Active residency or a database policy denied access."
           },
           "503": {
-            "description": "Cloud service unavailable."
+            "description": "Authentication, resident directory, or cloud service unavailable."
           },
           "413": {
             "description": "Photo exceeds 10 MiB."
@@ -405,6 +406,7 @@
           "Reports"
         ],
         "summary": "My Reports",
+        "description": "Requires an active, verified resident binding and returns only that resident's reports.",
         "operationId": "my_reports_api_v1_reports_get",
         "security": [
           {
@@ -451,10 +453,10 @@
             "description": "Invalid credentials."
           },
           "403": {
-            "description": "Database policy denied access."
+            "description": "Active residency or a database policy denied access."
           },
           "503": {
-            "description": "Cloud service unavailable."
+            "description": "Authentication, resident directory, or cloud service unavailable."
           },
           "422": {
             "description": "Validation Error",
@@ -475,6 +477,7 @@
           "Reports"
         ],
         "summary": "Report Detail",
+        "description": "Requires an active, verified resident binding and returns only that resident's report.",
         "operationId": "report_detail_api_v1_reports__ticket_id__get",
         "security": [
           {
@@ -510,10 +513,10 @@
             "description": "Invalid credentials."
           },
           "403": {
-            "description": "Database policy denied access."
+            "description": "Active residency or a database policy denied access."
           },
           "503": {
-            "description": "Cloud service unavailable."
+            "description": "Authentication, resident directory, or cloud service unavailable."
           },
           "404": {
             "description": "Unknown or inaccessible report."
