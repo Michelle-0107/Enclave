@@ -13,7 +13,7 @@ import check_supabase as checker
 
 class SupabaseCheckTests(unittest.TestCase):
     def setUp(self):
-        self.key = "sb_publishable_synthetic_test_fixture"
+        self.key = "sb_secret_synthetic_test_fixture"
         self.settings = checker.Settings("https://exampleproject.supabase.co", self.key)
 
     def response(self, status, payload):
@@ -62,8 +62,10 @@ class SupabaseCheckTests(unittest.TestCase):
             with self.subTest(url=url), self.assertRaises(checker.ConfigurationError):
                 checker.Settings(url, self.key)
 
-    def test_rejects_secret_keys_and_invalid_header_values(self):
-        for key in ["sb_secret_synthetic_fixture", self.key + "\nInjected: value", "your-key", "sb_publishable_\u4e2d"]:
+    def test_accepts_secret_keys_and_rejects_invalid_header_values(self):
+        self.assertEqual(checker.Settings(self.settings.project_url, "sb_secret_synthetic_fixture").api_key,
+                         "sb_secret_synthetic_fixture")
+        for key in [self.key + "\nInjected: value", "your-key", "sb_publishable_synthetic_fixture", "sb_secret_\u4e2d"]:
             with self.subTest(key_type=key.split("_", 2)[:2]), self.assertRaises(checker.ConfigurationError):
                 checker.Settings(self.settings.project_url, key)
 

@@ -9,7 +9,6 @@ import httpx
 
 from ..config import ConfigurationError, ENV_FILE, _load_values, load_settings
 from ..registration.settings import load_registration_settings
-from .setup_registration import validate_secret
 
 
 @dataclass(frozen=True)
@@ -22,18 +21,13 @@ def check_configuration(*, env_file: Path = ENV_FILE, environ=None):
     values = _load_values(env_file, environ)
     messages = []
     missing = []
+<<<<<<< HEAD
     for name in ("SUPABASE_URL", "SUPABASE_KEY", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "OTP_HMAC_SECRET"):
+=======
+    for name in ("SUPABASE_URL", "SUPABASE_KEY", "RESEND_API_KEY"):
+>>>>>>> bc4a793581274422ca7e8a5ee2773ad21503e417
         if not (values.get(name) or "").strip():
             missing.append(name)
-    if not ((values.get("SUPABASE_SECRET_KEY") or "").strip() or (values.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()):
-        missing.append("SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)")
-    if values.get("OTP_HMAC_SECRET"):
-        try:
-            validate_secret(values["OTP_HMAC_SECRET"].strip(), (values.get("OTP_HMAC_VERSION") or "1").strip())
-            messages.append("OTP secret/version: valid; value hidden.")
-        except ConfigurationError:
-            messages.append("OTP secret/version: invalid; review privately.")
-            return Readiness(False, tuple(messages)), None
     if missing:
         messages.append("Missing: " + ", ".join(missing))
         return Readiness(False, tuple(messages)), None
@@ -41,7 +35,7 @@ def check_configuration(*, env_file: Path = ENV_FILE, environ=None):
         cloud = load_settings(env_file=env_file, environ=environ)
         settings = load_registration_settings(cloud, env_file=env_file, environ=environ)
     except ConfigurationError:
-        messages.append("Configuration format is invalid. Check project URL, key types, sender, and secret/version privately.")
+        messages.append("Configuration format is invalid. Check project URL, backend key type, optional legacy JWT secret, and Resend key privately.")
         return Readiness(False, tuple(messages)), None
     messages.append("Registration configuration: valid. No provider/network checks performed.")
     return Readiness(True, tuple(messages)), settings

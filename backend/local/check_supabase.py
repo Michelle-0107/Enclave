@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from dotenv import dotenv_values
 import httpx
+import jwt
 
 
 ENV_FILE = Path(__file__).resolve().with_name(".env")
@@ -23,11 +24,11 @@ class ConfigurationError(ValueError):
 @dataclass(frozen=True)
 class Settings:
     project_url: str
-    publishable_key: str = field(repr=False)
+    api_key: str = field(repr=False)
 
     def __post_init__(self):
         project_url = self.project_url.strip().rstrip("/")
-        key = self.publishable_key.strip()
+        key = self.api_key.strip()
         if not project_url or not key:
             raise ConfigurationError(
                 "Set SUPABASE_URL and SUPABASE_KEY in .env beside check_supabase.py."
@@ -50,12 +51,17 @@ class Settings:
             raise ConfigurationError(
                 "Use the hosted Project URL from Connect: https://<project-ref>.supabase.co."
             )
-        if not key.startswith("sb_publishable_") or not key.isascii() or any(char.isspace() for char in key):
-            raise ConfigurationError(
-                "Use the Publishable key beginning with sb_publishable_ for this probe."
-            )
+        admin_key = key.startswith("sb_secret_")
+        if not admin_key:
+            try:
+                claims = jwt.decode(key, options={"verify_signature": False})
+                admin_key = claims.get("role") == "service_role"
+            except (ValueError, jwt.PyJWTError):
+                admin_key = False
+        if not admin_key or not key.isascii() or any(char.isspace() for char in key):
+            raise ConfigurationError("Use a backend-only SUPABASE_KEY (secret or legacy service-role key) from the same project.")
         object.__setattr__(self, "project_url", project_url)
-        object.__setattr__(self, "publishable_key", key)
+        object.__setattr__(self, "api_key", key)
 
 
 def load_settings(*, env_file: Path = ENV_FILE, environ: Mapping[str, str] | None = None) -> Settings:
@@ -64,7 +70,7 @@ def load_settings(*, env_file: Path = ENV_FILE, environ: Mapping[str, str] | Non
     environment = os.environ if environ is None else environ
     return Settings(
         project_url=environment.get("SUPABASE_URL", values.get("SUPABASE_URL") or ""),
-        publishable_key=environment.get(
+        api_key=environment.get(
             "SUPABASE_KEY", values.get("SUPABASE_KEY") or ""
         ),
     )
@@ -76,7 +82,7 @@ def probe_reports(settings: Settings, *, transport: httpx.BaseTransport | None =
             response = client.get(
                 settings.project_url + "/rest/v1/reports",
                 headers={
-                    "apikey": settings.publishable_key,
+                    "apikey": settings.api_key,
                     "Accept": "application/json",
                     "Accept-Profile": "public",
                 },
@@ -105,7 +111,7 @@ def probe_reports(settings: Settings, *, transport: httpx.BaseTransport | None =
     elif code == "42501" or response.status_code == 403:
         message = "Access denied. Ask the project owner to check the Data API table grants."
     elif response.status_code == 401:
-        message = "The API key was rejected. Check that the URL and Publishable key belong to the same project."
+        message = "The API key was rejected. Check that the URL and SUPABASE_KEY belong to the same project."
     elif response.status_code == 404:
         message = "The reports route is unavailable. Check public.reports and its Data API exposure."
     elif 300 <= response.status_code < 400:

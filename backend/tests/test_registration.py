@@ -287,7 +287,7 @@ class RegistrationClientTests(unittest.TestCase):
         self.assertEqual(identifier, RESIDENT)
         self.assertEqual(session.access_token, "synthetic-access")
         self.assertNotIn("Authorization", requests[0].headers)
-        self.assertEqual(requests[1].headers["apikey"], self.config.cloud.publishable_key)
+        self.assertEqual(requests[1].headers["apikey"], self.config.cloud.api_key)
 
     def test_upstream_wrong_email_unconfirmed_user_and_empty_tokens_are_rejected(self):
         base = {"access_token": "synthetic-access", "refresh_token": "synthetic-refresh", "expires_in": 3600,

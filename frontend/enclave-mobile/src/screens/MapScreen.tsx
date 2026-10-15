@@ -1,171 +1,251 @@
 import { useState } from 'react';
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 
 type Props = {
   onReportPress: () => void;
+  onChooseRoute?: (start: string, destination: string) => void;
 };
 
-export default function MapScreen({ onReportPress }: Props) {
+export default function MapScreen({
+  onReportPress,
+  onChooseRoute,
+}: Props) {
   const [start, setStart] = useState('Community Clubhouse');
-  const [destination, setDestination] = useState('');
+  const [destination, setDestination] = useState('Lakeside Park');
+
+  function handleChooseRoute() {
+    const startingPoint = start.trim();
+    const endPoint = destination.trim();
+
+    if (!startingPoint || !endPoint) {
+      Alert.alert(
+        'Choose your locations',
+        'Please enter a starting point and an end point.'
+      );
+      return;
+    }
+
+    if (onChooseRoute) {
+      onChooseRoute(startingPoint, endPoint);
+      return;
+    }
+
+    Alert.alert(
+      'Route options',
+      'The Route options page will be connected next.'
+    );
+  }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        Around your{'\n'}neighbourhood.
+        Around your neighbourhood.
       </Text>
 
       <Text style={styles.subtitle}>
         Reviewed issues, at a glance.
       </Text>
 
-      <View style={styles.locationCard}>
-        <Text style={styles.label}>Starting point</Text>
+      <View style={styles.endpoints}>
+        <View style={styles.endpoint}>
+          <Text style={styles.fieldLabel}>Starting point</Text>
 
-        <TextInput
-          value={start}
-          onChangeText={setStart}
-          placeholder="Choose your starting point"
-          placeholderTextColor={colors.muted}
-          style={styles.input}
-        />
+          <TextInput
+            accessibilityLabel="Starting point"
+            value={start}
+            onChangeText={setStart}
+            placeholder="Choose a starting point"
+            placeholderTextColor={colors.muted}
+            autoCorrect={false}
+            returnKeyType="next"
+            style={styles.locationInput}
+          />
+        </View>
 
         <View style={styles.divider} />
 
-        <Text style={styles.label}>End point</Text>
+        <View style={styles.endpoint}>
+          <Text style={styles.fieldLabel}>End point</Text>
 
-        <TextInput
-          value={destination}
-          onChangeText={setDestination}
-          placeholder="Where would you like to go?"
-          placeholderTextColor={colors.muted}
-          style={styles.input}
-        />
+          <TextInput
+            accessibilityLabel="End point"
+            value={destination}
+            onChangeText={setDestination}
+            placeholder="Choose an end point"
+            placeholderTextColor={colors.muted}
+            autoCorrect={false}
+            returnKeyType="done"
+            style={styles.locationInput}
+          />
+        </View>
       </View>
 
+      {/* Replace this placeholder with the map component later. */}
       <View style={styles.map}>
-        <Ionicons name="map-outline" size={42} color={colors.navy} />
         <Text style={styles.mapTitle}>Community map</Text>
-        <Text style={styles.subtitle}>
+
+        <Text style={styles.mapHint}>
           Map integration comes next.
         </Text>
       </View>
 
-      <View style={styles.notice}>
-        <Ionicons
-          name="alert-circle-outline"
-          size={22}
-          color="#966114"
-        />
+      {/* Demo issue; replace with reviewed issues from the API. */}
+      <View style={styles.closureNotice}>
+        <Text style={styles.closureTitle}>
+          Walkway closure · Park Entrance
+        </Text>
 
-        <View style={styles.noticeContent}>
-          <Text style={styles.noticeTitle}>
-            Walkway closure · Park Entrance
-          </Text>
-          <Text style={styles.noticeText}>
-            Sample reviewed issue. Use another walkway.
-          </Text>
-        </View>
+        <Text style={styles.closureDescription}>
+          Reviewed by management · Avoid this section.
+        </Text>
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={handleChooseRoute}
+        style={({ pressed }) => [
+          styles.chooseButton,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Text style={styles.chooseButtonText}>
+          Choose route
+        </Text>
+      </Pressable>
 
       <Pressable
         accessibilityRole="button"
         onPress={onReportPress}
         style={({ pressed }) => [
-          styles.button,
+          styles.reportLink,
           pressed && styles.pressed,
         ]}
       >
-        <Text style={styles.buttonText}>Report an issue</Text>
+        <Text style={styles.reportLinkText}>
+          Report an issue
+        </Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 20 },
+  container: {
+    gap: 10,
+  },
   title: {
-    fontSize: 30,
-    lineHeight: 38,
+    fontSize: 24,
+    lineHeight: 34,
     fontWeight: '700',
     color: colors.navy,
   },
   subtitle: {
     fontSize: 14,
-    lineHeight: 22,
+    lineHeight: 20,
     color: colors.muted,
   },
-  locationCard: {
+  endpoints: {
     backgroundColor: colors.white,
-    borderRadius: 22,
-    padding: 20,
-    gap: 8,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
   },
-  label: {
-    fontSize: 12,
+  endpoint: {
+    gap: 4,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.muted,
+  },
+  locationInput: {
+    padding: 0,
+    margin: 0,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
     color: colors.navy,
-  },
-  input: {
-    fontSize: 14,
-    color: colors.navy,
-    minHeight: 44,
-    paddingVertical: 10,
+    includeFontPadding: false,
   },
   divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginVertical: 8,
   },
   map: {
-    minHeight: 280,
-    borderRadius: 24,
+    width: '100%',
+    height: 200,
+    borderRadius: 18,
     backgroundColor: colors.lavender,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
     padding: 20,
+    gap: 8,
   },
   mapTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.navy,
   },
-  notice: {
-    flexDirection: 'row',
-    gap: 12,
+  mapHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+  closureNotice: {
+    backgroundColor: '#FDE8E7',
+    borderRadius: 16,
+    paddingHorizontal: 14,
     paddingVertical: 12,
+    gap: 4,
   },
-  noticeContent: { flex: 1, gap: 6 },
-  noticeTitle: {
+  closureTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.navy,
-  },
-  noticeText: {
-    fontSize: 13,
     lineHeight: 20,
+    fontWeight: '600',
+    color: '#A63E37',
+  },
+  closureDescription: {
+    fontSize: 12,
+    lineHeight: 17,
     color: colors.muted,
   },
-  button: {
-    minHeight: 52,
+  chooseButton: {
+    minHeight: 50,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderRadius: 16,
     backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonText: {
-    color: colors.white,
-    fontSize: 14,
+  chooseButtonText: {
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '600',
+    color: colors.white,
   },
-  pressed: { opacity: 0.8 },
+  reportLink: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  reportLinkText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  pressed: {
+    opacity: 0.8,
+  },
 });
