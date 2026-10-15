@@ -32,7 +32,7 @@ class VerifiedUser:
 
 
 class TokenVerifier:
-    """Cache public ES256 keys and verify signatures and required user claims."""
+    """Verify Supabase ES256 tokens with project JWKS and legacy HS256 tokens with its JWT secret."""
 
     def __init__(
         self,
@@ -43,6 +43,7 @@ class TokenVerifier:
     ):
         self.issuer = settings.project_url + "/auth/v1"
         self.jwks_url = self.issuer + "/.well-known/jwks.json"
+        self.jwt_secret = settings.jwt_secret
         self.client = httpx.Client(timeout=5.0, follow_redirects=False, transport=transport)
         self.clock = clock
         self.lock = threading.Lock()
@@ -109,18 +110,22 @@ class TokenVerifier:
         try:
             header = jwt.get_unverified_header(token)
             kid = header.get("kid")
-            if (
-                header.get("alg") != "ES256"
-                or not isinstance(kid, str) or not kid or len(kid) > 200
-                or header.get("crit")
-            ):
+            algorithm = header.get("alg")
+            if header.get("crit"):
                 raise InvalidCredentials()
-            # Unverified headers select a public key only; identity comes from decode.
-            key = self._get_key(kid)
+            if algorithm == "ES256":
+                if not isinstance(kid, str) or not kid or len(kid) > 200:
+                    raise InvalidCredentials()
+                # Unverified headers select a public key only; identity comes from decode.
+                key = self._get_key(kid)
+            elif algorithm == "HS256" and self.jwt_secret:
+                key = self.jwt_secret
+            else:
+                raise InvalidCredentials()
             claims = jwt.decode(
                 token,
                 key,
-                algorithms=["ES256"],
+                algorithms=[algorithm],
                 issuer=self.issuer,
                 audience="authenticated",
                 options={"require": ["exp", "iat", "iss", "aud", "sub", "role"]},

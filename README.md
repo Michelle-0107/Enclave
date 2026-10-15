@@ -4,7 +4,7 @@ AI-powered community issue reporting and safety platform
 
 The cloud API implements [single-community resident registration](backend/docs/registration/RESIDENT_REGISTRATION_MVP.md) with FastAPI-generated email OTPs and Resend delivery. After invitation-bound OTP verification, it authenticates or creates a Supabase account, signs in, and atomically binds the resident before returning the session. Start with the credential-free [local sandbox and setup guide](backend/docs/registration/REGISTRATION_TESTING.md).
 
-For server setup, run `python -m backend.tools.setup_registration` to prepare the private OTP secret, then `python -m backend.tools.check_registration` to check configuration without sending email or creating accounts. The [registration handoff](backend/docs/registration/REGISTRATION_HANDOFF.md) covers the three remaining key/sender fields, trusted management initialization, and first real signup. Add `--check-database` to explicitly probe the installed RPC without changing rows.
+For server setup, copy the root `.env.example` to `.env` and fill the existing fields. Run `python -m backend.tools.setup_registration` to check the registration fields without editing `.env`, then `python -m backend.tools.check_registration` to validate their format without sending email or creating accounts. The [registration handoff](backend/docs/registration/REGISTRATION_HANDOFF.md) covers management initialization and the first real signup. Add `--check-database` to explicitly probe the installed RPC without changing rows.
 
 The supplied post-application schema metadata was reviewed in [REGISTRATION_SCHEMA_REVIEW.md](backend/docs/registration/REGISTRATION_SCHEMA_REVIEW.md). The user has applied the registration table/profile SQL and reports applying SQL 005; anonymous transition-RPC denial is verified. Hosted registration requires server-only credentials and the approved management register. Local PostgreSQL registration tests pass; live Resend/Supabase Auth integration and SQL 006 feature-table RLS still require staging validation.
 
@@ -62,7 +62,7 @@ python -m uvicorn backend.main:app --reload
 - GET `/api/v1/reports/{ticket_id}` — own report detail
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
-Copy the blank root `.env.example` to `.env`, then set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. `SUPABASE_KEY` is no longer used by this application. JWT verification and report reads do not require AWS/Gemini settings; photo submission additionally requires configured S3 access and bucket settings.
+Copy the root `.env.example` to `.env` and use its variable names as written. `SUPABASE_KEY` must be a backend-only Supabase secret/service-role key; resident report requests also send the resident's JWT so database policies can authorize that user. `SUPABASE_JWT_SECRET` is optional and verifies legacy HS256 tokens only; current ES256 tokens use the project's public JWKS. OTP HMAC material is derived with purpose separation from `SUPABASE_KEY`. `BEDROCK_MODEL_ID` selects the Bedrock model, with a code default when blank. Keep this file on the server and out of frontend configuration.
 
 Before resident-only feature access is enabled in Supabase, ask the project owner to run the [read-only feature access inspection](backend/sql/inspect_feature_access.sql) in the Enclave project's SQL Editor and compare the result with the current schema. Review [SQL 006](backend/sql/006_active_resident_feature_rls.sql) before applying it in staging, then run its [transactional RLS tests](backend/sql/test_report_ownership.sql). The earlier SQL 001 is superseded. SQL 006 blocks direct client access for unbound/inactive residents, makes reports owner-only, and limits notification updates to `is_read`; it does not add management review or public map APIs.
 
@@ -77,7 +77,7 @@ For local Swagger testing, explicitly request token output with `python -B -m ba
 
 ### Test photo storage independently
 
-Set `S3_BUCKET_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` in the root `.env`. Add `AWS_SESSION_TOKEN` only when using temporary credentials. The existing `AWS_ACCESS_KEY` alias remains supported; do not configure different IDs under both names. Keep keys out of Git.
+Set `S3_BUCKET_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY`, and `AWS_SECRET_ACCESS_KEY` in the root `.env`. These are the exact variable names used by the backend. Keep keys out of Git.
 
 ```powershell
 python -B -m backend.tools.check_storage

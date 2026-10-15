@@ -23,7 +23,7 @@ from .residents import ResidentAccessRepository, ResidentDirectoryUnavailable
 from .registration import RegistrationRejected, RegistrationService
 from .registration.clients import RegistrationUnavailable
 from .registration_config import load_registration_settings
-from .routers.auth import router as registration_router
+from .routers.email import router as registration_router
 
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -75,7 +75,7 @@ def create_app(
         try:
             configured = settings if settings is not None else load_settings()
         except ConfigurationError:
-            raise RuntimeError("Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the root .env.") from None
+            raise RuntimeError("Set SUPABASE_URL and SUPABASE_KEY in the root .env.") from None
         verifier = TokenVerifier(configured, transport=auth_transport)
         repository = ReportsRepository(configured, transport=reports_transport)
         residents = ResidentAccessRepository(configured, transport=residents_transport)

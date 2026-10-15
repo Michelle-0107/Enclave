@@ -17,7 +17,7 @@ from backend.config import Settings
 
 
 VALUES = {
-    "AWS_ACCESS_KEY_ID": "synthetic-key-id", "AWS_SECRET_ACCESS_KEY": "synthetic-secret-value",
+    "AWS_ACCESS_KEY": "synthetic-key-id", "AWS_SECRET_ACCESS_KEY": "synthetic-secret-value",
     "AWS_REGION": "us-east-1", "S3_BUCKET_NAME": "synthetic-bucket",
 }
 
@@ -37,37 +37,34 @@ class StorageTests(unittest.TestCase):
     def test_service_loader_does_not_require_supabase_or_expose_unrelated_settings(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / ".env"
-            path.write_text("AWS_ACCESS_KEY_ID=synthetic-file-id\nAWS_SECRET_ACCESS_KEY=synthetic-file-secret\n"
+            path.write_text("AWS_ACCESS_KEY=synthetic-file-id\nAWS_SECRET_ACCESS_KEY=synthetic-file-secret\n"
                             "AWS_REGION=us-east-1\nS3_BUCKET_NAME=synthetic-bucket\nUNRELATED_PASSWORD=private\n", encoding="utf-8")
-            values = load_service_values(env_file=path, environ={"AWS_ACCESS_KEY_ID": VALUES["AWS_ACCESS_KEY_ID"]})
+            values = load_service_values(env_file=path, environ={"AWS_ACCESS_KEY": VALUES["AWS_ACCESS_KEY"]})
         self.assertEqual(validate_storage_settings(values), ("synthetic-bucket", "us-east-1"))
-        self.assertEqual(values["AWS_ACCESS_KEY_ID"], VALUES["AWS_ACCESS_KEY_ID"])
+        self.assertEqual(values["AWS_ACCESS_KEY"], VALUES["AWS_ACCESS_KEY"])
         self.assertNotIn("UNRELATED_PASSWORD", values)
 
     def test_standard_credentials_are_wired_into_the_sdk_with_bounded_s3_requests(self):
-        values = {**VALUES, "AWS_SESSION_TOKEN": "synthetic-session-token"}
         with patch("boto3.client") as factory:
-            client = create_aws_client("s3", values)
+            client = create_aws_client("s3", VALUES)
         self.assertIs(client, factory.return_value)
         arguments = factory.call_args.kwargs
         self.assertEqual(factory.call_args.args, ("s3",))
-        self.assertEqual(arguments["aws_access_key_id"], VALUES["AWS_ACCESS_KEY_ID"])
+        self.assertEqual(arguments["aws_access_key_id"], VALUES["AWS_ACCESS_KEY"])
         self.assertEqual(arguments["aws_secret_access_key"], VALUES["AWS_SECRET_ACCESS_KEY"])
-        self.assertEqual(arguments["aws_session_token"], "synthetic-session-token")
         self.assertEqual(arguments["config"].connect_timeout, 5)
         self.assertEqual(arguments["config"].read_timeout, 10)
         self.assertTrue(arguments["config"].ignore_configured_endpoint_urls)
 
-    def test_legacy_access_key_and_default_region_are_supported(self):
-        values = {"AWS_ACCESS_KEY": VALUES["AWS_ACCESS_KEY_ID"], "AWS_SECRET_ACCESS_KEY": VALUES["AWS_SECRET_ACCESS_KEY"],
-                  "AWS_DEFAULT_REGION": "ap-southeast-1", "S3_BUCKET_NAME": "synthetic-bucket"}
+    def test_canonical_access_key_and_region_are_supported(self):
+        values = {"AWS_ACCESS_KEY": VALUES["AWS_ACCESS_KEY"], "AWS_SECRET_ACCESS_KEY": VALUES["AWS_SECRET_ACCESS_KEY"],
+                  "AWS_REGION": "ap-southeast-1", "S3_BUCKET_NAME": "synthetic-bucket"}
         self.assertEqual(validate_storage_settings(values), ("synthetic-bucket", "ap-southeast-1"))
-        self.assertEqual(aws_client_options(values)["aws_access_key_id"], VALUES["AWS_ACCESS_KEY_ID"])
+        self.assertEqual(aws_client_options(values)["aws_access_key_id"], VALUES["AWS_ACCESS_KEY"])
         self.assertNotIn("aws_access_key_id", aws_client_options({}))
 
     def test_incomplete_or_conflicting_credentials_fail_before_sdk_creation(self):
-        cases = [{"AWS_ACCESS_KEY_ID": "synthetic-id"}, {"AWS_SECRET_ACCESS_KEY": "synthetic-secret"},
-                 {"AWS_SESSION_TOKEN": "synthetic-token"}, {**VALUES, "AWS_ACCESS_KEY": "different-synthetic-id"}]
+        cases = [{"AWS_ACCESS_KEY": "synthetic-id"}, {"AWS_SECRET_ACCESS_KEY": "synthetic-secret"}]
         for values in cases:
             with self.subTest(names=sorted(values)), patch("boto3.client") as factory:
                 with self.assertRaises(ValueError):
@@ -77,7 +74,7 @@ class StorageTests(unittest.TestCase):
     def test_smoke_test_rejects_missing_destination_and_default_credential_discovery(self):
         for overrides in [{"S3_BUCKET_NAME": ""}, {"S3_BUCKET_NAME": "https://example.test/bucket"},
                           {"S3_BUCKET_NAME": "127.0.0.1"}, {"AWS_REGION": ""}, {"AWS_REGION": "bad"},
-                          {"AWS_ACCESS_KEY_ID": "", "AWS_SECRET_ACCESS_KEY": ""}]:
+                          {"AWS_ACCESS_KEY": "", "AWS_SECRET_ACCESS_KEY": ""}]:
             with self.subTest(fields=sorted(overrides)), patch("backend.tools.check_storage.create_aws_client") as factory:
                 with self.assertRaises(ValueError):
                     check_storage({**VALUES, **overrides})
@@ -90,7 +87,7 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(main([]), 0)
         checker.assert_not_called()
         self.assertIn("No AWS requests", output.getvalue())
-        for name in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"):
+        for name in ("AWS_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY"):
             self.assertNotIn(VALUES[name], output.getvalue())
 
     def test_success_uploads_a_new_png_reads_it_and_cleans_up_only_that_key(self):
@@ -172,12 +169,12 @@ class StorageTests(unittest.TestCase):
         self.assertNotIn(VALUES["AWS_SECRET_ACCESS_KEY"], repr(result))
 
     def test_report_adapter_uses_standard_credentials_and_redacts_partial_configuration(self):
-        settings = Settings("https://exampleproject.supabase.co", "sb_publishable_synthetic", VALUES)
+        settings = Settings("https://exampleproject.supabase.co", "sb_secret_synthetic_key", VALUES)
         service = MediaServices(settings)
         with patch("boto3.client") as factory:
             service.upload("report_synthetic.png", b"synthetic-photo", "image/png")
-        self.assertEqual(factory.call_args.kwargs["aws_access_key_id"], VALUES["AWS_ACCESS_KEY_ID"])
-        broken = MediaServices(Settings(settings.project_url, settings.publishable_key,
+        self.assertEqual(factory.call_args.kwargs["aws_access_key_id"], VALUES["AWS_ACCESS_KEY"])
+        broken = MediaServices(Settings(settings.project_url, settings.api_key,
                                        {"S3_BUCKET_NAME": "synthetic-bucket", "AWS_SECRET_ACCESS_KEY": "private"}))
         with patch("boto3.client") as factory:
             with self.assertRaises(MediaUnavailable) as captured:

@@ -39,12 +39,12 @@ def validate_storage_settings(values: Mapping[str, str]) -> tuple[str, str]:
         pass
     else:
         raise ValueError("S3_BUCKET_NAME cannot be an IP address.")
-    region = (values.get("AWS_REGION") or values.get("AWS_DEFAULT_REGION") or "").strip()
+    region = (values.get("AWS_REGION") or "").strip()
     if not re.fullmatch(r"[a-z]{2}(?:-[a-z]+)+-\d+", region):
         raise ValueError("Set AWS_REGION to the bucket's region, for example us-east-1.")
     options = aws_client_options(values)
     if "aws_access_key_id" not in options:
-        raise ValueError("Fill AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY locally; values are never displayed.")
+        raise ValueError("Fill AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY locally; values are never displayed.")
     return bucket, region
 
 

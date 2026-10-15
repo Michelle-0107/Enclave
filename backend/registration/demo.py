@@ -179,7 +179,7 @@ class DemoVerifier:
 
 
 def demo_components():
-    cloud = Settings("https://exampleproject.supabase.co", "sb_publishable_local_fixture")
+    cloud = Settings("https://exampleproject.supabase.co", "sb_secret_local_fixture_for_demo")
     config = RegistrationSettings(cloud, "sb_secret_local_fixture", "re_local_fixture", "Enclave <test@example.com>", b"x" * 32)
     store, delivery, accounts = MemoryStore(), FakeDelivery(), FakeAccounts()
     registration = RegistrationService(config, store, delivery, accounts, otp_factory=lambda: "003482")
@@ -191,7 +191,7 @@ def create_demo_app():
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
     from fastapi.exceptions import RequestValidationError
-    from ..routers.auth import router
+    from ..routers.email import router
     from .service import RegistrationRejected
     from .clients import RegistrationUnavailable
     _, registration, _, _, _ = demo_components()
