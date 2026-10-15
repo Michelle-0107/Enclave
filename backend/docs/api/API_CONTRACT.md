@@ -1,6 +1,6 @@
 # Enclave cloud API contract — v0.4.0
 
-The cloud application is `backend.main:app`. Run it from the repository root. The separate SQLite practice backend remains in `backend/local/`.
+The cloud application is `main:app`. Run it from the repository root. The separate SQLite practice backend remains in `backend/local/`.
 
 ## Authentication
 
@@ -105,7 +105,7 @@ From repository root, in an activated virtual environment:
 
 ```bash
 python -m pip install -r requirements.txt
-python -m uvicorn backend.main:app --reload
+python -m uvicorn main:app --reload
 python -B -m unittest -q backend.tests.test_cloud
 python -B -m unittest -q backend.tests.test_storage
 python -B -m backend.tools.export_openapi
@@ -127,6 +127,45 @@ python -B -m backend.tools.check_session --show-token
 
 Tokens are hidden by default; the optional output is a real credential and should stay out of shared screenshots and files. The helper creates one login session but no accounts or reports. Its API target is loopback only, with optional `--port 8001` or `--port 8002`.
 
-The server reads the `.env` in the parent directory of the package, with explicit process environment values taking precedence. S3/Gemini secrets stay in local configuration. Docker continues to start `backend.main:app`.
+The server reads the `.env` in the parent directory of the package, with explicit process environment values taking precedence. S3/Gemini secrets stay in local configuration. Docker continues to start `main:app`.
 
 References: [Supabase JWTs](https://supabase.com/docs/guides/auth/jwts), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [PostgreSQL policy composition](https://www.postgresql.org/docs/current/sql-createpolicy.html).
+
+
+## Community issue map
+
+`GET /api/v1/map/issues` requires an active verified resident and returns GeoJSON
+points for approved community issues, including reports submitted by other residents.
+It omits reporter identity, descriptions, and images; private report reads remain owner-only.
+Query parameters: optional `bbox=west,south,east,north`, `include_resolved=false`,
+`limit=100` (1-200), and `offset=0`. Default statuses are `approved` and `in_progress`;
+resolved issues are opt-in. Coordinates use longitude then latitude. The response
+includes `pagination` with limit, offset, returned, and has_more. Continue paging
+while has_more is true. An empty FeatureCollection is a successful response.
+
+The current schema has no trustworthy report verification timestamp, so `verified_at`
+is null and `reported_at` contains creation time. This endpoint does not update
+approval state, expose private evidence, or change graph routing or database policies.
+The trusted backend reader uses the existing server-only key and explicit filters;
+that key is never exposed to clients. The ten-variable environment contract is unchanged.
+
+See [COMMUNITY_MAP_TESTING.md](COMMUNITY_MAP_TESTING.md) for full semantics,
+privacy boundaries, local demo on port 8003, and real-provider validation limits.
+
+
+## Management report review and status history
+
+Requires manually applying `backend/sql/007_report_workflow.sql` before real use.
+See [REPORT_WORKFLOW_TESTING.md](REPORT_WORKFLOW_TESTING.md) for bodies, roles,
+transaction guarantees, errors, local sandbox, and real Swagger instructions.
+
+| Method | Path | Access |
+|---|---|---|
+| GET | `/api/v1/management/reports` | Management, optional status filter and pagination |
+| PATCH | `/api/v1/management/reports/{ticket_id}/status` | Management, expected_status/status/note/repair_verified |
+| GET | `/api/v1/reports/{ticket_id}/history` | Management or the active verified report owner |
+
+Transitions: pending -> approved/rejected; approved -> in_progress; in_progress ->
+resolved (repair verification required). Each success inserts an audit event in the
+same transaction. Resolved issues leave the default map, with historical display
+available through include_resolved. No new environment variables are introduced.
