@@ -22,6 +22,7 @@ import LandingScreen from './src/screens/LandingScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import SignUpSuccessScreen from './src/screens/SignUpSuccessScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 
 import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
@@ -33,6 +34,24 @@ import ActiveJourneyScreen from './src/screens/ActiveJourneyScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import AccountScreen from './src/screens/AccountScreen';
+
+import MyReportsScreen, {
+  demoReports,
+  type ResidentReport,
+} from './src/screens/MyReportsScreen';
+import ReportDetailsScreen from './src/screens/ReportDetailsScreen';
+
+import NotificationPreferencesScreen, {
+  defaultNotificationPreferences,
+  type NotificationPreferences,
+} from './src/screens/NotificationPreferencesScreen';
+
+import FollowedAreasScreen, {
+  defaultFollowedAreas,
+  type FollowedAreaId,
+} from './src/screens/FollowedAreasScreen';
+
+import HelpScreen from './src/screens/HelpScreen';
 
 import { colors } from './src/theme';
 
@@ -48,12 +67,11 @@ type Screen =
   | 'signIn'
   | 'signUp'
   | 'signUpSuccess'
+  | 'forgotPassword'
   | 'resident';
 
 type MapFlow =
-  | {
-      page: 'map';
-    }
+  | { page: 'map' }
   | {
       page: 'options';
       start: string;
@@ -67,43 +85,54 @@ type MapFlow =
       startedAt: number;
     };
 
-type IconName = ComponentProps<
-  typeof Ionicons
->['name'];
+type AccountFlow =
+  | { page: 'account' }
+  | { page: 'reports' }
+  | { page: 'preferences' }
+  | { page: 'followedAreas' }
+  | { page: 'help' }
+  | {
+      page: 'details';
+      reportId: string;
+    };
 
-const tabs: {
-  name: Tab;
-  icon: IconName;
-}[] = [
-  {
-    name: 'Home',
-    icon: 'home-outline',
-  },
-  {
-    name: 'Map',
-    icon: 'map-outline',
-  },
-  {
-    name: 'Report',
-    icon: 'add-circle-outline',
-  },
-  {
-    name: 'Notifications',
-    icon: 'notifications-outline',
-  },
-  {
-    name: 'My Account',
-    icon: 'person-outline',
-  },
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
+const tabs: { name: Tab; icon: IconName }[] = [
+  { name: 'Home', icon: 'home-outline' },
+  { name: 'Map', icon: 'map-outline' },
+  { name: 'Report', icon: 'add-circle-outline' },
+  { name: 'Notifications', icon: 'notifications-outline' },
+  { name: 'My Account', icon: 'person-outline' },
 ];
 
-function ResidentApp() {
+function ResidentApp({
+  onLogOut,
+}: {
+  onLogOut: () => void;
+}) {
   const [activeTab, setActiveTab] =
     useState<Tab>('Home');
 
   const [mapFlow, setMapFlow] = useState<MapFlow>({
     page: 'map',
   });
+
+  const [accountFlow, setAccountFlow] =
+    useState<AccountFlow>({ page: 'account' });
+
+  const [reports, setReports] =
+    useState<ResidentReport[]>(demoReports);
+
+  const [preferences, setPreferences] =
+    useState<NotificationPreferences>(
+      defaultNotificationPreferences,
+    );
+
+  const [followedAreas, setFollowedAreas] =
+    useState<FollowedAreaId[]>([
+      ...defaultFollowedAreas,
+    ]);
 
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
@@ -120,6 +149,22 @@ function ResidentApp() {
     scrollToTop();
   }
 
+  function openAccountPage(page: AccountFlow) {
+    setAccountFlow(page);
+    changeTab('My Account');
+  }
+
+  function openMyReports() {
+    openAccountPage({ page: 'reports' });
+  }
+
+  function addDemoReport(report: ResidentReport) {
+    setReports((current) => [
+      report,
+      ...current.filter((item) => item.id !== report.id),
+    ]);
+  }
+
   function renderMapScreen() {
     switch (mapFlow.page) {
       case 'map':
@@ -132,7 +177,6 @@ function ResidentApp() {
                 start,
                 destination,
               });
-
               scrollToTop();
             }}
           />
@@ -157,7 +201,6 @@ function ResidentApp() {
                 route,
                 startedAt: Date.now(),
               });
-
               scrollToTop();
             }}
           />
@@ -183,7 +226,6 @@ function ResidentApp() {
                 start,
                 destination,
               });
-
               scrollToTop();
             }}
             onArrived={() => {
@@ -197,6 +239,97 @@ function ResidentApp() {
           />
         );
       }
+    }
+  }
+
+  function renderReportsList() {
+    return (
+      <MyReportsScreen
+        reports={reports}
+        isDemo
+        onBack={() =>
+          openAccountPage({ page: 'account' })
+        }
+        onReportPress={(report) =>
+          openAccountPage({
+            page: 'details',
+            reportId: report.id,
+          })
+        }
+      />
+    );
+  }
+
+  function renderAccountScreen() {
+    switch (accountFlow.page) {
+      case 'account':
+        return (
+          <AccountScreen
+            onMyReportsPress={openMyReports}
+            onFollowedAreasPress={() =>
+              openAccountPage({ page: 'followedAreas' })
+            }
+            onNotificationPreferencesPress={() =>
+              openAccountPage({ page: 'preferences' })
+            }
+            onHelpPress={() =>
+              openAccountPage({ page: 'help' })
+            }
+            onLogOut={onLogOut}
+          />
+        );
+
+      case 'reports':
+        return renderReportsList();
+
+      case 'details': {
+        const report = reports.find(
+          (item) => item.id === accountFlow.reportId,
+        );
+
+        if (!report) {
+          return renderReportsList();
+        }
+
+        return (
+          <ReportDetailsScreen
+            report={report}
+            isDemo
+            onBack={openMyReports}
+          />
+        );
+      }
+
+      case 'preferences':
+        return (
+          <NotificationPreferencesScreen
+            preferences={preferences}
+            onChange={setPreferences}
+            onBack={() =>
+              openAccountPage({ page: 'account' })
+            }
+          />
+        );
+
+      case 'followedAreas':
+        return (
+          <FollowedAreasScreen
+            followedAreas={followedAreas}
+            onSave={setFollowedAreas}
+            onBack={() =>
+              openAccountPage({ page: 'account' })
+            }
+          />
+        );
+
+      case 'help':
+        return (
+          <HelpScreen
+            onBack={() =>
+              openAccountPage({ page: 'account' })
+            }
+          />
+        );
     }
   }
 
@@ -220,6 +353,8 @@ function ResidentApp() {
           <ReportScreen
             onGoHome={() => changeTab('Home')}
             onStepChange={scrollToTop}
+            onViewReports={openMyReports}
+            onDemoReportCreated={addDemoReport}
           />
         );
 
@@ -227,7 +362,7 @@ function ResidentApp() {
         return <NotificationsScreen />;
 
       case 'My Account':
-        return <AccountScreen />;
+        return renderAccountScreen();
     }
   }
 
@@ -258,12 +393,7 @@ function ResidentApp() {
       <View
         style={[
           styles.tabBar,
-          {
-            paddingBottom: Math.max(
-              insets.bottom,
-              12,
-            ),
-          },
+          { paddingBottom: Math.max(insets.bottom, 12) },
         ]}
       >
         {tabs.map((tab) => {
@@ -275,7 +405,13 @@ function ResidentApp() {
               accessibilityRole="tab"
               accessibilityLabel={tab.name}
               accessibilityState={{ selected }}
-              onPress={() => changeTab(tab.name)}
+              onPress={() => {
+                if (tab.name === 'My Account') {
+                  setAccountFlow({ page: 'account' });
+                }
+
+                changeTab(tab.name);
+              }}
               style={({ pressed }) => [
                 styles.tab,
                 selected && styles.selectedTab,
@@ -286,9 +422,7 @@ function ResidentApp() {
                 name={tab.icon}
                 size={23}
                 color={
-                  selected
-                    ? colors.white
-                    : colors.muted
+                  selected ? colors.white : colors.muted
                 }
               />
             </Pressable>
@@ -315,8 +449,19 @@ function AppFlow() {
     case 'signIn':
       return (
         <SignInScreen
+          onBack={() => setScreen('landing')}
           onDemoSignIn={() => setScreen('resident')}
           onSignUpPress={() => setScreen('signUp')}
+          onForgotPasswordPress={() =>
+            setScreen('forgotPassword')
+          }
+        />
+      );
+
+    case 'forgotPassword':
+      return (
+        <ForgotPasswordScreen
+          onBack={() => setScreen('signIn')}
         />
       );
 
@@ -339,7 +484,11 @@ function AppFlow() {
       );
 
     case 'resident':
-      return <ResidentApp />;
+      return (
+        <ResidentApp
+          onLogOut={() => setScreen('signIn')}
+        />
+      );
   }
 }
 
@@ -357,36 +506,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
   header: {
     paddingTop: 16,
     paddingHorizontal: 24,
     paddingBottom: 28,
     gap: 6,
   },
-
   brand: {
     fontSize: 23,
     fontWeight: '700',
     letterSpacing: 5,
     color: colors.navy,
   },
-
   tagline: {
     fontSize: 12,
     color: colors.muted,
   },
-
   scroll: {
     flex: 1,
   },
-
   content: {
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 28,
   },
-
   tabBar: {
     flexDirection: 'row',
     backgroundColor: colors.white,
@@ -396,7 +539,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     gap: 8,
   },
-
   tab: {
     flex: 1,
     minHeight: 48,
@@ -404,11 +546,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   selectedTab: {
     backgroundColor: colors.navy,
   },
-
   pressed: {
     opacity: 0.8,
   },

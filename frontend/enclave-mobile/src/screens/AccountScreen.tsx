@@ -1,18 +1,56 @@
-import { StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
 import { colors } from '../theme';
 
-const menuItems = [
-  'My reports',
-  'Followed areas',
-  'Notification preferences',
-  'Help',
-];
+type Props = {
+  onMyReportsPress: () => void;
+  onFollowedAreasPress: () => void;
+  onNotificationPreferencesPress: () => void;
+  onHelpPress: () => void;
+  onLogOut: () => void;
+};
 
-export default function AccountScreen() {
+export default function AccountScreen({
+  onMyReportsPress,
+  onFollowedAreasPress,
+  onNotificationPreferencesPress,
+  onHelpPress,
+  onLogOut,
+}: Props) {
+  const menuItems = [
+    {
+      label: 'My reports',
+      onPress: onMyReportsPress,
+    },
+    {
+      label: 'Followed areas',
+      onPress: onFollowedAreasPress,
+    },
+    {
+      label: 'Notification preferences',
+      onPress: onNotificationPreferencesPress,
+    },
+    {
+      label: 'Help',
+      onPress: onHelpPress,
+    },
+  ];
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My account.</Text>
+      <Text style={styles.eyebrow}>
+        YOUR ENCLAVE
+      </Text>
+
+      <Text style={styles.title}>
+        My account.
+      </Text>
 
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
@@ -21,61 +59,88 @@ export default function AccountScreen() {
 
         <View style={styles.profileInfo}>
           <Text style={styles.name}>Florence</Text>
+
           <Text style={styles.subtitle}>
-            Verified community resident
+            Resident
+          </Text>
+
+          <Text style={styles.previewText}>
+            Demo profile
           </Text>
         </View>
       </View>
 
       <View style={styles.menu}>
         {menuItems.map((item, index) => (
-          <View
-            key={item}
-            style={[
+          <Pressable
+            key={item.label}
+            accessibilityRole="button"
+            onPress={item.onPress}
+            style={({ pressed }) => [
               styles.menuRow,
-              index < menuItems.length - 1 && styles.divider,
+              index < menuItems.length - 1 &&
+                styles.divider,
+              pressed && styles.pressed,
             ]}
           >
-            <Text style={styles.menuLabel}>{item}</Text>
+            <Text style={styles.menuLabel}>
+              {item.label}
+            </Text>
 
             <Ionicons
-              name="chevron-forward-outline"
+              name="chevron-forward"
               size={18}
               color={colors.muted}
             />
-          </View>
+          </Pressable>
         ))}
       </View>
 
-      <View
+      <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Log out"
-        accessibilityState={{ disabled: true }}
-        style={styles.logoutButton}
+        onPress={onLogOut}
+        style={({ pressed }) => [
+          styles.logoutButton,
+          pressed && styles.pressed,
+        ]}
       >
         <Ionicons
           name="log-out-outline"
           size={20}
           color={colors.navy}
         />
-        <Text style={styles.logoutText}>Log out</Text>
-      </View>
 
-      <Text style={styles.demoNote}>
-        Demo profile. Account actions will be connected next.
+        <Text style={styles.logoutText}>
+          Log out
+        </Text>
+      </Pressable>
+
+      <Text style={styles.previewText}>
+        Demo session · Authentication is not connected yet.
       </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 24 },
-  title: {
-    fontSize: 30,
-    lineHeight: 38,
+  container: {
+    gap: 20,
+  },
+
+  eyebrow: {
+    fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 2,
+    color: colors.muted,
+  },
+
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    lineHeight: 42,
     color: colors.navy,
   },
+
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -84,30 +149,45 @@ const styles = StyleSheet.create({
     padding: 22,
     gap: 16,
   },
+
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   avatarText: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '600',
     color: colors.white,
   },
-  profileInfo: { flex: 1, gap: 7 },
+
+  profileInfo: {
+    flex: 1,
+    gap: 6,
+  },
+
   name: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.navy,
   },
+
   subtitle: {
-    fontSize: 12,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 20,
     color: colors.muted,
   },
+
+  previewText: {
+    fontSize: 11,
+    lineHeight: 18,
+    color: colors.muted,
+  },
+
   menu: {
     backgroundColor: colors.white,
     borderRadius: 20,
@@ -115,43 +195,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+
   menuRow: {
-    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 16,
+    paddingVertical: 20,
+    minHeight: 60,
   },
+
   divider: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+
   menuLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.navy,
   },
+
   logoutButton: {
-    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
+    minHeight: 54,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.navy,
-    opacity: 0.5,
+    borderColor: colors.border,
   },
+
   logoutText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.navy,
   },
-  demoNote: {
-    fontSize: 11,
-    lineHeight: 18,
-    textAlign: 'center',
-    color: colors.muted,
+
+  pressed: {
+    opacity: 0.75,
   },
 });

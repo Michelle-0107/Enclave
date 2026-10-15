@@ -10,9 +10,12 @@ import ReportReviewScreen, {
   type ReportReviewData,
 } from './ReportReviewScreen';
 import ReportSuccessScreen from './ReportSuccessScreen';
+import type { ResidentReport } from './MyReportsScreen';
 
 type Props = {
   onGoHome: () => void;
+  onViewReports: () => void;
+  onDemoReportCreated: (report: ResidentReport) => void;
   onStepChange?: () => void;
 };
 
@@ -20,21 +23,20 @@ type Step = 'photo' | 'location' | 'review' | 'success';
 
 export default function ReportScreen({
   onGoHome,
+  onViewReports,
+  onDemoReportCreated,
   onStepChange,
 }: Props) {
   const [step, setStep] = useState<Step>('photo');
 
-  const [photo, setPhoto] = useState<
-    ImagePickerAsset | undefined
-  >();
+  const [photo, setPhoto] =
+    useState<ImagePickerAsset | undefined>();
 
-  const [details, setDetails] = useState<
-    ReportLocationDetails | undefined
-  >();
+  const [details, setDetails] =
+    useState<ReportLocationDetails | undefined>();
 
-  const [review, setReview] = useState<
-    ReportReviewData | undefined
-  >();
+  const [review, setReview] =
+    useState<ReportReviewData | undefined>();
 
   const [ticketId, setTicketId] = useState('');
 
@@ -68,22 +70,31 @@ export default function ReportScreen({
       return;
     }
 
+    const now = new Date();
+    const id = `DEMO-${now.getTime()}`;
+
+    const report: ResidentReport = {
+      id,
+      title: `${reviewData.category} issue`,
+      location: details.location,
+      date: now.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+      status: 'Pending management review',
+      description: details.description,
+      category: reviewData.category,
+      priority: reviewData.priority,
+      photoUri: photo.uri,
+    };
+
+    // Frontend demo only. No backend request yet.
+    onDemoReportCreated(report);
+
     setReview(reviewData);
-
-    // Frontend demo only.
-    // Backend will return the real ticket ID later.
-    setTicketId(
-      `DEMO-${Date.now().toString().slice(-6)}`,
-    );
-
+    setTicketId(id);
     goToStep('success');
-  }
-
-  function handleViewReports() {
-    Alert.alert(
-      'My reports',
-      'The report list will be connected next.',
-    );
   }
 
   function renderStep() {
@@ -126,7 +137,7 @@ export default function ReportScreen({
           <ReportSuccessScreen
             ticketId={ticketId}
             isDemo
-            onViewReports={handleViewReports}
+            onViewReports={onViewReports}
             onGoHome={onGoHome}
           />
         );

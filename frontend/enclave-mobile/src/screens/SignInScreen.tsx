@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,45 +12,78 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { colors } from '../theme';
 
 type Props = {
   onDemoSignIn: () => void;
   onSignUpPress: () => void;
+  onForgotPasswordPress: () => void;
+  onBack: () => void;
 };
 
-export default function SignInScreen({ onDemoSignIn, onSignUpPress, }: Props) {
+export default function SignInScreen({
+  onDemoSignIn,
+  onSignUpPress,
+  onForgotPasswordPress,
+  onBack,
+}: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   function handleSignIn() {
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address.');
       return;
     }
 
+    if (!password.trim()) {
+      setError('Please enter your password.');
+      return;
+    }
+
+    Keyboard.dismiss();
     setError('');
+
+    // Demo only. Backend authentication comes later.
     onDemoSignIn();
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.brand}>ENCLAVE</Text>
+          <View style={styles.header}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to welcome"
+              onPress={onBack}
+              style={styles.backButton}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={colors.navy}
+              />
+            </Pressable>
 
-          <View style={styles.introduction}>
+            <Text style={styles.brand}>ENCLAVE</Text>
+          </View>
+
+          <View style={styles.heading}>
             <Text style={styles.title}>Welcome back.</Text>
+
             <Text style={styles.subtitle}>
-              Sign in to your resident account.
+              Sign in to your community.
             </Text>
           </View>
 
@@ -64,12 +98,13 @@ export default function SignInScreen({ onDemoSignIn, onSignUpPress, }: Props) {
                   setEmail(value);
                   setError('');
                 }}
-                placeholder="Enter your registered email"
+                placeholder="Enter your email"
                 placeholderTextColor={colors.muted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="email"
+                textContentType="emailAddress"
                 style={styles.input}
               />
             </View>
@@ -91,6 +126,9 @@ export default function SignInScreen({ onDemoSignIn, onSignUpPress, }: Props) {
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="current-password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  onSubmitEditing={handleSignIn}
                   style={styles.passwordInput}
                 />
 
@@ -103,15 +141,21 @@ export default function SignInScreen({ onDemoSignIn, onSignUpPress, }: Props) {
                   style={styles.eyeButton}
                 >
                   <Ionicons
-                    name={
-                      showPassword ? 'eye-off-outline' : 'eye-outline'
-                    }
-                    size={20}
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
                     color={colors.muted}
                   />
                 </Pressable>
               </View>
             </View>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={onForgotPasswordPress}
+              style={styles.forgotButton}
+            >
+              <Text style={styles.link}>Forgot password?</Text>
+            </Pressable>
 
             {error ? (
               <Text accessibilityRole="alert" style={styles.error}>
@@ -123,34 +167,29 @@ export default function SignInScreen({ onDemoSignIn, onSignUpPress, }: Props) {
               accessibilityRole="button"
               onPress={handleSignIn}
               style={({ pressed }) => [
-                styles.button,
+                styles.signInButton,
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.buttonText}>Sign in</Text>
+              <Text style={styles.signInText}>Sign in</Text>
             </Pressable>
-
-            <Text style={styles.demoNote}>
-              UI preview only. Enter any email and password to
-              preview the resident home.
-            </Text>
-            <Pressable
-                onPress={onSignUpPress}
-                accessibilityRole="button"
-                style={{
-                minHeight: 44,
-                alignItems: 'center',
-                justifyContent: 'center',
-            }}
-        >
-  <Text style={styles.subtitle}>
-    Don’t have an account?{' '}
-    <Text style={{ color: colors.navy, fontWeight: '600' }}>
-      Create account
-    </Text>
-  </Text>
-</Pressable>
           </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={onSignUpPress}
+            style={styles.createAccountButton}
+          >
+            <Text style={styles.createAccountText}>
+              Don’t have an account?{' '}
+              <Text style={styles.link}>Create account</Text>
+            </Text>
+          </Pressable>
+
+          <Text style={styles.demoText}>
+            UI preview · Use any valid email and a non-empty password.
+            Authentication is not connected yet.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -158,42 +197,52 @@ export default function SignInScreen({ onDemoSignIn, onSignUpPress, }: Props) {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  screen: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  keyboardView: {
+    flex: 1,
   },
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 32,
+    gap: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  backButton: {
+    width: 32,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   brand: {
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: '700',
-    letterSpacing: 5,
+    lineHeight: 26,
+    letterSpacing: 4,
     color: colors.navy,
   },
-  introduction: {
-    marginTop: 64,
-    gap: 12,
+  heading: {
+    gap: 10,
   },
   title: {
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 34,
     fontWeight: '700',
+    lineHeight: 42,
     color: colors.navy,
   },
   subtitle: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 24,
     color: colors.muted,
   },
   form: {
-    marginTop: 36,
     gap: 24,
   },
   field: {
@@ -202,66 +251,90 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
+    lineHeight: 22,
     color: colors.navy,
   },
   input: {
-    minHeight: 54,
-    borderRadius: 16,
+    minHeight: 56,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.white,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
+    backgroundColor: colors.white,
     fontSize: 14,
     color: colors.navy,
   },
   passwordField: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
+    minHeight: 56,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: 14,
     backgroundColor: colors.white,
-    overflow: 'hidden',
+    paddingLeft: 16,
+    paddingRight: 6,
   },
   passwordInput: {
     flex: 1,
     minHeight: 54,
-    paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 14,
     color: colors.navy,
   },
   eyeButton: {
-    width: 48,
-    minHeight: 54,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  link: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 22,
+    color: colors.navy,
   },
   error: {
     fontSize: 12,
     lineHeight: 19,
     color: '#A63E37',
   },
-  button: {
+  signInButton: {
     minHeight: 54,
     borderRadius: 16,
     backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 16,
   },
-  buttonText: {
+  signInText: {
     fontSize: 15,
     fontWeight: '600',
     color: colors.white,
   },
-  pressed: {
-    opacity: 0.8,
+  createAccountButton: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  demoNote: {
+  createAccountText: {
+    fontSize: 13,
+    lineHeight: 22,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+  demoText: {
     fontSize: 11,
     lineHeight: 18,
-    textAlign: 'center',
     color: colors.muted,
+    textAlign: 'center',
+  },
+  pressed: {
+    opacity: 0.8,
   },
 });
