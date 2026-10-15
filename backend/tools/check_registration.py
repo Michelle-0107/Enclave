@@ -22,7 +22,7 @@ def check_configuration(*, env_file: Path = ENV_FILE, environ=None):
     values = _load_values(env_file, environ)
     messages = []
     missing = []
-    for name in ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "OTP_HMAC_SECRET"):
+    for name in ("SUPABASE_URL", "SUPABASE_KEY", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "OTP_HMAC_SECRET"):
         if not (values.get(name) or "").strip():
             missing.append(name)
     if not ((values.get("SUPABASE_SECRET_KEY") or "").strip() or (values.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()):

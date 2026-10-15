@@ -18,7 +18,7 @@ from PIL import Image
 
 from backend.config import ConfigurationError, Settings, load_settings
 from backend.tools.check_session import check_session
-from backend.main import AuthenticatedUser, MAX_PHOTO_BYTES, create_app
+from backend.app import AuthenticatedUser, MAX_PHOTO_BYTES, create_app
 from backend.media import MediaServices, MediaUnavailable
 
 
@@ -371,9 +371,9 @@ class CloudTests(unittest.TestCase):
     def test_configuration_reads_only_named_file_and_environment_overrides(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / ".env"
-            path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_PUBLISHABLE_KEY=sb_publishable_file\n",
+            path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_KEY=sb_publishable_file\n",
                             encoding="utf-8")
-            configured = load_settings(env_file=path, environ={"SUPABASE_PUBLISHABLE_KEY": "sb_publishable_override"})
+            configured = load_settings(env_file=path, environ={"SUPABASE_KEY": "sb_publishable_override"})
             self.assertEqual(configured.publishable_key, "sb_publishable_override")
             self.assertEqual(configured.project_url, self.settings.project_url)
 

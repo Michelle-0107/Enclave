@@ -70,12 +70,12 @@ class SupabaseCheckTests(unittest.TestCase):
     def test_reads_only_named_env_file_and_preserves_environment(self):
         with TemporaryDirectory(prefix="enclave-env-") as directory:
             root = Path(directory)
-            (root / ".env").write_text("SUPABASE_PUBLISHABLE_KEY=parent-value\n", encoding="utf-8")
+            (root / ".env").write_text("SUPABASE_KEY=parent-value\n", encoding="utf-8")
             child = root / "backend"
             child.mkdir()
             env_file = child / ".env"
             env_file.write_text(
-                f"SUPABASE_URL={self.settings.project_url}\nSUPABASE_PUBLISHABLE_KEY={self.key}\n",
+                f"SUPABASE_URL={self.settings.project_url}\nSUPABASE_KEY={self.key}\n",
                 encoding="utf-8",
             )
             environment = {}
@@ -90,7 +90,7 @@ class SupabaseCheckTests(unittest.TestCase):
         with TemporaryDirectory(prefix="enclave-env-") as directory:
             env_file = Path(directory) / ".env"
             env_file.write_text(
-                f"SUPABASE_URL={self.settings.project_url}\nSUPABASE_PUBLISHABLE_KEY=${{OTHER_KEY}}\n",
+                f"SUPABASE_URL={self.settings.project_url}\nSUPABASE_KEY=${{OTHER_KEY}}\n",
                 encoding="utf-8",
             )
             with self.assertRaises(checker.ConfigurationError):

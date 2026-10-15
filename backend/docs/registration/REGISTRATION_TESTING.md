@@ -42,7 +42,7 @@ The sandbox also accepts `demo-manager-token` for practicing management routes. 
 
 ## Hosted registration configuration
 
-Keep the existing `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. Add these only to the server's `.env`/deployment secret settings:
+Keep the existing `SUPABASE_URL` and `SUPABASE_KEY`. Add these only to the server's `.env`/deployment secret settings:
 
 ```dotenv
 SUPABASE_SECRET_KEY=

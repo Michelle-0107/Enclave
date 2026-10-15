@@ -12,18 +12,18 @@ Authorization: Bearer <supabase_access_token>
 
 The API validates the signature against the configured project's public JWKS, issuer, audience, expiry, issued-at time, required claims, authenticated database role, and UUID user ID. Keys are cached for five minutes; unknown key IDs have a 30-second refresh cooldown. This checks issued tokens without querying session revocation on every request. Signout does not immediately invalidate an already issued unexpired JWT. Report submission and reads additionally require a matching resident row with `status = active` and non-null `verified_at`; `/auth/me` remains available to any valid authenticated account.
 
-Normal Auth/report operations use `SUPABASE_PUBLISHABLE_KEY` and the individual user's JWT. Server-only registration clients separately require an Admin key; that key is never used for resident report requests. The old `SUPABASE_KEY` variable is no longer read by this application. Database report requests include the individual user's JWT in per-request headers, avoiding a shared mutable Supabase login session. Every report read also includes the verified owner filter, and mismatched upstream ownership is rejected.
+Normal Auth/report operations use `SUPABASE_KEY` and the individual user's JWT. Server-only registration clients separately require an Admin key; that key is never used for resident report requests. The old `SUPABASE_KEY` variable is no longer read by this application. Database report requests include the individual user's JWT in per-request headers, avoiding a shared mutable Supabase login session. Every report read also includes the verified owner filter, and mismatched upstream ownership is rejected.
 
 ## Operations
 
-| Method | Path | Access | Success |
-| --- | --- | --- | --- |
-| GET | `/` | Public | 200 welcome message |
-| GET | `/health` | Public | 200 `{"status":"ok"}` |
-| GET | `/auth/me` | Authenticated | 200 user ID and email |
-| POST | `/api/v1/reports` | Active verified resident | 201 report submission envelope |
-| GET | `/api/v1/reports` | Active verified resident; own reports only | 200 paginated own reports |
-| GET | `/api/v1/reports/{ticket_id}` | Active verified resident; own report only | 200 own report, or 404 |
+| Method | Path                          | Access                                     | Success                        |
+| ------ | ----------------------------- | ------------------------------------------ | ------------------------------ |
+| GET    | `/`                           | Public                                     | 200 welcome message            |
+| GET    | `/health`                     | Public                                     | 200 `{"status":"ok"}`          |
+| GET    | `/auth/me`                    | Authenticated                              | 200 user ID and email          |
+| POST   | `/api/v1/reports`             | Active verified resident                   | 201 report submission envelope |
+| GET    | `/api/v1/reports`             | Active verified resident; own reports only | 200 paginated own reports      |
+| GET    | `/api/v1/reports/{ticket_id}` | Active verified resident; own report only  | 200 own report, or 404         |
 
 Health is liveness only. Missing, malformed, invalid, or expired tokens return 401 with `WWW-Authenticate: Bearer`. Verification-key or resident-directory failures return 503. Accounts without an active, verified resident binding return 403 before report upload/AI work. Database policy/grant rejection also returns 403; other database failures return 503. Upstream error bodies and credentials are not echoed.
 
@@ -42,12 +42,12 @@ The example is synthetic. Email can be null. The endpoint reads verified token c
 
 Content type: **multipart/form-data**. All four fields are required:
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `description` | string | 1–1000 characters; whitespace-only text rejected; trimmed before processing |
-| `latitude` | number | −90 to 90 |
-| `longitude` | number | −180 to 180 |
-| `file` | uploaded photo | Declared MIME type image/jpeg or image/png; nonempty; maximum 10 MiB |
+| Field         | Type           | Rules                                                                       |
+| ------------- | -------------- | --------------------------------------------------------------------------- |
+| `description` | string         | 1–1000 characters; whitespace-only text rejected; trimmed before processing |
+| `latitude`    | number         | −90 to 90                                                                   |
+| `longitude`   | number         | −180 to 180                                                                 |
+| `file`        | uploaded photo | Declared MIME type image/jpeg or image/png; nonempty; maximum 10 MiB        |
 
 Do not send `user_id`. Sending this form field returns 422 before S3/AI operations. The API assigns owner from the verified JWT.
 
@@ -89,13 +89,13 @@ Run [sql/inspect_feature_access.sql](../../sql/inspect_feature_access.sql) first
 
 See [REGISTRATION_TESTING.md](../registration/REGISTRATION_TESTING.md) for the local sandbox, SQL 005, server settings, and full lifecycle.
 
-| Method/path | Authentication | Contract |
-| --- | --- | --- |
-| POST `/api/v1/registration/request-otp` | Public, invitation-bound, rate limited | `email`, `invitation_token`; 202 generic message + `challenge_id`, no OTP/provider response. |
-| POST `/api/v1/registration/verify-and-signup` | OTP + same-request proof + password | `challenge_id`, six-digit OTP string, password; `Idempotency-Key` header; session/resident/user IDs only after committed binding. |
-| GET `/api/v1/me/residency` | Supabase JWT | Own resident ID, unit, active/inactive state, verification timestamp; 404 if unbound. |
-| POST `/api/v1/management/residents` | JWT + trusted profile role management | Approved roster fields; 201 resident ID. |
-| POST `/api/v1/management/residents/{id}/invitations` | JWT + trusted profile role management | 201 invitation token (once), ID, resident ID, expiry. |
+| Method/path                                          | Authentication                         | Contract                                                                                                                          |
+| ---------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| POST `/api/v1/registration/request-otp`              | Public, invitation-bound, rate limited | `email`, `invitation_token`; 202 generic message + `challenge_id`, no OTP/provider response.                                      |
+| POST `/api/v1/registration/verify-and-signup`        | OTP + same-request proof + password    | `challenge_id`, six-digit OTP string, password; `Idempotency-Key` header; session/resident/user IDs only after committed binding. |
+| GET `/api/v1/me/residency`                           | Supabase JWT                           | Own resident ID, unit, active/inactive state, verification timestamp; 404 if unbound.                                             |
+| POST `/api/v1/management/residents`                  | JWT + trusted profile role management  | Approved roster fields; 201 resident ID.                                                                                          |
+| POST `/api/v1/management/residents/{id}/invitations` | JWT + trusted profile role management  | 201 invitation token (once), ID, resident ID, expiry.                                                                             |
 
 POST `/api/send-verification-email` is a deprecated alias of request-OTP with the same invitation requirement. It never returns generated_code. Registration responses/errors containing proof/session data use Cache-Control no-store, and validation errors do not echo secret inputs. Registration is 503 when configuration/SQL is unavailable; invalid proof is 400, rate exhaustion 429, account/provisioning conflict 409, unauthorized management 403. The API never accepts a caller-selected role, user ID, approval flag, or email-confirmation flag.
 

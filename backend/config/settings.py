@@ -37,8 +37,8 @@ class Settings:
             )
         except ValueError:
             valid = False
-        if not valid or not key.startswith("sb_publishable_") or not key.isascii() or any(c.isspace() for c in key):
-            raise ConfigurationError("Set a hosted SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the root .env.")
+        if not valid or not key or not key.isascii() or any(c.isspace() for c in key):
+            raise ConfigurationError("Set a hosted SUPABASE_URL and SUPABASE_KEY in the root .env.")
         object.__setattr__(self, "project_url", url)
         object.__setattr__(self, "publishable_key", key)
 
@@ -60,4 +60,4 @@ def load_service_values(*, env_file: Path = ENV_FILE, environ: Mapping[str, str]
 def load_settings(*, env_file: Path = ENV_FILE, environ: Mapping[str, str] | None = None) -> Settings:
     values = _load_values(env_file, environ)
     services = {name: values[name] for name in SERVICE_NAMES if name in values}
-    return Settings(values.get("SUPABASE_URL", ""), values.get("SUPABASE_PUBLISHABLE_KEY", ""), services)
+    return Settings(values.get("SUPABASE_URL", ""), values.get("SUPABASE_KEY", ""), services)

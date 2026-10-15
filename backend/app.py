@@ -23,7 +23,9 @@ from .residents import ResidentAccessRepository, ResidentDirectoryUnavailable
 from .registration import RegistrationRejected, RegistrationService
 from .registration.clients import RegistrationUnavailable
 from .registration_config import load_registration_settings
-from .routers.auth import router as registration_router
+from .routers.email import router as registration_router
+from fastapi.middleware.cors import CORSMiddleware
+from .routers import reports
 
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -70,12 +72,23 @@ def create_app(
     residents_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
     registration_service: RegistrationService | None = None,
 ) -> FastAPI:
+    
+    app = FastAPI()
+
+    app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"], 
+    )
+
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         try:
             configured = settings if settings is not None else load_settings()
         except ConfigurationError:
-            raise RuntimeError("Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the root .env.") from None
+            raise RuntimeError("Set SUPABASE_URL and SUPABASE_KEY in the root .env.") from None
         verifier = TokenVerifier(configured, transport=auth_transport)
         repository = ReportsRepository(configured, transport=reports_transport)
         residents = ResidentAccessRepository(configured, transport=residents_transport)
@@ -104,6 +117,7 @@ def create_app(
         description="Supabase JWT authentication, resident OTP registration, active-resident report access, and S3/AI submission.",
     )
     application.include_router(registration_router)
+    application.include_router(reports.router)
 
     @application.exception_handler(RegistrationRejected)
     async def registration_rejected(request, error):

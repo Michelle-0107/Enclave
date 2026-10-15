@@ -6,7 +6,7 @@ import unittest
 class EntrypointTests(unittest.TestCase):
     def test_render_entrypoint_uses_protected_application_and_registration_contract(self):
         from main import app as deployed
-        from backend.main import app as protected
+        from backend.app import app as protected
 
         self.assertIs(deployed, protected)
         schema = deployed.openapi()

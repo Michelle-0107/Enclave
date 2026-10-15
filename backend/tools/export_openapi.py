@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from ..main import app
+from ..app import app
 
 
 if __name__ == "__main__":

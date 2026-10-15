@@ -30,7 +30,7 @@ class Settings:
         key = self.publishable_key.strip()
         if not project_url or not key:
             raise ConfigurationError(
-                "Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in .env beside check_supabase.py."
+                "Set SUPABASE_URL and SUPABASE_KEY in .env beside check_supabase.py."
             )
         try:
             parsed = urlsplit(project_url)
@@ -65,7 +65,7 @@ def load_settings(*, env_file: Path = ENV_FILE, environ: Mapping[str, str] | Non
     return Settings(
         project_url=environment.get("SUPABASE_URL", values.get("SUPABASE_URL") or ""),
         publishable_key=environment.get(
-            "SUPABASE_PUBLISHABLE_KEY", values.get("SUPABASE_PUBLISHABLE_KEY") or ""
+            "SUPABASE_KEY", values.get("SUPABASE_KEY") or ""
         ),
     )
 

@@ -64,7 +64,7 @@ def main() -> int:
     try:
         settings = load_settings()
     except ConfigurationError:
-        print("Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the root .env first.")
+        print("Set SUPABASE_URL and SUPABASE_KEY in the root .env first.")
         return 2
     print("Use an existing confirmed Enclave App user from Authentication > Users.")
     try:

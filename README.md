@@ -62,7 +62,7 @@ python -m uvicorn backend.main:app --reload
 - GET `/api/v1/reports/{ticket_id}` — own report detail
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
-Copy the blank root `.env.example` to `.env`, then set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. `SUPABASE_KEY` is no longer used by this application. JWT verification and report reads do not require AWS/Gemini settings; photo submission additionally requires configured S3 access and bucket settings.
+Copy the blank root `.env.example` to `.env`, then set `SUPABASE_URL` and `SUPABASE_KEY`. `SUPABASE_KEY` is no longer used by this application. JWT verification and report reads do not require AWS/Gemini settings; photo submission additionally requires configured S3 access and bucket settings.
 
 Before resident-only feature access is enabled in Supabase, ask the project owner to run the [read-only feature access inspection](backend/sql/inspect_feature_access.sql) in the Enclave project's SQL Editor and compare the result with the current schema. Review [SQL 006](backend/sql/006_active_resident_feature_rls.sql) before applying it in staging, then run its [transactional RLS tests](backend/sql/test_report_ownership.sql). The earlier SQL 001 is superseded. SQL 006 blocks direct client access for unbound/inactive residents, makes reports owner-only, and limits notification updates to `is_read`; it does not add management review or public map APIs.
 

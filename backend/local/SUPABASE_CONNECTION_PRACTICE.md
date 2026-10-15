@@ -30,12 +30,12 @@ Edit the local `.env`:
 
 ```dotenv
 SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_<your-project-key>
+SUPABASE_KEY=sb_publishable_<your-project-key>
 ```
 
 Replace the placeholders with the values from the same project. This probe accepts hosted `https://<project-ref>.supabase.co` URLs and Publishable keys. Keep the existing `.env.example` blank for sharing. `.env` is excluded from Git.
 
-The team's Supabase application may use `SUPABASE_KEY`; this probe reads the specifically named `SUPABASE_PUBLISHABLE_KEY` value. It sends that key in the `apikey` header. No user access token is required for this initial anonymous-access probe.
+The team's Supabase application may use `SUPABASE_KEY`; this probe reads the specifically named `SUPABASE_KEY` value. It sends that key in the `apikey` header. No user access token is required for this initial anonymous-access probe.
 
 ## 3. Run the connection probe
 
@@ -67,15 +67,15 @@ An empty successful result confirms this request is permitted; it does not demon
 
 ## 4. Troubleshooting
 
-| Result | Next action |
-| --- | --- |
-| Configuration required | Fill both variables, use the hosted Project URL, and copy the Publishable key. |
-| HTTP 401 | Check that the key and URL belong to the same Enclave project. |
-| HTTP 403 or permission denied | Ask the project owner to check table grants for Data API access. |
-| HTTP 404 | Check that `reports` is in `public` and available through the Data API. |
-| Missing column | Compare the actual columns with `id, ticket_id, description, status, created_at`. |
-| Redirect | Recopy the Project URL from Connect. |
-| Timeout or network error | Check the network and project availability, then retry. |
+| Result                        | Next action                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| Configuration required        | Fill both variables, use the hosted Project URL, and copy the Publishable key.    |
+| HTTP 401                      | Check that the key and URL belong to the same Enclave project.                    |
+| HTTP 403 or permission denied | Ask the project owner to check table grants for Data API access.                  |
+| HTTP 404                      | Check that `reports` is in `public` and available through the Data API.           |
+| Missing column                | Compare the actual columns with `id, ticket_id, description, status, created_at`. |
+| Redirect                      | Recopy the Project URL from Connect.                                              |
+| Timeout or network error      | Check the network and project availability, then retry.                           |
 
 The probe uses the anonymous role associated with the Publishable key. A project may intentionally deny that role table access; such a result calls for reviewing the team's access design. Keep RLS enabled while agreeing on Supabase Auth and resident/management policies.
 

@@ -25,7 +25,7 @@ class RegistrationSetupTests(unittest.TestCase):
         return dotenv_values(self.path, interpolate=False, encoding="utf-8-sig")
 
     def test_generated_secret_is_32_bytes_and_preserves_existing_settings_and_private_backup(self):
-        original = 'SUPABASE_URL=https://exampleproject.supabase.co\r\nSUPABASE_PUBLISHABLE_KEY=sb_publishable_fixture\r\nAWS_SECRET_ACCESS_KEY="synthetic-$-secret"\r\nCUSTOM_VALUE="${literal}"\r\n'
+        original = 'SUPABASE_URL=https://exampleproject.supabase.co\r\nSUPABASE_KEY=sb_publishable_fixture\r\nAWS_SECRET_ACCESS_KEY="synthetic-$-secret"\r\nCUSTOM_VALUE="${literal}"\r\n'
         self.path.write_bytes(original.encode())
         initialized, backup = prepare_env(self.path)
         self.assertTrue(initialized)
@@ -84,7 +84,7 @@ class RegistrationSetupTests(unittest.TestCase):
             prepare_env(self.path.with_name(".env.example"))
 
     def test_offline_check_reports_only_three_missing_fields_after_preparation(self):
-        self.path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_PUBLISHABLE_KEY=sb_publishable_fixture\n", encoding="utf-8")
+        self.path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_KEY=sb_publishable_fixture\n", encoding="utf-8")
         prepare_env(self.path)
         result, settings = check_configuration(env_file=self.path, environ={})
         self.assertFalse(result.ready)
@@ -98,7 +98,7 @@ class RegistrationSetupTests(unittest.TestCase):
         self.assertNotIn(self.values()["OTP_HMAC_SECRET"], repr(result))
 
     def test_complete_synthetic_config_passes_without_any_provider_calls(self):
-        self.path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_PUBLISHABLE_KEY=sb_publishable_fixture\nSUPABASE_SECRET_KEY=sb_secret_fixture\nRESEND_API_KEY=re_fixture\nRESEND_FROM_EMAIL=Enclave <fixture@example.com>\n", encoding="utf-8")
+        self.path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_KEY=sb_publishable_fixture\nSUPABASE_SECRET_KEY=sb_secret_fixture\nRESEND_API_KEY=re_fixture\nRESEND_FROM_EMAIL=Enclave <fixture@example.com>\n", encoding="utf-8")
         prepare_env(self.path)
         result, settings = check_configuration(env_file=self.path, environ={})
         self.assertTrue(result.ready)
