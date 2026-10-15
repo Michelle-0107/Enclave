@@ -1,188 +1,284 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+
 import { colors } from '../theme';
 
-const initialNotifications = [
+export type ResidentNotification = {
+  id: string;
+  title: string;
+  description: string;
+  reference: string;
+  time: string;
+  read: boolean;
+  target:
+    | {
+        type: 'report';
+        reportId: string;
+      }
+    | {
+        type: 'map';
+      };
+};
+
+export const demoNotifications: ResidentNotification[] = [
   {
-    id: '1',
+    id: 'notification-1',
     title: 'Your report is in progress',
-    message: 'Work has started on your streetlight report.',
+    description:
+      'Work has started on your streetlight report.',
     reference: '#HP-1024 · Park Entrance',
-    time: '10 min ago',
-    unread: true,
+    time: '10m',
+    read: false,
+    target: {
+      type: 'report',
+      reportId: 'HP-1024',
+    },
   },
   {
-    id: '2',
+    id: 'notification-2',
     title: 'Walkway closure reviewed',
-    message: 'A reviewed closure affects Park Entrance.',
-    reference: 'Community update',
-    time: '1 hour ago',
-    unread: true,
+    description:
+      'An approved closure affects Park Entrance.',
+    reference: 'Followed area · Park Entrance',
+    time: '1h',
+    read: false,
+    target: {
+      type: 'map',
+    },
   },
   {
-    id: '3',
+    id: 'notification-3',
     title: 'Repair verified',
-    message: 'The Lake Walk surface repair is complete.',
-    reference: 'Community update',
+    description:
+      'The Lake Walk surface repair is complete.',
+    reference: 'Followed area · Lake Walk',
     time: 'Yesterday',
-    unread: false,
+    read: true,
+    target: {
+      type: 'map',
+    },
   },
 ];
 
-export default function NotificationsScreen() {
-  const [notifications, setNotifications] = useState(
-    initialNotifications
-  );
+type Props = {
+  notifications: ResidentNotification[];
+  onNotificationPress: (
+    notification: ResidentNotification,
+  ) => void;
+};
 
-  function markAllRead() {
-    setNotifications((items) =>
-      items.map((item) => ({ ...item, unread: false }))
-    );
-  }
-
-  function markRead(id: string) {
-    setNotifications((items) =>
-      items.map((item) =>
-        item.id === id ? { ...item, unread: false } : item
-      )
-    );
-  }
-
+export default function NotificationsScreen({
+  notifications,
+  onNotificationPress,
+}: Props) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Notifications.</Text>
+      <Text style={styles.eyebrow}>
+        STAY INFORMED
+      </Text>
 
-      <View style={styles.headingRow}>
-        <Text style={styles.subtitle}>Your community, connected.</Text>
+      <Text style={styles.title}>
+        Notifications
+      </Text>
 
-        <Pressable
-          onPress={markAllRead}
-          accessibilityRole="button"
-          hitSlop={10}
-        >
-          <Text style={styles.link}>Mark all read</Text>
-        </Pressable>
-      </View>
+      <Text style={styles.subtitle}>
+        Community alerts and report progress, all in
+        one place.
+      </Text>
 
-      <Text style={styles.demoLabel}>SAMPLE UPDATES</Text>
+      {notifications.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>
+            You’re all caught up
+          </Text>
 
-      <View>
-        {notifications.map((item) => (
-          <Pressable
-            key={item.id}
-            onPress={() => markRead(item.id)}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.unread ? 'Unread. ' : ''}${item.title}`}
-            style={({ pressed }) => [
-              styles.row,
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>E</Text>
-            </View>
-
-            <View style={styles.body}>
-              <View style={styles.rowHeading}>
-                <Text style={styles.notificationTitle}>
-                  {item.title}
-                </Text>
-
-                {item.unread && <View style={styles.unreadDot} />}
+          <Text style={styles.subtitle}>
+            Updates about your reports and followed
+            areas will appear here.
+          </Text>
+        </View>
+      ) : (
+        <View>
+          {notifications.map((notification) => (
+            <Pressable
+              key={notification.id}
+              accessibilityRole="button"
+              accessibilityLabel={
+                `${notification.read ? '' : 'Unread. '}` +
+                notification.title
+              }
+              onPress={() =>
+                onNotificationPress(notification)
+              }
+              style={({ pressed }) => [
+                styles.notificationRow,
+                pressed && styles.pressed,
+              ]}
+            >
+              <View style={styles.avatar}>
+                <Image
+                  source={require('../../assets/enclave-logo.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                  accessible={false}
+                />
               </View>
 
-              <Text style={styles.message}>{item.message}</Text>
-              <Text style={styles.reference}>{item.reference}</Text>
-              <Text style={styles.time}>{item.time}</Text>
-            </View>
-          </Pressable>
-        ))}
-      </View>
+              <View style={styles.notificationContent}>
+                <View style={styles.titleRow}>
+                  <Text
+                    style={[
+                      styles.notificationTitle,
+                      !notification.read &&
+                        styles.unreadTitle,
+                    ]}
+                  >
+                    {notification.title}
+                  </Text>
+
+                  {!notification.read && (
+                    <View style={styles.unreadDot} />
+                  )}
+                </View>
+
+                <Text style={styles.description}>
+                  {notification.description}
+                </Text>
+
+                <Text style={styles.meta}>
+                  {notification.reference}
+                </Text>
+
+                <Text style={styles.meta}>
+                  {notification.time}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      <Text style={styles.demoText}>
+        Sample notifications for design preview
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 20 },
+  container: {
+    gap: 20,
+  },
+
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
+    letterSpacing: 2,
+    color: colors.muted,
+  },
+
   title: {
-    fontSize: 30,
-    lineHeight: 38,
+    fontSize: 34,
     fontWeight: '700',
+    lineHeight: 42,
     color: colors.navy,
   },
-  headingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    flexWrap: 'wrap',
-  },
+
   subtitle: {
-    fontSize: 12,
+    fontSize: 14,
+    lineHeight: 22,
     color: colors.muted,
   },
-  link: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.navy,
-  },
-  demoLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 1,
-    color: colors.muted,
-  },
-  row: {
+
+  notificationRow: {
     flexDirection: 'row',
-    gap: 14,
-    paddingVertical: 22,
+    alignItems: 'flex-start',
+    paddingVertical: 20,
+    gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+
   avatar: {
     width: 42,
     height: 42,
-    borderRadius: 12,
-    backgroundColor: colors.navy,
+    borderRadius: 21,
+    backgroundColor: colors.lavender,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.white,
+
+  logo: {
+    width: 22,
+    height: 26,
   },
-  body: { flex: 1, gap: 7 },
-  rowHeading: {
+
+  notificationContent: {
+    flex: 1,
+    gap: 8,
+  },
+
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
+
   notificationTitle: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '400',
+    lineHeight: 22,
     color: colors.navy,
   },
+
+  unreadTitle: {
+    fontWeight: '600',
+  },
+
   unreadDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: colors.navy,
   },
-  message: {
+
+  description: {
     fontSize: 13,
     lineHeight: 20,
     color: colors.muted,
   },
-  reference: {
+
+  meta: {
     fontSize: 11,
+    lineHeight: 17,
     color: colors.muted,
   },
-  time: {
+
+  emptyState: {
+    paddingVertical: 32,
+    gap: 10,
+  },
+
+  emptyTitle: {
+    fontSize: 19,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+
+  demoText: {
     fontSize: 10,
+    lineHeight: 18,
     color: colors.muted,
   },
-  pressed: { opacity: 0.7 },
+
+  pressed: {
+    opacity: 0.75,
+  },
 });

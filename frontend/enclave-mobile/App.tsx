@@ -32,13 +32,19 @@ import RouteOptionsScreen, {
 import ActiveJourneyScreen from './src/screens/ActiveJourneyScreen';
 
 import ReportScreen from './src/screens/ReportScreen';
-import NotificationsScreen from './src/screens/NotificationsScreen';
+
+import NotificationsScreen, {
+  demoNotifications,
+  type ResidentNotification,
+} from './src/screens/NotificationsScreen';
+
 import AccountScreen from './src/screens/AccountScreen';
 
 import MyReportsScreen, {
   demoReports,
   type ResidentReport,
 } from './src/screens/MyReportsScreen';
+
 import ReportDetailsScreen from './src/screens/ReportDetailsScreen';
 
 import NotificationPreferencesScreen, {
@@ -124,6 +130,11 @@ function ResidentApp({
   const [reports, setReports] =
     useState<ResidentReport[]>(demoReports);
 
+  const [notifications, setNotifications] =
+    useState<ResidentNotification[]>(() =>
+      demoNotifications.map((item) => ({ ...item })),
+    );
+
   const [preferences, setPreferences] =
     useState<NotificationPreferences>(
       defaultNotificationPreferences,
@@ -163,6 +174,40 @@ function ResidentApp({
       report,
       ...current.filter((item) => item.id !== report.id),
     ]);
+  }
+
+  function handleNotificationPress(
+    notification: ResidentNotification,
+  ) {
+    setNotifications((current) =>
+      current.map((item) =>
+        item.id === notification.id
+          ? { ...item, read: true }
+          : item,
+      ),
+    );
+
+    const target = notification.target;
+
+    if (target.type === 'report') {
+      const reportExists = reports.some(
+        (report) => report.id === target.reportId,
+      );
+
+      if (reportExists) {
+        openAccountPage({
+          page: 'details',
+          reportId: target.reportId,
+        });
+      } else {
+        openMyReports();
+      }
+
+      return;
+    }
+
+    setMapFlow({ page: 'map' });
+    changeTab('Map');
   }
 
   function renderMapScreen() {
@@ -359,7 +404,12 @@ function ResidentApp({
         );
 
       case 'Notifications':
-        return <NotificationsScreen />;
+        return (
+          <NotificationsScreen
+            notifications={notifications}
+            onNotificationPress={handleNotificationPress}
+          />
+        );
 
       case 'My Account':
         return renderAccountScreen();
