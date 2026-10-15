@@ -4,7 +4,7 @@ from uuid import UUID
 
 import httpx
 
-from .config import Settings
+from ..config import Settings
 
 
 class ResidentDirectoryUnavailable(RuntimeError):

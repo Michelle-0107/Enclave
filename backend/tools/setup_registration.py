@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from dotenv import dotenv_values
 
-from .config import ConfigurationError, ENV_FILE
+from ..config import ConfigurationError, ENV_FILE
 
 
 FIELDS = ("SUPABASE_SECRET_KEY", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "OTP_HMAC_SECRET", "OTP_HMAC_VERSION")

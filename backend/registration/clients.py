@@ -3,8 +3,8 @@
 from uuid import UUID
 import httpx
 from pydantic import ValidationError
-from .registration_config import RegistrationSettings
-from .registration_models import AuthSession
+from .settings import RegistrationSettings
+from .contracts import AuthSession
 
 
 class RegistrationUnavailable(RuntimeError):

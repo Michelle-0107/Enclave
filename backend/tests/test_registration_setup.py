@@ -9,10 +9,10 @@ import unittest
 from dotenv import dotenv_values
 import httpx
 
-from backend.check_registration import check_configuration, check_database
+from backend.tools.check_registration import check_configuration, check_database
 from backend.config import ConfigurationError
-from backend.registration_demo import demo_components
-from backend.setup_registration import prepare_env
+from backend.registration.demo import demo_components
+from backend.tools.setup_registration import prepare_env
 
 
 class RegistrationSetupTests(unittest.TestCase):

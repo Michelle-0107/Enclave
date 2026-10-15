@@ -4,7 +4,7 @@ The registration backend is implemented in v0.4.0. SQL 003/004/005 have been app
 
 ## Prepared private configuration
 
-`python -m backend.setup_registration` prepares the root private `.env`, generates a 32-byte random OTP HMAC secret only when absent, and keeps an existing secret/version unchanged. It preserves other settings and backs up an existing environment file privately. It never displays secrets or calls providers.
+`python -m backend.tools.setup_registration` prepares the root private `.env`, generates a 32-byte random OTP HMAC secret only when absent, and keeps an existing secret/version unchanged. It preserves other settings and backs up an existing environment file privately. It never displays secrets or calls providers.
 
 For the shared local project, the prepared file is `D:\Sime Darby hackathon\Backend\.env`; the mirrored package is named `cloud`. Its OTP secret/version are already prepared. Fill only the following credential/sender fields:
 
@@ -23,8 +23,8 @@ The existing `OTP_HMAC_SECRET` and `OTP_HMAC_VERSION` must be copied privately t
 From the repository root:
 
 ```powershell
-python -m backend.check_registration
-python -m backend.check_registration --check-database
+python -m backend.tools.check_registration
+python -m backend.tools.check_registration --check-database
 python -m uvicorn main:app --reload --port 8001
 ```
 
@@ -44,8 +44,8 @@ Open http://127.0.0.1:8001/docs. The port 8002 sandbox is a separate fake app; u
 ## Management account and the first resident
 
 1. Project administration creates and confirms the intended management **App account** in Supabase Authentication > Users. Dashboard login credentials are a separate account.
-2. Administration reviews [sql/bootstrap_management.sql](sql/bootstrap_management.sql), fills the intended Auth UUID and exact email, and runs it in this project's SQL Editor. It refuses unchanged placeholders, unconfirmed/mismatched accounts, resident registration history, and conflicting profile email. This is trusted manual role assignment, not a client signup capability.
-3. Management signs in with its App credentials. Use `python -m backend.check_session --port 8001 --show-token` locally, then paste its access token into Swagger Authorize. The helper displays a token only with the explicit flag; keep it private.
+2. Administration reviews [sql/bootstrap_management.sql](../../sql/bootstrap_management.sql), fills the intended Auth UUID and exact email, and runs it in this project's SQL Editor. It refuses unchanged placeholders, unconfirmed/mismatched accounts, resident registration history, and conflicting profile email. This is trusted manual role assignment, not a client signup capability.
+3. Management signs in with its App credentials. Use `python -m backend.tools.check_session --port 8001 --show-token` locally, then paste its access token into Swagger Authorize. The helper displays a token only with the explicit flag; keep it private.
 4. Execute `POST /api/v1/management/residents` with the real approved person's details:
 
 ```json
@@ -68,4 +68,4 @@ The implementation does not invent resident records or automatically approve exi
 
 The reviewed implementation is in draft PR #3. The repository owner must merge/review and deploy that code before the Render URL exposes it. Configure the complete server environment privately, including the already-generated OTP secret/version; the three key/sender values alone do not update deployed code. Confirm `/openapi.json` reports version 0.4.0 and the registration routes, then perform the authorized real signup steps above.
 
-Report/notification/category policies and active-resident authorization remain separate feature work. This handoff prepares the registration flow, not a claim that every Enclave feature is production-ready. See [REGISTRATION_TESTING.md](REGISTRATION_TESTING.md) for expiry, attempts, recovery, and background-delivery limits.
+Report/notification/category policies and active-resident authorization remain separate feature work. This handoff prepares the registration flow, not a claim that every Enclave feature is production-ready. See [REGISTRATION_TESTING.md](../registration/REGISTRATION_TESTING.md) for expiry, attempts, recovery, and background-delivery limits.

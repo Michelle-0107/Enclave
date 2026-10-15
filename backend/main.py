@@ -21,7 +21,7 @@ from .models import AIAnalysis, CurrentUserResponse, ReportCreatedResponse, Repo
 from .reports import ReportAccessDenied, ReportsRepository, ReportsUnavailable
 from .residents import ResidentAccessRepository, ResidentDirectoryUnavailable
 from .registration import RegistrationRejected, RegistrationService
-from .registration_clients import RegistrationUnavailable
+from .registration.clients import RegistrationUnavailable
 from .registration_config import load_registration_settings
 from .routers.auth import router as registration_router
 

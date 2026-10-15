@@ -17,7 +17,7 @@ import jwt
 from PIL import Image
 
 from backend.config import ConfigurationError, Settings, load_settings
-from backend.check_session import check_session
+from backend.tools.check_session import check_session
 from backend.main import AuthenticatedUser, MAX_PHOTO_BYTES, create_app
 from backend.media import MediaServices, MediaUnavailable
 

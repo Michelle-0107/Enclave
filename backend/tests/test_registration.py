@@ -10,9 +10,9 @@ from fastapi.testclient import TestClient
 import httpx
 
 from backend.registration import PendingEmail, RegistrationRejected
-from backend.registration_clients import AccountRejected, RegistrationStore, RegistrationUnavailable, SupabaseSignup
+from backend.registration.clients import AccountRejected, RegistrationStore, RegistrationUnavailable, SupabaseSignup
 from backend.registration_config import RegistrationSettings
-from backend.registration_demo import (DEMO_INVITATION, DEMO_PASSWORD, MANAGER, RESIDENT,
+from backend.registration.demo import (DEMO_INVITATION, DEMO_PASSWORD, MANAGER, RESIDENT,
                                        create_demo_app, demo_components)
 from backend.registration_models import RequestOTP, VerifySignup
 from backend.services.email_service import EmailUnavailable, ResendDelivery

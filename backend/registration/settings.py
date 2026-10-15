@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Mapping
 import jwt
 
-from .config import ConfigurationError, ENV_FILE, Settings, _load_values
+from ..config import ConfigurationError, ENV_FILE, Settings, _load_values
 
 
 @dataclass(frozen=True)

@@ -7,8 +7,8 @@ import sys
 
 import httpx
 
-from .config import ConfigurationError, ENV_FILE, _load_values, load_settings
-from .registration_config import load_registration_settings
+from ..config import ConfigurationError, ENV_FILE, _load_values, load_settings
+from ..registration.settings import load_registration_settings
 from .setup_registration import validate_secret
 
 

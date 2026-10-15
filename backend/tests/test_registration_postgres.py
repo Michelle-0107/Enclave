@@ -18,7 +18,7 @@ from psycopg2.extensions import parse_dsn
 from psycopg2.extras import Json
 
 from backend.registration import RegistrationService, RegistrationRejected
-from backend.registration_demo import DEMO_INVITATION, DEMO_PASSWORD, MANAGER, RESIDENT, FakeAccounts, FakeDelivery, demo_components
+from backend.registration.demo import DEMO_INVITATION, DEMO_PASSWORD, MANAGER, RESIDENT, FakeAccounts, FakeDelivery, demo_components
 from backend.registration_models import RequestOTP, VerifySignup
 
 

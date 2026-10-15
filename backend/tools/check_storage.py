@@ -11,8 +11,8 @@ from uuid import uuid4
 from botocore.exceptions import BotoCoreError, ClientError
 from PIL import Image
 
-from .config import load_service_values
-from .media import aws_client_options, create_aws_client
+from ..config import load_service_values
+from ..media import aws_client_options, create_aws_client
 
 
 @dataclass(frozen=True)

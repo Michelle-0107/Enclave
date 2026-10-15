@@ -7,7 +7,7 @@ import logging
 import threading
 from typing import Mapping
 
-from .config import Settings
+from ..config import Settings
 
 
 logger = logging.getLogger(__name__)

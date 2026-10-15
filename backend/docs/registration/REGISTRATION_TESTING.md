@@ -2,14 +2,14 @@
 
 The API is implemented in `backend.main:app` (v0.4.0). Real delivery/account creation is disabled when registration settings are incomplete. No real email or account was created while implementing this feature.
 
-See [REGISTRATION_HANDOFF.md](REGISTRATION_HANDOFF.md) for the prepared private environment, teammate configuration, management bootstrap, and the first real signup. Run `python -m backend.setup_registration` once to prepare a private secret without displaying it. The tool preserves existing secrets/settings; `python -m backend.check_registration` then reports only missing names and configuration status.
+See [REGISTRATION_HANDOFF.md](REGISTRATION_HANDOFF.md) for the prepared private environment, teammate configuration, management bootstrap, and the first real signup. Run `python -m backend.tools.setup_registration` once to prepare a private secret without displaying it. The tool preserves existing secrets/settings; `python -m backend.tools.check_registration` then reports only missing names and configuration status.
 
 ## Local sandbox without cloud credentials
 
 From the repository root, with the existing environment active:
 
 ```powershell
-python -m backend.registration_demo
+python -m backend.registration.demo
 ```
 
 Open http://127.0.0.1:8002/docs. This separate app uses memory, fake email delivery, and fake Auth. It never reads the project's `.env`, connects to Supabase, or issues a Supabase JWT. It has one seeded resident record; restarting clears its state. Use synthetic passwords only.
@@ -58,9 +58,9 @@ Generate at least 32 random bytes for the HMAC secret locally, for example with 
 
 `RESEND_FROM_EMAIL` can include a display name, such as `Enclave <noreply@YOUR_VERIFIED_DOMAIN>`. Real resident delivery needs a verified sender domain. Resend's default `onboarding@resend.dev` is restricted to testing with the Resend account's own address. Sender configuration is required; the code does not silently use that default.
 
-Apply [sql/005_registration_transitions.sql](sql/005_registration_transitions.sql) after the already-created 003 tables and 004 profile access. Do not rerun 003. SQL 005 adds one private infrastructure table, `registration_rate_limits`, and one service-role-only RPC for atomic transitions. It creates no accounts or resident rows. No database connection string/password is required by the HTTP RPC client.
+Apply [sql/005_registration_transitions.sql](../../sql/005_registration_transitions.sql) after the already-created 003 tables and 004 profile access. Do not rerun 003. SQL 005 adds one private infrastructure table, `registration_rate_limits`, and one service-role-only RPC for atomic transitions. It creates no accounts or resident rows. No database connection string/password is required by the HTTP RPC client.
 
-Rerun [sql/inspect_registration_schema.sql](sql/inspect_registration_schema.sql) after installation. Expected: the RPC has no PUBLIC/anon/authenticated EXECUTE privilege; the rate table and invitation/challenge tables have no client grants; ordinary users have only own-resident SELECT and own-profile SELECT/full_name UPDATE.
+Rerun [sql/inspect_registration_schema.sql](../../sql/inspect_registration_schema.sql) after installation. Expected: the RPC has no PUBLIC/anon/authenticated EXECUTE privilege; the rate table and invitation/challenge tables have no client grants; ordinary users have only own-resident SELECT and own-profile SELECT/full_name UPDATE.
 
 ## Management register and invitations
 
@@ -79,10 +79,10 @@ An existing account must authenticate with its own password and confirmed matchi
 ```powershell
 python -B -m unittest -q backend.tests.test_registration backend.tests.test_cloud backend.tests.test_storage backend.tests.test_entrypoint
 python -B -m unittest -q backend.tests.test_registration_setup
-python -B -m backend.export_openapi
+python -B -m backend.tools.export_openapi
 ```
 
-These tests mock external providers and the state protocol. Separate [test_registration_postgres.py](tests/test_registration_postgres.py) executes the real 003/004/005 DDL and checks counters, concurrent claims, lease fencing, final binding, and role/RPC access in a dedicated loopback database. It runs only when `ENCLAVE_TEST_PG_DSN` points to host `127.0.0.1`, database `enclave_otp_test`; it must not point to a hosted or existing application database. The local test Auth schema is a fixture, not a real Supabase Auth service.
+These tests mock external providers and the state protocol. Separate [test_registration_postgres.py](../../tests/test_registration_postgres.py) executes the real 003/004/005 DDL and checks counters, concurrent claims, lease fencing, final binding, and role/RPC access in a dedicated loopback database. It runs only when `ENCLAVE_TEST_PG_DSN` points to host `127.0.0.1`, database `enclave_otp_test`; it must not point to a hosted or existing application database. The local test Auth schema is a fixture, not a real Supabase Auth service.
 
 Shared counters use server-side HMACs for IP/email subjects. Fixed windows permit 20 requests per IP per minute, three send requests per email per 15-minute bucket, and ten verification requests per email per 15-minute bucket. Five failed OTP checks per challenge remain the tighter per-code limit. Fixed-window boundaries can permit adjacent-window bursts; do not describe these counters as rolling windows. Configure the server's trusted proxy handling so `request.client` reflects the intended peer; arbitrary request forwarding headers are not trusted by registration code.
 
