@@ -17,6 +17,7 @@ import jwt
 from PIL import Image
 
 from backend.config import ConfigurationError, Settings, load_settings
+from backend.auth import InvalidCredentials, TokenVerifier
 from backend.tools.check_session import check_session
 from backend.main import AuthenticatedUser, MAX_PHOTO_BYTES, create_app
 from backend.media import MediaServices, MediaUnavailable
@@ -53,7 +54,7 @@ class CloudTests(unittest.TestCase):
         cls.jwk.update(kid="synthetic-key", alg="ES256", use="sig")
 
     def setUp(self):
-        self.settings = Settings("https://exampleproject.supabase.co", "sb_publishable_synthetic_fixture")
+        self.settings = Settings("https://exampleproject.supabase.co", "sb_secret_synthetic_fixture")
         self.media = FakeMedia()
         self.requests = []
         self.residency_requests = []
@@ -82,7 +83,7 @@ class CloudTests(unittest.TestCase):
         token = request.headers["authorization"].removeprefix("Bearer ")
         owner = next(owner for owner, expected in self.tokens.items() if expected == token)
         self.assertEqual(request.url.path, "/rest/v1/residents")
-        self.assertEqual(request.headers["apikey"], self.settings.publishable_key)
+        self.assertEqual(request.headers["apikey"], self.settings.api_key)
         self.assertEqual(request.url.params["profile_id"], "eq." + owner)
         self.assertEqual(request.url.params["select"], "profile_id,status,verified_at")
         return httpx.Response(200, json=self.resident_records[owner])
@@ -91,7 +92,7 @@ class CloudTests(unittest.TestCase):
         self.requests.append(request)
         token = request.headers["authorization"].removeprefix("Bearer ")
         owner = next(owner for owner, expected in self.tokens.items() if expected == token)
-        self.assertEqual(request.headers["apikey"], self.settings.publishable_key)
+        self.assertEqual(request.headers["apikey"], self.settings.api_key)
         if request.method == "POST":
             row = json.loads(request.content)
             self.assertEqual(row["user_id"], owner)
@@ -155,6 +156,35 @@ class CloudTests(unittest.TestCase):
             with self.subTest(length=len(token)):
                 self.assertEqual(client.get("/api/v1/reports", headers={"Authorization": "Bearer " + token}).status_code, 401)
         self.assertEqual(self.requests, [])
+
+    def test_legacy_hs256_tokens_use_only_the_configured_project_jwt_secret(self):
+        secret = "synthetic-project-jwt-secret-with-at-least-32-bytes"
+        settings = Settings(self.settings.project_url, self.settings.api_key, {}, secret)
+        verifier = TokenVerifier(settings, transport=httpx.MockTransport(
+            lambda request: self.fail("HS256 verification must not fetch JWKS")))
+        self.addCleanup(verifier.close)
+        now = int(time.time())
+        claims = {"iss": settings.project_url + "/auth/v1", "aud": "authenticated", "sub": OWNER_A,
+                  "email": "resident@example.com", "role": "authenticated", "iat": now - 10, "exp": now + 3600}
+        token = jwt.encode(claims, secret, algorithm="HS256")
+        self.assertEqual(verifier.verify(token).user_id, UUID(OWNER_A))
+        wrong_secret = TokenVerifier(Settings(self.settings.project_url, self.settings.api_key, {},
+                                               "another-project-secret-with-at-least-32-bytes"), transport=httpx.MockTransport(
+            lambda request: self.fail("HS256 verification must not fetch JWKS")))
+        self.addCleanup(wrong_secret.close)
+        with self.assertRaises(InvalidCredentials):
+            wrong_secret.verify(token)
+
+    def test_env_example_matches_the_team_contract_exactly(self):
+        root = Path(__file__).resolve().parents[2]
+        expected = [
+            "SUPABASE_URL=", "SUPABASE_KEY=", "SUPABASE_JWT_SECRET=", "BEDROCK_MODEL_ID=",
+            "GEMINI_API_KEY=", "AWS_REGION=", "S3_BUCKET_NAME=", "AWS_ACCESS_KEY=",
+            "AWS_SECRET_ACCESS_KEY=", "RESEND_API_KEY=",
+        ]
+        self.assertEqual((root / ".env.example").read_text(encoding="utf-8").splitlines(), expected)
+        self.assertEqual((root / "backend" / "local" / ".env.example").read_text(encoding="utf-8").splitlines(),
+                         expected)
 
     def test_current_user_contains_verified_identity_and_no_token(self):
         response = self.client().get("/auth/me", headers=self.headers())
@@ -297,10 +327,10 @@ class CloudTests(unittest.TestCase):
 
     def test_database_network_failure_is_503_and_redacted(self):
         def handler(request):
-            raise httpx.ConnectError(self.settings.publishable_key, request=request)
+            raise httpx.ConnectError(self.settings.api_key, request=request)
         response = self.client(report_handler=handler).get("/api/v1/reports", headers=self.headers())
         self.assertEqual(response.status_code, 503)
-        self.assertNotIn(self.settings.publishable_key, response.text)
+        self.assertNotIn(self.settings.api_key, response.text)
 
     def test_database_redirect_is_not_followed(self):
         calls = []
@@ -357,24 +387,28 @@ class CloudTests(unittest.TestCase):
         self.assertTrue({"latitude", "longitude", "description", "file"}.issubset(set(body["required"])))
 
     def test_credentials_are_excluded_from_repr(self):
-        self.assertNotIn(self.settings.publishable_key, repr(self.settings))
+        self.assertNotIn(self.settings.api_key, repr(self.settings))
         user = AuthenticatedUser(UUID(OWNER_A), "resident@example.com", self.tokens[OWNER_A])
         self.assertNotIn(self.tokens[OWNER_A], repr(user))
 
-    def test_configuration_does_not_accept_service_keys_or_untrusted_urls(self):
-        for url, key in [("https://attacker.example", self.settings.publishable_key),
-                         (self.settings.project_url, "sb_secret_synthetic"),
-                         (self.settings.project_url, "sb_publishable_x\nInjected")]:
+    def test_configuration_requires_backend_admin_key_and_rejects_untrusted_values(self):
+        for url, key in [("https://attacker.example", self.settings.api_key),
+                         (self.settings.project_url, "not-a-supabase-key"),
+                         (self.settings.project_url, "sb_secret_x\nInjected"),
+                         (self.settings.project_url, "sb_publishable_synthetic")]:
             with self.assertRaises(ConfigurationError):
                 Settings(url, key)
 
     def test_configuration_reads_only_named_file_and_environment_overrides(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / ".env"
-            path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_PUBLISHABLE_KEY=sb_publishable_file\n",
+            jwt_secret = "synthetic-project-jwt-secret-which-exceeds-32-bytes"
+            path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_KEY=sb_secret_synthetic_file\n"
+                            "SUPABASE_JWT_SECRET=" + jwt_secret + "\n",
                             encoding="utf-8")
-            configured = load_settings(env_file=path, environ={"SUPABASE_PUBLISHABLE_KEY": "sb_publishable_override"})
-            self.assertEqual(configured.publishable_key, "sb_publishable_override")
+            configured = load_settings(env_file=path, environ={"SUPABASE_KEY": "sb_secret_synthetic_override"})
+            self.assertEqual(configured.api_key, "sb_secret_synthetic_override")
+            self.assertEqual(configured.jwt_secret, jwt_secret)
             self.assertEqual(configured.project_url, self.settings.project_url)
 
     def test_startup_error_is_sanitized(self):
@@ -392,7 +426,7 @@ class CloudTests(unittest.TestCase):
     def test_session_helper_verifies_identity_and_hides_token_in_repr(self):
         def handler(request):
             if request.url.host == "exampleproject.supabase.co":
-                self.assertEqual(request.headers["apikey"], self.settings.publishable_key)
+                self.assertEqual(request.headers["apikey"], self.settings.api_key)
                 return httpx.Response(200, json={"access_token": self.tokens[OWNER_A], "user": {"id": OWNER_A}})
             self.assertEqual(str(request.url), "http://127.0.0.1:8001/auth/me")
             self.assertEqual(request.headers["authorization"], "Bearer " + self.tokens[OWNER_A])
@@ -426,7 +460,7 @@ class CloudTests(unittest.TestCase):
         return stream.getvalue()
 
     def test_s3_adapter_preserves_storage_parameters(self):
-        settings = Settings(self.settings.project_url, self.settings.publishable_key, {"S3_BUCKET_NAME": "synthetic-bucket"})
+        settings = Settings(self.settings.project_url, self.settings.api_key, {"S3_BUCKET_NAME": "synthetic-bucket"})
         service = MediaServices(settings)
         client = MagicMock()
         with patch.object(service, "_client", return_value=client):
@@ -435,18 +469,21 @@ class CloudTests(unittest.TestCase):
         client.put_object.assert_called_once_with(Bucket="synthetic-bucket", Key="photo.png", Body=b"synthetic-photo", ContentType="image/png")
 
     def test_bedrock_adapter_preserves_analysis_and_uses_actual_png_format(self):
-        service = MediaServices(self.settings)
+        settings = Settings(self.settings.project_url, self.settings.api_key,
+                            {"BEDROCK_MODEL_ID": "synthetic-bedrock-model"})
+        service = MediaServices(settings)
         client = MagicMock()
         client.invoke_model.return_value = {"body": io.BytesIO(json.dumps({"output": {"message": {
             "content": [{"text": json.dumps(self.media.result)}]}}}).encode())}
         with patch.object(service, "_client", return_value=client):
             result = service.analyze(self.image_bytes(), "Broken light")
         self.assertEqual(result, self.media.result)
+        self.assertEqual(client.invoke_model.call_args.kwargs["modelId"], "synthetic-bedrock-model")
         payload = json.loads(client.invoke_model.call_args.kwargs["body"])
         self.assertEqual(payload["messages"][0]["content"][0]["image"]["format"], "png")
 
     def test_bedrock_failure_uses_gemini_fallback(self):
-        settings = Settings(self.settings.project_url, self.settings.publishable_key, {"GEMINI_API_KEY": "synthetic-test-key"})
+        settings = Settings(self.settings.project_url, self.settings.api_key, {"GEMINI_API_KEY": "synthetic-test-key"})
         service = MediaServices(settings)
         client = MagicMock()
         client.__enter__.return_value = client

@@ -2,7 +2,7 @@
 
 The API is implemented in `backend.main:app` (v0.4.0). Real delivery/account creation is disabled when registration settings are incomplete. No real email or account was created while implementing this feature.
 
-See [REGISTRATION_HANDOFF.md](REGISTRATION_HANDOFF.md) for the prepared private environment, teammate configuration, management bootstrap, and the first real signup. Run `python -m backend.tools.setup_registration` once to prepare a private secret without displaying it. The tool preserves existing secrets/settings; `python -m backend.tools.check_registration` then reports only missing names and configuration status.
+See [REGISTRATION_HANDOFF.md](REGISTRATION_HANDOFF.md) for the private environment, management bootstrap, and first real signup. Keep the root `.env.example` at the exact agreed format. `python -m backend.tools.setup_registration` only checks that its registration fields exist; `python -m backend.tools.check_registration` validates configuration without sending email or creating accounts. Neither command edits the environment file.
 
 ## Local sandbox without cloud credentials
 
@@ -42,21 +42,9 @@ The sandbox also accepts `demo-manager-token` for practicing management routes. 
 
 ## Hosted registration configuration
 
-Keep the existing `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. Add these only to the server's `.env`/deployment secret settings:
+Copy the root `.env.example` to the private `.env` and fill its existing variables only. Registration requires `SUPABASE_URL`, `SUPABASE_KEY`, and `RESEND_API_KEY`; `SUPABASE_JWT_SECRET` is optional and is used only for legacy HS256 tokens. The code does not add OTP-secret, Admin-key, or sender variables. `SUPABASE_KEY` must be a backend-only secret/service-role key for the registration Admin API and RPC. Keep backend keys out of frontend configuration.
 
-```dotenv
-SUPABASE_SECRET_KEY=
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=
-OTP_HMAC_SECRET=
-OTP_HMAC_VERSION=1
-```
-
-Use one Admin key name: `SUPABASE_SECRET_KEY` is preferred, or use legacy `SUPABASE_SERVICE_ROLE_KEY` instead. Never configure both or use a resident access token/publishable key as the Admin credential. Admin requests are isolated from resident report requests; modern API keys are sent only as `apikey`, and legacy service-role JWTs also use the Bearer header.
-
-Generate at least 32 random bytes for the HMAC secret locally, for example with `python -c "import secrets; print(secrets.token_urlsafe(32))"`, and save the result privately. Use the same secret/version on all instances serving these challenges. Changing it invalidates unverified old codes; reconcile provisioning attempts before rotating/purging state. Do not include the output in shared screenshots or Git.
-
-`RESEND_FROM_EMAIL` can include a display name, such as `Enclave <noreply@YOUR_VERIFIED_DOMAIN>`. Real resident delivery needs a verified sender domain. Resend's default `onboarding@resend.dev` is restricted to testing with the Resend account's own address. Sender configuration is required; the code does not silently use that default.
+The server derives a purpose-specific OTP HMAC key from `SUPABASE_KEY`. Keep that key stable across app instances sharing challenges; rotating it invalidates outstanding OTP digests. The code-level Resend sender is currently `Enclave <onboarding@resend.dev>`, which Resend restricts to the account's own address. Before resident delivery, update the constant in `backend/registration/settings.py` to an address on a verified domain; this does not change the environment format.
 
 Apply [sql/005_registration_transitions.sql](../../sql/005_registration_transitions.sql) after the already-created 003 tables and 004 profile access. Do not rerun 003. SQL 005 adds one private infrastructure table, `registration_rate_limits`, and one service-role-only RPC for atomic transitions. It creates no accounts or resident rows. No database connection string/password is required by the HTTP RPC client.
 

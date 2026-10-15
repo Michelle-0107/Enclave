@@ -20,22 +20,22 @@ If `.env` does not exist, create it from the blank example:
 Copy-Item .env.example .env
 ```
 
-If `.env` already exists, keep it and add the two variables below. The helper reads only `.env` beside `check_supabase.py`; it does not search parent folders or update process environment variables. Explicit process variables take precedence.
+If `.env` already exists, keep it and fill the two relevant variables from the agreed environment format. The helper reads only `.env` beside `check_supabase.py`; it does not search parent folders or update process environment variables. Explicit process variables take precedence. The example contains the same ten approved names used by the backend; this probe reads only `SUPABASE_URL` and `SUPABASE_KEY`.
 
 ## 2. Add the project configuration
 
-Open the **Enclave** project in the [Supabase Dashboard](https://supabase.com/dashboard). Open its **Connect** dialog to obtain the Project URL and Publishable key. **Settings > API Keys** also lists available keys.
+Open the **Enclave** project in the [Supabase Dashboard](https://supabase.com/dashboard). Open its **Connect** dialog to obtain the Project URL and API key. **Settings > API Keys** also lists available keys.
 
 Edit the local `.env`:
 
 ```dotenv
 SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_<your-project-key>
+SUPABASE_KEY=sb_secret_<your-backend-secret-key>
 ```
 
-Replace the placeholders with the values from the same project. This probe accepts hosted `https://<project-ref>.supabase.co` URLs and Publishable keys. Keep the existing `.env.example` blank for sharing. `.env` is excluded from Git.
+Replace the placeholders with values from the same project. Use a backend-only secret key (or a legacy `service_role` key), not a Publishable key. Keep `.env` private and out of Git.
 
-The team's Supabase application may use `SUPABASE_KEY`; this probe reads the specifically named `SUPABASE_PUBLISHABLE_KEY` value. It sends that key in the `apikey` header. No user access token is required for this initial anonymous-access probe.
+The probe sends `SUPABASE_KEY` in the `apikey` header. No user access token is required for this initial anonymous-access probe.
 
 ## 3. Run the connection probe
 
@@ -69,7 +69,7 @@ An empty successful result confirms this request is permitted; it does not demon
 
 | Result | Next action |
 | --- | --- |
-| Configuration required | Fill both variables, use the hosted Project URL, and copy the Publishable key. |
+| Configuration required | Fill both variables, use the hosted Project URL, and copy the project's backend-only secret/service-role key into `SUPABASE_KEY`. |
 | HTTP 401 | Check that the key and URL belong to the same Enclave project. |
 | HTTP 403 or permission denied | Ask the project owner to check table grants for Data API access. |
 | HTTP 404 | Check that `reports` is in `public` and available through the Data API. |
@@ -77,7 +77,7 @@ An empty successful result confirms this request is permitted; it does not demon
 | Redirect | Recopy the Project URL from Connect. |
 | Timeout or network error | Check the network and project availability, then retry. |
 
-The probe uses the anonymous role associated with the Publishable key. A project may intentionally deny that role table access; such a result calls for reviewing the team's access design. Keep RLS enabled while agreeing on Supabase Auth and resident/management policies.
+The probe uses a backend-only key and requests zero rows. Keep this key private; do not put it in frontend configuration. Keep RLS enabled and review the team's Auth and resident/management policies separately.
 
 ## 5. Test the helper without cloud access
 

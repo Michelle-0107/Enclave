@@ -25,7 +25,7 @@ def check_session(settings: Settings, email: str, password: str, *, port: int = 
     try:
         with httpx.Client(timeout=10.0, follow_redirects=False, transport=transport) as client:
             login = client.post(settings.project_url + "/auth/v1/token", params={"grant_type": "password"},
-                                headers={"apikey": settings.publishable_key}, json={"email": email, "password": password})
+                                headers={"apikey": settings.api_key}, json={"email": email, "password": password})
             if login.status_code != 200:
                 code = None
                 try:
@@ -47,7 +47,7 @@ def check_session(settings: Settings, email: str, password: str, *, port: int = 
                 return SessionResult(False, "Login did not return an access token.")
             response = client.get(f"http://127.0.0.1:{port}/auth/me", headers={"Authorization": "Bearer " + token})
             if response.status_code != 200:
-                return SessionResult(False, f"Current-user verification failed (HTTP {response.status_code}). Check the API and ES256 settings.")
+                return SessionResult(False, f"Current-user verification failed (HTTP {response.status_code}). Check the API and project JWT settings.")
             user_id = str(UUID(response.json()["user_id"]))
             if payload.get("user", {}).get("id") != user_id:
                 return SessionResult(False, "Verified user does not match the login account.")
@@ -64,7 +64,7 @@ def main() -> int:
     try:
         settings = load_settings()
     except ConfigurationError:
-        print("Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the root .env first.")
+        print("Set SUPABASE_URL and SUPABASE_KEY in the root .env first.")
         return 2
     print("Use an existing confirmed Enclave App user from Authentication > Users.")
     try:

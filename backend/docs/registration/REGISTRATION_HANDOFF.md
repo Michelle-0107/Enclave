@@ -4,19 +4,13 @@ The registration backend is implemented in v0.4.0. SQL 003/004/005 have been app
 
 ## Prepared private configuration
 
-`python -m backend.tools.setup_registration` prepares the root private `.env`, generates a 32-byte random OTP HMAC secret only when absent, and keeps an existing secret/version unchanged. It preserves other settings and backs up an existing environment file privately. It never displays secrets or calls providers.
+`python -m backend.tools.setup_registration` checks that the existing registration fields are present; it never edits `.env`, generates or rotates secrets, or calls providers. Keep the root `.env.example` exactly as provided and use only its listed names.
 
-For the shared local project, the prepared file is `D:\Sime Darby hackathon\Backend\.env`; the mirrored package is named `cloud`. Its OTP secret/version are already prepared. Fill only the following credential/sender fields:
+For the shared local project, copy the root `.env.example` to the private root `.env` and fill the existing fields. Registration requires `SUPABASE_URL`, `SUPABASE_KEY`, and `RESEND_API_KEY`; `SUPABASE_JWT_SECRET` is optional for legacy HS256 tokens. It adds no variables.
 
-```dotenv
-SUPABASE_SECRET_KEY=
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=
-```
+Use one project's URL and backend-only Supabase secret/service-role key. Do not expose `SUPABASE_KEY` or `SUPABASE_JWT_SECRET` to the frontend. The OTP HMAC key is derived with purpose separation from `SUPABASE_KEY`; keep the key stable across app instances sharing challenges. Rotating it makes outstanding OTP digests unverifiable.
 
-Use the same Supabase project as the existing URL/publishable key. An existing legacy `SUPABASE_SERVICE_ROLE_KEY` can be used instead; configure one nonblank Admin key only. Use an approved sender from a verified Resend domain for resident delivery. The default test domain can only send to the Resend account's own address.
-
-The existing `OTP_HMAC_SECRET` and `OTP_HMAC_VERSION` must be copied privately to the deployment's secret settings along with the other required server settings. Do not regenerate the OTP secret on restart or independently for two instances sharing challenges. Do not paste it into Git/chat. The setup tool will not populate Render automatically; the Enclave service is not available through the currently connected Render workspace.
+The Resend sender is a code-level constant in `backend/registration/settings.py`, currently `Enclave <onboarding@resend.dev>`. Resend's test sender is limited to the account's own address; resident delivery requires updating that constant to an address on a verified domain. No sender environment variable is added to the template.
 
 ## Check and start locally
 
@@ -66,6 +60,6 @@ The implementation does not invent resident records or automatically approve exi
 
 ## Hosted use
 
-The reviewed implementation is in draft PR #3. The repository owner must merge/review and deploy that code before the Render URL exposes it. Configure the complete server environment privately, including the already-generated OTP secret/version; the three key/sender values alone do not update deployed code. Confirm `/openapi.json` reports version 0.4.0 and the registration routes, then perform the authorized real signup steps above.
+The reviewed implementation is in the repository branch. The repository owner must merge/review and deploy that code before the Render URL exposes it. Configure the listed environment fields privately; confirm `/openapi.json` reports version 0.4.0 and the registration routes, then perform the authorized real signup steps above.
 
 Report/notification/category policies and active-resident authorization remain separate feature work. This handoff prepares the registration flow, not a claim that every Enclave feature is production-ready. See [REGISTRATION_TESTING.md](../registration/REGISTRATION_TESTING.md) for expiry, attempts, recovery, and background-delivery limits.

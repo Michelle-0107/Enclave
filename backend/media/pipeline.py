@@ -18,21 +18,14 @@ class MediaUnavailable(RuntimeError):
 
 
 def aws_client_options(values: Mapping[str, str]) -> dict:
-    """Accept standard AWS key names and the team's existing access-key alias."""
-    access_key = (values.get("AWS_ACCESS_KEY_ID") or "").strip()
-    legacy_key = (values.get("AWS_ACCESS_KEY") or "").strip()
+    """Build AWS options from the team's fixed environment variable names."""
+    access_key = (values.get("AWS_ACCESS_KEY") or "").strip()
     secret_key = (values.get("AWS_SECRET_ACCESS_KEY") or "").strip()
-    session_token = (values.get("AWS_SESSION_TOKEN") or "").strip()
-    if access_key and legacy_key and access_key != legacy_key:
-        raise ValueError("AWS_ACCESS_KEY_ID and AWS_ACCESS_KEY must not specify different credentials.")
-    access_key = access_key or legacy_key
-    if bool(access_key) != bool(secret_key) or (session_token and not access_key):
-        raise ValueError("Configure both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
-    options = {"region_name": (values.get("AWS_REGION") or values.get("AWS_DEFAULT_REGION") or "us-east-1").strip()}
+    if bool(access_key) != bool(secret_key):
+        raise ValueError("Configure both AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY.")
+    options = {"region_name": (values.get("AWS_REGION") or "us-east-1").strip()}
     if access_key:
         options.update(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
-        if session_token:
-            options["aws_session_token"] = session_token
     return options
 
 
@@ -102,7 +95,7 @@ class MediaServices:
                 "inferenceConfig": {"max_new_tokens": 300, "temperature": 0.2},
             }
             response = client.invoke_model(
-                modelId="amazon.nova-lite-v1:0", contentType="application/json",
+                modelId=self.values.get("BEDROCK_MODEL_ID") or "amazon.nova-lite-v1:0", contentType="application/json",
                 accept="application/json", body=json.dumps(payload),
             )
             result = json.loads(response["body"].read())

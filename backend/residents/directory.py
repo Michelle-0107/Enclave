@@ -14,7 +14,7 @@ class ResidentDirectoryUnavailable(RuntimeError):
 class ResidentAccessRepository:
     def __init__(self, settings: Settings, *, transport: httpx.AsyncBaseTransport | None = None):
         self.url = settings.project_url + "/rest/v1/residents"
-        self.key = settings.publishable_key
+        self.key = settings.api_key
         self.client = httpx.AsyncClient(timeout=10.0, follow_redirects=False, transport=transport, trust_env=False)
 
     async def close(self):

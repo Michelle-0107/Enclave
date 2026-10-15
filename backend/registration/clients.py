@@ -53,7 +53,7 @@ class SupabaseSignup:
         try:
             response = self.client.post(self.base + "/token", params={"grant_type": "password"},
                                         json={"email": email, "password": password},
-                                        headers={"apikey": self.settings.cloud.publishable_key})
+                                        headers={"apikey": self.settings.cloud.api_key})
             if response.status_code == 400:
                 # Only ordinary credential rejection permits trying account creation.
                 data = response.json()

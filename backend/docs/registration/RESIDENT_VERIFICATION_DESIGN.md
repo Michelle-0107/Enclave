@@ -106,7 +106,7 @@ Custom OTP verification does not automatically confirm an account in Supabase Au
 
 Add verified-membership checks to report APIs and database RLS before launching resident-only access. The current reports contract has no community ID, so multi-community report isolation needs a separate reviewed schema/policy change and legacy-data plan. Existing ownership policies do not already implement this new residency requirement.
 
-Required server configuration will include `RESEND_API_KEY`, an approved sender address/domain, `OTP_HMAC_SECRET` and its key-version handling, and privileged Supabase Auth/database access. No values have been created or added to the live environment by this design task.
+This archived alternative is not the implemented registration flow. The active MVP uses only the fixed root `.env.example` names; its OTP HMAC key is derived from `SUPABASE_KEY`, and the Resend sender is a code-level constant that must match a verified domain for resident delivery.
 
 Retain only the challenge/audit data needed for delivery diagnostics and signup recovery; redact OTPs, hashes, completion tokens, passwords, and API keys from logs/responses. Expired unfinished challenges can be purged after a reviewed rate-limit/recovery retention window. Keep completed invitations/memberships or a redacted audit record long enough to preserve one-person/one-account controls.
 
