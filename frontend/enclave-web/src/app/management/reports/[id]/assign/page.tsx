@@ -14,6 +14,7 @@ type Props = {
   searchParams: Promise<{
     category?: string | string[];
     priority?: string | string[];
+    repairOption?: string | string[];
   }>;
 };
 
@@ -50,12 +51,20 @@ export default async function AssignMaintenancePage({
     ? query.priority
     : report.priority;
 
+  const repairInstructions =
+    query.repairOption === 'kerb-ramp'
+      ? 'Selected option: Kerb ramp repair. Inspect and repair the damaged kerb ramp. Verify step-free access on site after repair.'
+      : query.repairOption === 'surface'
+        ? 'Selected option: Surface repair. Inspect and repair the uneven walkway surface. Verify step-free access on site after repair.'
+        : undefined;
+
   return (
     <AssignMaintenance
-      key={`${report.id}-${category}-${priority}`}
+      key={`${report.id}-${category}-${priority}-${query.repairOption ?? ''}`}
       report={report}
       category={category}
       priority={priority}
+      initialInstructions={repairInstructions}
     />
   );
 }
