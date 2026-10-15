@@ -10,10 +10,16 @@
       "supportsTablet": true
     },
     "android": {
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.michelle_0107.enclavemobile"
     },
     "web": {
       "favicon": "./assets/enclave_icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "95c7b1c0-4251-49bc-bd60-b3c541facc55"
+      }
     }
   }
 }
