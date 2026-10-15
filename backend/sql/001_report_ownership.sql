@@ -1,3 +1,5 @@
+-- SUPERSEDED: use 006_active_resident_feature_rls.sql for resident access.
+-- Kept as history only; do not apply this owner-only predecessor for resident launch.
 -- Review with the project owner, then run in the Enclave project's SQL Editor.
 -- No rows are deleted or reassigned. Existing policies remain, with additional
 -- restrictive guards so older permissive policies cannot expose another owner.

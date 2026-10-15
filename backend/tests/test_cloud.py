@@ -56,9 +56,14 @@ class CloudTests(unittest.TestCase):
         self.settings = Settings("https://exampleproject.supabase.co", "sb_publishable_synthetic_fixture")
         self.media = FakeMedia()
         self.requests = []
+        self.residency_requests = []
         self.rows = []
         self.auth_requests = []
         self.tokens = {owner: self.token(owner) for owner in [OWNER_A, OWNER_B]}
+        self.resident_records = {
+            owner: [{"profile_id": owner, "status": "active", "verified_at": "2026-10-14T01:00:00Z"}]
+            for owner in [OWNER_A, OWNER_B]
+        }
 
     def token(self, owner=OWNER_A, *, changes=None, key=None):
         now = int(time.time())
@@ -71,6 +76,16 @@ class CloudTests(unittest.TestCase):
     def auth_handler(self, request):
         self.auth_requests.append(request)
         return httpx.Response(200, json={"keys": [self.jwk]})
+
+    def residents_handler(self, request):
+        self.residency_requests.append(request)
+        token = request.headers["authorization"].removeprefix("Bearer ")
+        owner = next(owner for owner, expected in self.tokens.items() if expected == token)
+        self.assertEqual(request.url.path, "/rest/v1/residents")
+        self.assertEqual(request.headers["apikey"], self.settings.publishable_key)
+        self.assertEqual(request.url.params["profile_id"], "eq." + owner)
+        self.assertEqual(request.url.params["select"], "profile_id,status,verified_at")
+        return httpx.Response(200, json=self.resident_records[owner])
 
     def report_handler(self, request):
         self.requests.append(request)
@@ -92,10 +107,11 @@ class CloudTests(unittest.TestCase):
         limit = int(request.url.params["limit"])
         return httpx.Response(200, json=rows[offset:offset + limit])
 
-    def client(self, *, report_handler=None, auth_handler=None):
+    def client(self, *, report_handler=None, auth_handler=None, residents_handler=None):
         client = TestClient(create_app(
             self.settings, auth_transport=httpx.MockTransport(auth_handler or self.auth_handler),
             reports_transport=httpx.MockTransport(report_handler or self.report_handler), media_services=self.media,
+            residents_transport=httpx.MockTransport(residents_handler or self.residents_handler),
         ))
         client.__enter__()
         self.addCleanup(client.__exit__, None, None, None)
@@ -116,6 +132,7 @@ class CloudTests(unittest.TestCase):
             self.assertEqual(client.get("/health").json(), {"status": "ok"})
             self.assertEqual(client.get("/").status_code, 200)
         self.assertEqual(self.requests + self.auth_requests, [])
+        self.assertEqual(self.residency_requests, [])
 
     def test_missing_token_rejects_every_protected_endpoint_before_side_effects(self):
         client = self.client()
@@ -126,6 +143,7 @@ class CloudTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 401)
                 self.assertEqual(response.headers["www-authenticate"], "Bearer")
         self.assertEqual(self.media.uploads + self.media.analyses + self.requests, [])
+        self.assertEqual(self.residency_requests, [])
 
     def test_invalid_expired_wrong_project_and_wrong_audience_tokens_are_rejected(self):
         client = self.client()
@@ -156,6 +174,33 @@ class CloudTests(unittest.TestCase):
         self.assertEqual(len(self.media.analyses), 1)
         self.assertNotIn("..", self.media.uploads[0][0])
         self.assertEqual(self.requests[0].headers["prefer"], "return=representation")
+        self.assertEqual(len(self.residency_requests), 1)
+
+    def test_unbound_inactive_and_unverified_accounts_cannot_use_report_api(self):
+        cases = [
+            ("unbound", []),
+            ("inactive", [{"profile_id": OWNER_A, "status": "inactive", "verified_at": "2026-10-14T01:00:00Z"}]),
+            ("unverified", [{"profile_id": OWNER_A, "status": "active", "verified_at": None}]),
+        ]
+        for label, rows in cases:
+            with self.subTest(label=label):
+                def handler(request, rows=rows):
+                    self.residency_requests.append(request)
+                    return httpx.Response(200, json=rows)
+                response = self.submit(self.client(residents_handler=handler))
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(response.json(), {"detail": "An active verified resident account is required"})
+                self.assertEqual(self.media.uploads + self.media.analyses + self.requests, [])
+
+    def test_resident_directory_failure_is_redacted_and_fails_closed(self):
+        def unavailable(request):
+            self.residency_requests.append(request)
+            return httpx.Response(403, json={"message": self.tokens[OWNER_A]})
+        response = self.client(residents_handler=unavailable).get("/api/v1/reports", headers=self.headers())
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"detail": "Resident verification service unavailable"})
+        self.assertNotIn(self.tokens[OWNER_A], response.text)
+        self.assertEqual(self.requests, [])
 
     def test_client_supplied_owner_is_rejected_before_upload(self):
         response = self.submit(self.client(), fields={"user_id": OWNER_B})
