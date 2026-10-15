@@ -46,7 +46,7 @@ export default function ManagementDashboard() {
       </h1>
 
       <p className="text-sm text-muted-foreground">
-        Setia Eco Park · Today, 14 October
+        KL East · Today, 14 October
       </p>
 
       <div className="grid gap-5 sm:grid-cols-3">

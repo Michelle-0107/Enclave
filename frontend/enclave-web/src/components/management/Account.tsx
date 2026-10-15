@@ -26,7 +26,7 @@ export default function Account() {
         </h2>
 
         <p className="text-sm text-muted-foreground">
-          Setia Eco Park · Management
+          KL East · Management
         </p>
       </section>
 
