@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 
 const menuItems = [
@@ -11,19 +12,17 @@ const menuItems = [
 export default function AccountScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.eyebrow}>YOUR ENCLAVE</Text>
-
       <Text style={styles.title}>My account.</Text>
 
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>E</Text>
+          <Text style={styles.avatarText}>F</Text>
         </View>
 
         <View style={styles.profileInfo}>
-          <Text style={styles.name}>Resident</Text>
+          <Text style={styles.name}>Florence</Text>
           <Text style={styles.subtitle}>
-            Sign-in will be connected later.
+            Verified community resident
           </Text>
         </View>
       </View>
@@ -38,28 +37,43 @@ export default function AccountScreen() {
             ]}
           >
             <Text style={styles.menuLabel}>{item}</Text>
-            <Text style={styles.comingSoon}>Coming next</Text>
+
+            <Ionicons
+              name="chevron-forward-outline"
+              size={18}
+              color={colors.muted}
+            />
           </View>
         ))}
       </View>
+
+      <View
+        accessibilityRole="button"
+        accessibilityLabel="Log out"
+        accessibilityState={{ disabled: true }}
+        style={styles.logoutButton}
+      >
+        <Ionicons
+          name="log-out-outline"
+          size={20}
+          color={colors.navy}
+        />
+        <Text style={styles.logoutText}>Log out</Text>
+      </View>
+
+      <Text style={styles.demoNote}>
+        Demo profile. Account actions will be connected next.
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 20,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 2,
-    color: colors.muted,
-  },
+  container: { gap: 24 },
   title: {
-    fontSize: 34,
+    fontSize: 30,
+    lineHeight: 38,
     fontWeight: '700',
-    lineHeight: 42,
     color: colors.navy,
   },
   profileCard: {
@@ -71,30 +85,27 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '600',
     color: colors.white,
   },
-  profileInfo: {
-    flex: 1,
-    gap: 6,
-  },
+  profileInfo: { flex: 1, gap: 7 },
   name: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.navy,
   },
   subtitle: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 19,
     color: colors.muted,
   },
   menu: {
@@ -105,20 +116,42 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   menuRow: {
-    paddingVertical: 20,
-    gap: 6,
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   divider: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   menuLabel: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.navy,
   },
-  comingSoon: {
-    fontSize: 12,
+  logoutButton: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.navy,
+    opacity: 0.5,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  demoNote: {
+    fontSize: 11,
+    lineHeight: 18,
+    textAlign: 'center',
     color: colors.muted,
   },
 });

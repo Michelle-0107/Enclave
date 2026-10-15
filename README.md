@@ -2,11 +2,11 @@
 
 AI-powered community issue reporting and safety platform
 
-The cloud API implements [single-community resident registration](backend/RESIDENT_REGISTRATION_MVP.md) with FastAPI-generated email OTPs and Resend delivery. After invitation-bound OTP verification, it authenticates or creates a Supabase account, signs in, and atomically binds the resident before returning the session. Start with the credential-free [local sandbox and setup guide](backend/REGISTRATION_TESTING.md).
+The cloud API implements [single-community resident registration](backend/docs/registration/RESIDENT_REGISTRATION_MVP.md) with FastAPI-generated email OTPs and Resend delivery. After invitation-bound OTP verification, it authenticates or creates a Supabase account, signs in, and atomically binds the resident before returning the session. Start with the credential-free [local sandbox and setup guide](backend/docs/registration/REGISTRATION_TESTING.md).
 
-For server setup, run `python -m backend.setup_registration` to prepare the private OTP secret, then `python -m backend.check_registration` to check configuration without sending email or creating accounts. The [registration handoff](backend/REGISTRATION_HANDOFF.md) covers the three remaining key/sender fields, trusted management initialization, and first real signup. Add `--check-database` to explicitly probe the installed RPC without changing rows.
+For server setup, run `python -m backend.tools.setup_registration` to prepare the private OTP secret, then `python -m backend.tools.check_registration` to check configuration without sending email or creating accounts. The [registration handoff](backend/docs/registration/REGISTRATION_HANDOFF.md) covers the three remaining key/sender fields, trusted management initialization, and first real signup. Add `--check-database` to explicitly probe the installed RPC without changing rows.
 
-The supplied post-application schema metadata was reviewed in [REGISTRATION_SCHEMA_REVIEW.md](backend/REGISTRATION_SCHEMA_REVIEW.md). The user has applied the registration table/profile SQL and reports applying SQL 005; anonymous transition-RPC denial is verified. Hosted registration requires server-only credentials and the approved management register. Local PostgreSQL transaction/RLS tests pass; live Resend/Supabase Auth integration and the other feature-table policies remain rollout work.
+The supplied post-application schema metadata was reviewed in [REGISTRATION_SCHEMA_REVIEW.md](backend/docs/registration/REGISTRATION_SCHEMA_REVIEW.md). The user has applied the registration table/profile SQL and reports applying SQL 005; anonymous transition-RPC denial is verified. Hosted registration requires server-only credentials and the approved management register. Local PostgreSQL registration tests pass; live Resend/Supabase Auth integration and SQL 006 feature-table RLS still require staging validation.
 
 ## Requirements
 
@@ -14,7 +14,7 @@ The supplied post-application schema metadata was reviewed in [REGISTRATION_SCHE
 
 ## Backend implementations
 
-- The cloud backend is `backend.main:app`, uses root `requirements.txt`, verifies Supabase JWTs, and exposes owner-only reports with the existing S3/AI submission pipeline. See its [API contract](backend/API_CONTRACT.md).
+- The cloud backend is `backend.main:app`, uses root `requirements.txt`, verifies Supabase JWTs, and restricts report routes to active verified residents while retaining owner-only report access and the S3/AI submission pipeline. See its [API contract](backend/docs/api/API_CONTRACT.md).
 - Root `main:app` re-exports that same application for the team's Render/Docker startup command. The older standalone report router is retained as source history and is not mounted; it must not be registered alongside the protected routes.
 - The local workflow backend is in `backend/local/` and uses its own `requirements.txt`, local authentication, and SQLite. It supports report ownership, management review, maintenance status changes, and action history without a cloud account.
 
@@ -64,24 +64,24 @@ python -m uvicorn backend.main:app --reload
 
 Copy the blank root `.env.example` to `.env`, then set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. `SUPABASE_KEY` is no longer used by this application. JWT verification and report reads do not require AWS/Gemini settings; photo submission additionally requires configured S3 access and bucket settings.
 
-Ask the project owner to run the [read-only schema and policy inspection](backend/sql/inspect_report_configuration.sql) in the Enclave project's SQL Editor first. Review its results before adapting the [proposed ownership migration](backend/sql/001_report_ownership.sql) and [transactional RLS tests](backend/sql/test_report_ownership.sql). The proposed migration disables anonymous report access and signed-in update/delete; review existing management and public map policies before applying it.
+Before resident-only feature access is enabled in Supabase, ask the project owner to run the [read-only feature access inspection](backend/sql/inspect_feature_access.sql) in the Enclave project's SQL Editor and compare the result with the current schema. Review [SQL 006](backend/sql/006_active_resident_feature_rls.sql) before applying it in staging, then run its [transactional RLS tests](backend/sql/test_report_ownership.sql). The earlier SQL 001 is superseded. SQL 006 blocks direct client access for unbound/inactive residents, makes reports owner-only, and limits notification updates to `is_read`; it does not add management review or public map APIs.
 
 ```powershell
 python -B -m unittest -q backend.tests.test_cloud
-python -B -m backend.check_session
+python -B -m backend.tools.check_session
 ```
 
-For registration practice without cloud credentials, run `python -m backend.registration_demo` and open http://127.0.0.1:8002/docs. See the [registration testing guide](backend/REGISTRATION_TESTING.md) for synthetic inputs, real server configuration, and SQL installation. The sandbox uses fake tokens; the main app requires real Supabase JWTs.
+For registration practice without cloud credentials, run `python -m backend.registration.demo` and open http://127.0.0.1:8002/docs. See the [registration testing guide](backend/docs/registration/REGISTRATION_TESTING.md) for synthetic inputs, real server configuration, and SQL installation. The sandbox uses fake tokens; the main app requires real Supabase JWTs.
 
-For local Swagger testing, explicitly request token output with `python -B -m backend.check_session --show-token`. The password stays hidden, and tokens are not printed by default.
+For local Swagger testing, explicitly request token output with `python -B -m backend.tools.check_session --show-token`. The password stays hidden, and tokens are not printed by default.
 
 ### Test photo storage independently
 
 Set `S3_BUCKET_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` in the root `.env`. Add `AWS_SESSION_TOKEN` only when using temporary credentials. The existing `AWS_ACCESS_KEY` alias remains supported; do not configure different IDs under both names. Keep keys out of Git.
 
 ```powershell
-python -B -m backend.check_storage
-python -B -m backend.check_storage --upload-test
+python -B -m backend.tools.check_storage
+python -B -m backend.tools.check_storage --upload-test
 python -B -m unittest -q backend.tests.test_cloud backend.tests.test_storage
 ```
 

@@ -9,7 +9,7 @@ from uuid import UUID
 import httpx
 import jwt
 
-from .config import Settings
+from ..config import Settings
 
 
 JWKS_CACHE_SECONDS = 300

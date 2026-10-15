@@ -5,11 +5,11 @@ import hashlib
 import threading
 from uuid import UUID, uuid4
 
-from .auth import VerifiedUser, InvalidCredentials
-from .config import Settings
-from .registration import RegistrationService
-from .registration_config import RegistrationSettings
-from .registration_models import AuthSession
+from ..auth import VerifiedUser, InvalidCredentials
+from ..config import Settings
+from .service import RegistrationService
+from .settings import RegistrationSettings
+from .contracts import AuthSession
 
 
 MANAGER = UUID("00000000-0000-4000-8000-000000000101")
@@ -136,7 +136,7 @@ class FakeDelivery:
         pass
 
     def send_invite_email(self, email, code, challenge_id):
-        from .services.email_service import EmailUnavailable
+        from ..services.email_service import EmailUnavailable
         if self.fail:
             raise EmailUnavailable()
         self.sent.append((email, code, challenge_id))
@@ -191,9 +191,9 @@ def create_demo_app():
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
     from fastapi.exceptions import RequestValidationError
-    from .routers.auth import router
-    from .registration import RegistrationRejected
-    from .registration_clients import RegistrationUnavailable
+    from ..routers.auth import router
+    from .service import RegistrationRejected
+    from .clients import RegistrationUnavailable
     _, registration, _, _, _ = demo_components()
 
     @asynccontextmanager

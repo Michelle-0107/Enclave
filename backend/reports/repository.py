@@ -4,8 +4,8 @@ from uuid import UUID
 
 import httpx
 
-from .config import Settings
-from .models import ReportResponse
+from ..config import Settings
+from ..models import ReportResponse
 
 
 REPORT_COLUMNS = "ticket_id,user_id,description,status,created_at,latitude,longitude,image_url,category,priority,is_approved"

@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from dotenv import dotenv_values
 
 
-ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 SERVICE_NAMES = ("AWS_REGION", "AWS_DEFAULT_REGION", "AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY",
                  "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "S3_BUCKET_NAME", "GEMINI_API_KEY")
 

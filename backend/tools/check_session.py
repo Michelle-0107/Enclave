@@ -8,7 +8,7 @@ from uuid import UUID
 
 import httpx
 
-from .config import ConfigurationError, Settings, load_settings
+from ..config import ConfigurationError, Settings, load_settings
 
 
 @dataclass(frozen=True)

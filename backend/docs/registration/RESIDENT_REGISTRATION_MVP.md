@@ -1,6 +1,6 @@
 # Single-community resident registration
 
-Status: implemented in cloud API v0.4.0. The user applied the three-table DDL and profile-access SQL on 2026-10-14; the subsequent metadata snapshot matches the intended tables, constraints, grants, and policies. SQL 005 is reported applied on 2026-10-15, and a no-mutation probe confirms anonymous RPC denial. Mock API/provider tests and dedicated PostgreSQL transaction/RLS tests pass. Live delivery/Auth integration remains unverified. See [REGISTRATION_HANDOFF.md](REGISTRATION_HANDOFF.md) for prepared private settings and management setup, and [REGISTRATION_TESTING.md](REGISTRATION_TESTING.md) for local practice. This is the current design for Enclave's first community and supersedes the earlier six-table alternative in `RESIDENT_VERIFICATION_DESIGN.md`. Do not apply both drafts.
+Status: implemented in cloud API v0.4.0. The user applied the three-table DDL and profile-access SQL on 2026-10-14; the subsequent metadata snapshot matches the intended tables, constraints, grants, and policies. SQL 005 is reported applied on 2026-10-15, and a no-mutation probe confirms anonymous RPC denial. Mock API/provider tests and dedicated PostgreSQL transaction/RLS tests pass. Live delivery/Auth integration remains unverified. See [REGISTRATION_HANDOFF.md](REGISTRATION_HANDOFF.md) for prepared private settings and management setup, and [REGISTRATION_TESTING.md](../registration/REGISTRATION_TESTING.md) for local practice. This is the current design for Enclave's first community and supersedes the earlier six-table alternative in `RESIDENT_VERIFICATION_DESIGN.md`. Do not apply both drafts.
 
 ## Existing schema and scope
 
@@ -8,9 +8,9 @@ The initial Schema Visualizer and metadata show `profiles`, `reports`, `notifica
 
 Reuse `profiles` for account details. Add three application tables for resident registration. No additional `communities`, `community_staff`, or `resident_memberships` table is required for this single-community MVP. Reports, notifications, categories, and their existing foreign keys are outside this change.
 
-The [read-only schema inspection](sql/inspect_registration_schema.sql) was supplied and reviewed on 2026-10-14. Rerun it after applying reviewed SQL or if the schema changes. It returns metadata, not resident rows, passwords, tokens, or trigger function bodies. The CREATE TABLE draft remains deliberately strict about name conflicts; stop and inspect if another teammate has since created the tables.
+The [read-only schema inspection](../../sql/inspect_registration_schema.sql) was supplied and reviewed on 2026-10-14. Rerun it after applying reviewed SQL or if the schema changes. It returns metadata, not resident rows, passwords, tokens, or trigger function bodies. The CREATE TABLE draft remains deliberately strict about name conflicts; stop and inspect if another teammate has since created the tables.
 
-The already-applied [three-table DDL](sql/003_single_community_registration_draft.sql) matches the supplied profile key structure. The separate [profile access SQL](sql/004_profile_registration_access.sql) gives users own-profile reads and updates limited to full_name. The new [SQL 005](sql/005_registration_transitions.sql) adds a shared private rate table and service-role-only transaction RPC. FastAPI orchestrates that RPC, Resend, and Supabase Auth; do not rerun 003 when adding 005.
+The already-applied [three-table DDL](../../sql/003_single_community_registration_draft.sql) matches the supplied profile key structure. The separate [profile access SQL](../../sql/004_profile_registration_access.sql) gives users own-profile reads and updates limited to full_name. The new [SQL 005](../../sql/005_registration_transitions.sql) adds a shared private rate table and service-role-only transaction RPC. FastAPI orchestrates that RPC, Resend, and Supabase Auth; do not rerun 003 when adding 005.
 
 ## Table design
 

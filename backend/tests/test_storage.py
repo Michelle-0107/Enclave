@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError, EndpointConnectionError
 from PIL import Image
 
-from backend.check_storage import check_storage, main, validate_storage_settings
+from backend.tools.check_storage import check_storage, main, validate_storage_settings
 from backend.config import load_service_values
 from backend.media import MediaServices, MediaUnavailable, aws_client_options, create_aws_client
 from backend.config import Settings
@@ -78,15 +78,15 @@ class StorageTests(unittest.TestCase):
         for overrides in [{"S3_BUCKET_NAME": ""}, {"S3_BUCKET_NAME": "https://example.test/bucket"},
                           {"S3_BUCKET_NAME": "127.0.0.1"}, {"AWS_REGION": ""}, {"AWS_REGION": "bad"},
                           {"AWS_ACCESS_KEY_ID": "", "AWS_SECRET_ACCESS_KEY": ""}]:
-            with self.subTest(fields=sorted(overrides)), patch("backend.check_storage.create_aws_client") as factory:
+            with self.subTest(fields=sorted(overrides)), patch("backend.tools.check_storage.create_aws_client") as factory:
                 with self.assertRaises(ValueError):
                     check_storage({**VALUES, **overrides})
                 factory.assert_not_called()
 
     def test_default_cli_is_configuration_only_and_never_displays_credentials(self):
         output = io.StringIO()
-        with patch("backend.check_storage.load_service_values", return_value=VALUES), \
-             patch("backend.check_storage.check_storage") as checker, redirect_stdout(output):
+        with patch("backend.tools.check_storage.load_service_values", return_value=VALUES), \
+             patch("backend.tools.check_storage.check_storage") as checker, redirect_stdout(output):
             self.assertEqual(main([]), 0)
         checker.assert_not_called()
         self.assertIn("No AWS requests", output.getvalue())
@@ -153,8 +153,8 @@ class StorageTests(unittest.TestCase):
         client.delete_object.side_effect = self.error("DeleteObject")
         result = check_storage(VALUES, client=client)
         output = io.StringIO()
-        with patch("backend.check_storage.load_service_values", return_value=VALUES), \
-             patch("backend.check_storage.check_storage", return_value=result), redirect_stdout(output):
+        with patch("backend.tools.check_storage.load_service_values", return_value=VALUES), \
+             patch("backend.tools.check_storage.check_storage", return_value=result), redirect_stdout(output):
             self.assertEqual(main(["--upload-test"]), 1)
         self.assertTrue(result.uploaded and result.verified)
         self.assertFalse(result.cleaned_up)

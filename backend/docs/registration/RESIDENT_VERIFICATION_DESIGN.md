@@ -10,7 +10,7 @@ FastAPI generates and verifies six-digit email OTPs. Resend delivers the email t
 
 Design assumption: management records or approves each person's individual email before issuing an email-bound invitation. If the existing register only contains names and units, collect/review the email first; this draft does not automatically approve a self-entered name or address. The manual-review path can create the approved record and invitation after that review.
 
-Use [sql/002_resident_verification_draft.sql](sql/002_resident_verification_draft.sql) as an additive proposal for the project owner's review. Do not run it before reviewing existing table names, roles, grants, and onboarding requirements. It does not alter `auth.users`, `reports`, or their existing policies.
+Use [sql/002_resident_verification_draft.sql](../../sql/002_resident_verification_draft.sql) as an additive proposal for the project owner's review. Do not run it before reviewing existing table names, roles, grants, and onboarding requirements. It does not alter `auth.users`, `reports`, or their existing policies.
 
 ## Tables
 

@@ -7,10 +7,10 @@ import json
 import secrets
 from uuid import UUID, uuid4
 
-from .registration_clients import AccountRejected, RegistrationStore, RegistrationUnavailable, SupabaseSignup
-from .registration_config import RegistrationSettings
-from .registration_models import OTPAccepted, SignupResult, InvitationResult, Residency, VerifySignup
-from .services.email_service import EmailUnavailable, ResendDelivery
+from .clients import AccountRejected, RegistrationStore, RegistrationUnavailable, SupabaseSignup
+from .settings import RegistrationSettings
+from .contracts import OTPAccepted, SignupResult, InvitationResult, Residency, VerifySignup
+from ..services.email_service import EmailUnavailable, ResendDelivery
 
 
 class RegistrationRejected(ValueError):

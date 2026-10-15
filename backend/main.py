@@ -19,8 +19,9 @@ from .config import ConfigurationError, Settings, load_settings
 from .media import MediaServices, MediaUnavailable
 from .models import AIAnalysis, CurrentUserResponse, ReportCreatedResponse, ReportListResponse, ReportResponse
 from .reports import ReportAccessDenied, ReportsRepository, ReportsUnavailable
+from .residents import ResidentAccessRepository, ResidentDirectoryUnavailable
 from .registration import RegistrationRejected, RegistrationService
-from .registration_clients import RegistrationUnavailable
+from .registration.clients import RegistrationUnavailable
 from .registration_config import load_registration_settings
 from .routers.auth import router as registration_router
 
@@ -51,9 +52,22 @@ def current_user(
     return AuthenticatedUser(verified.user_id, verified.email, credentials.credentials)
 
 
+async def active_resident(
+    request: Request, user: AuthenticatedUser = Depends(current_user),
+) -> AuthenticatedUser:
+    try:
+        eligible = await request.app.state.residents.is_active_verified_resident(user.access_token, user.user_id)
+    except ResidentDirectoryUnavailable:
+        raise HTTPException(503, "Resident verification service unavailable") from None
+    if not eligible:
+        raise HTTPException(403, "An active verified resident account is required")
+    return user
+
+
 def create_app(
     settings: Settings | None = None, *, auth_transport: httpx.BaseTransport | None = None,
-    reports_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
+    reports_transport: httpx.AsyncBaseTransport | None = None,
+    residents_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
     registration_service: RegistrationService | None = None,
 ) -> FastAPI:
     @asynccontextmanager
@@ -64,8 +78,10 @@ def create_app(
             raise RuntimeError("Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the root .env.") from None
         verifier = TokenVerifier(configured, transport=auth_transport)
         repository = ReportsRepository(configured, transport=reports_transport)
+        residents = ResidentAccessRepository(configured, transport=residents_transport)
         application.state.verifier = verifier
         application.state.reports = repository
+        application.state.residents = residents
         application.state.media = media_services if media_services is not None else MediaServices(configured)
         application.state.registration = registration_service
         if registration_service is None and settings is None:
@@ -79,12 +95,13 @@ def create_app(
         finally:
             verifier.close()
             await repository.close()
+            await residents.close()
             if application.state.registration is not None:
                 application.state.registration.close()
 
     application = FastAPI(
         title="Enclave Backend API", version="0.4.0", lifespan=lifespan,
-        description="Supabase JWT authentication, resident OTP registration, owner-only reports, and S3/AI submission.",
+        description="Supabase JWT authentication, resident OTP registration, active-resident report access, and S3/AI submission.",
     )
     application.include_router(registration_router)
 
@@ -129,14 +146,18 @@ def create_app(
     def me(user: AuthenticatedUser = Depends(current_user)):
         return CurrentUserResponse(user_id=user.user_id, email=user.email)
 
-    errors = {401: {"description": "Invalid credentials."}, 403: {"description": "Database policy denied access."},
-              503: {"description": "Cloud service unavailable."}}
+    errors = {
+        401: {"description": "Invalid credentials."},
+        403: {"description": "Active residency or a database policy denied access."},
+        503: {"description": "Authentication, resident directory, or cloud service unavailable."},
+    }
 
     @application.post("/api/v1/reports", response_model=ReportCreatedResponse, status_code=201,
-                      tags=["Reports"], responses={**errors, 413: {"description": "Photo exceeds 10 MiB."},
+                      tags=["Reports"], description="Requires an active, verified resident binding. The report owner is assigned from the Supabase access token.",
+                      responses={**errors, 413: {"description": "Photo exceeds 10 MiB."},
                                                    415: {"description": "Unsupported photo type."}})
     async def submit_report(
-        request: Request, user: AuthenticatedUser = Depends(current_user),
+        request: Request, user: AuthenticatedUser = Depends(active_resident),
         description: str = Form(..., min_length=1, max_length=1000),
         latitude: float = Form(..., ge=-90, le=90), longitude: float = Form(..., ge=-180, le=180),
         file: UploadFile = File(...),
@@ -174,19 +195,22 @@ def create_app(
         record = await request.app.state.reports.create(row, user.access_token, user.user_id)
         return ReportCreatedResponse(ticket_id=ticket_id, ai_analysis=analysis, image_url=image_url, data=[record])
 
-    @application.get("/api/v1/reports", response_model=ReportListResponse, tags=["Reports"], responses=errors)
+    @application.get("/api/v1/reports", response_model=ReportListResponse, tags=["Reports"],
+                     description="Requires an active, verified resident binding and returns only that resident's reports.",
+                     responses=errors)
     async def my_reports(
-        request: Request, user: AuthenticatedUser = Depends(current_user),
+        request: Request, user: AuthenticatedUser = Depends(active_resident),
         limit: int = Query(10, ge=1, le=100), offset: int = Query(0, ge=0),
     ):
         records = await request.app.state.reports.list_for_owner(user.access_token, user.user_id, limit=limit, offset=offset)
         return ReportListResponse(items=records, limit=limit, offset=offset)
 
     @application.get("/api/v1/reports/{ticket_id}", response_model=ReportResponse, tags=["Reports"],
+                     description="Requires an active, verified resident binding and returns only that resident's report.",
                      responses={**errors, 404: {"description": "Unknown or inaccessible report."}})
     async def report_detail(
         request: Request, ticket_id: Annotated[str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")],
-        user: AuthenticatedUser = Depends(current_user),
+        user: AuthenticatedUser = Depends(active_resident),
     ):
         record = await request.app.state.reports.get_for_owner(user.access_token, user.user_id, ticket_id)
         if record is None:

@@ -1,4 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 
 type Props = {
@@ -6,30 +14,66 @@ type Props = {
 };
 
 export default function MapScreen({ onReportPress }: Props) {
+  const [start, setStart] = useState('Community Clubhouse');
+  const [destination, setDestination] = useState('');
+
   return (
     <View style={styles.container}>
-      <Text style={styles.eyebrow}>YOUR COMMUNITY</Text>
-
       <Text style={styles.title}>
         Around your{'\n'}neighbourhood.
       </Text>
 
       <Text style={styles.subtitle}>
-        Stay informed about reviewed issues nearby.
+        Reviewed issues, at a glance.
       </Text>
 
-      <View style={styles.mapPlaceholder}>
+      <View style={styles.locationCard}>
+        <Text style={styles.label}>Starting point</Text>
+
+        <TextInput
+          value={start}
+          onChangeText={setStart}
+          placeholder="Choose your starting point"
+          placeholderTextColor={colors.muted}
+          style={styles.input}
+        />
+
+        <View style={styles.divider} />
+
+        <Text style={styles.label}>End point</Text>
+
+        <TextInput
+          value={destination}
+          onChangeText={setDestination}
+          placeholder="Where would you like to go?"
+          placeholderTextColor={colors.muted}
+          style={styles.input}
+        />
+      </View>
+
+      <View style={styles.map}>
+        <Ionicons name="map-outline" size={42} color={colors.navy} />
         <Text style={styles.mapTitle}>Community map</Text>
         <Text style={styles.subtitle}>
           Map integration comes next.
         </Text>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Community conditions</Text>
-        <Text style={styles.subtitle}>
-          Issues reviewed by management will appear here.
-        </Text>
+      <View style={styles.notice}>
+        <Ionicons
+          name="alert-circle-outline"
+          size={22}
+          color="#966114"
+        />
+
+        <View style={styles.noticeContent}>
+          <Text style={styles.noticeTitle}>
+            Walkway closure · Park Entrance
+          </Text>
+          <Text style={styles.noticeText}>
+            Sample reviewed issue. Use another walkway.
+          </Text>
+        </View>
       </View>
 
       <Pressable
@@ -37,7 +81,7 @@ export default function MapScreen({ onReportPress }: Props) {
         onPress={onReportPress}
         style={({ pressed }) => [
           styles.button,
-          pressed && styles.buttonPressed,
+          pressed && styles.pressed,
         ]}
       >
         <Text style={styles.buttonText}>Report an issue</Text>
@@ -47,65 +91,81 @@ export default function MapScreen({ onReportPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 20,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 2,
-    color: colors.muted,
-  },
+  container: { gap: 20 },
   title: {
-    fontSize: 34,
+    fontSize: 30,
+    lineHeight: 38,
     fontWeight: '700',
     color: colors.navy,
-    lineHeight: 42,
   },
   subtitle: {
     fontSize: 14,
     lineHeight: 22,
     color: colors.muted,
   },
-  mapPlaceholder: {
-    minHeight: 260,
-    backgroundColor: colors.lavender,
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  mapTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.navy,
-  },
-  card: {
+  locationCard: {
     backgroundColor: colors.white,
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 20,
     gap: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  cardTitle: {
-    fontSize: 17,
+  label: {
+    fontSize: 12,
     fontWeight: '600',
     color: colors.navy,
   },
-  button: {
-    backgroundColor: colors.navy,
-    borderRadius: 16,
-    paddingVertical: 17,
-    alignItems: 'center',
+  input: {
+    fontSize: 14,
+    color: colors.navy,
+    minHeight: 44,
+    paddingVertical: 10,
   },
-  buttonPressed: {
-    opacity: 0.8,
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 8,
+  },
+  map: {
+    minHeight: 280,
+    borderRadius: 24,
+    backgroundColor: colors.lavender,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    padding: 20,
+  },
+  mapTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  notice: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  noticeContent: { flex: 1, gap: 6 },
+  noticeTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  noticeText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.muted,
+  },
+  button: {
+    minHeight: 52,
+    borderRadius: 16,
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     color: colors.white,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
+  pressed: { opacity: 0.8 },
 });

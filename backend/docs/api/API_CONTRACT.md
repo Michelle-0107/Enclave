@@ -10,7 +10,7 @@ Invitation-bound signup uses the registration endpoints below and returns a Supa
 Authorization: Bearer <supabase_access_token>
 ```
 
-The API validates the signature against the configured project's public JWKS, issuer, audience, expiry, issued-at time, required claims, authenticated database role, and UUID user ID. Keys are cached for five minutes; unknown key IDs have a 30-second refresh cooldown. This checks issued tokens without querying session revocation on every request. Signout does not immediately invalidate an already issued unexpired JWT.
+The API validates the signature against the configured project's public JWKS, issuer, audience, expiry, issued-at time, required claims, authenticated database role, and UUID user ID. Keys are cached for five minutes; unknown key IDs have a 30-second refresh cooldown. This checks issued tokens without querying session revocation on every request. Signout does not immediately invalidate an already issued unexpired JWT. Report submission and reads additionally require a matching resident row with `status = active` and non-null `verified_at`; `/auth/me` remains available to any valid authenticated account.
 
 Normal Auth/report operations use `SUPABASE_PUBLISHABLE_KEY` and the individual user's JWT. Server-only registration clients separately require an Admin key; that key is never used for resident report requests. The old `SUPABASE_KEY` variable is no longer read by this application. Database report requests include the individual user's JWT in per-request headers, avoiding a shared mutable Supabase login session. Every report read also includes the verified owner filter, and mismatched upstream ownership is rejected.
 
@@ -21,11 +21,11 @@ Normal Auth/report operations use `SUPABASE_PUBLISHABLE_KEY` and the individual 
 | GET | `/` | Public | 200 welcome message |
 | GET | `/health` | Public | 200 `{"status":"ok"}` |
 | GET | `/auth/me` | Authenticated | 200 user ID and email |
-| POST | `/api/v1/reports` | Authenticated | 201 report submission envelope |
-| GET | `/api/v1/reports` | Authenticated owner | 200 paginated own reports |
-| GET | `/api/v1/reports/{ticket_id}` | Authenticated owner | 200 own report, or 404 |
+| POST | `/api/v1/reports` | Active verified resident | 201 report submission envelope |
+| GET | `/api/v1/reports` | Active verified resident; own reports only | 200 paginated own reports |
+| GET | `/api/v1/reports/{ticket_id}` | Active verified resident; own report only | 200 own report, or 404 |
 
-Health is liveness only. Missing, malformed, invalid, or expired tokens return 401 with `WWW-Authenticate: Bearer`. Verification-key failures return 503. Database policy/grant rejection returns 403; other database failures return 503. Upstream error bodies and credentials are not echoed.
+Health is liveness only. Missing, malformed, invalid, or expired tokens return 401 with `WWW-Authenticate: Bearer`. Verification-key or resident-directory failures return 503. Accounts without an active, verified resident binding return 403 before report upload/AI work. Database policy/grant rejection also returns 403; other database failures return 503. Upstream error bodies and credentials are not echoed.
 
 ### GET /auth/me
 
@@ -59,7 +59,7 @@ This milestone retains the team's current storage behavior: report `description`
 
 An uploaded S3 object can remain if a later AI/database operation fails. S3 URL accessibility depends on the bucket's existing policy; report ownership rules do not establish private photo delivery. Photo content validation and private delivery can be refined with the storage owner.
 
-Configure photo storage with `S3_BUCKET_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`; temporary credentials also need `AWS_SESSION_TOKEN`. The existing `AWS_ACCESS_KEY` alias is supported, and the deployment's normal IAM credential chain remains available when no explicit pair is set. Incomplete or conflicting explicit key settings fail the storage operation without displaying credential values. Run `python -B -m backend.check_storage` for a configuration-only check, or explicitly add `--upload-test` to upload/read/clean up one generated test PNG independently of Supabase and AI. This is a developer CLI, not a new API endpoint.
+Configure photo storage with `S3_BUCKET_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`; temporary credentials also need `AWS_SESSION_TOKEN`. The existing `AWS_ACCESS_KEY` alias is supported, and the deployment's normal IAM credential chain remains available when no explicit pair is set. Incomplete or conflicting explicit key settings fail the storage operation without displaying credential values. Run `python -B -m backend.tools.check_storage` for a configuration-only check, or explicitly add `--upload-test` to upload/read/clean up one generated test PNG independently of Supabase and AI. This is a developer CLI, not a new API endpoint.
 
 ### GET /api/v1/reports
 
@@ -83,13 +83,11 @@ Ticket IDs contain 1–128 ASCII letters, digits, underscores, or hyphens. Unkno
 
 The existing `public.reports` must contain `ticket_id`, `user_id`, `description`, `status`, `created_at`, `latitude`, `longitude`, `image_url`, `category`, `priority`, and `is_approved`. Ownership SQL expects UUID `user_id` and boolean `is_approved`; defaults, types, ticket length, and foreign keys must be reviewed in the project. The migration stops if key types are incompatible.
 
-Review [sql/001_report_ownership.sql](sql/001_report_ownership.sql) with the project owner before running it in Supabase SQL Editor. It enables RLS, grants signed-in select/insert, requires matching owner and unapproved pending submissions, and adds restrictive guards against broader existing policies. It disables anonymous access and signed-in update/delete for this milestone. Dashboard administration and service-role access are not changed. Business-role management writes and public map access need a later, explicit policy design.
-
-[sql/test_report_ownership.sql](sql/test_report_ownership.sql) checks two synthetic users, cross-owner reads and inserts, approval tampering, and anonymous visibility in a rolled-back transaction. Review first and run in a staging project where possible. These scripts have not been applied automatically to your project; zero-row column probes do not verify live RLS policies.
+Run [sql/inspect_feature_access.sql](../../sql/inspect_feature_access.sql) first and compare its output with the reviewed schema. Then review [sql/006_active_resident_feature_rls.sql](../../sql/006_active_resident_feature_rls.sql) with the project owner before applying it in Supabase SQL Editor. SQL 006 enables RLS and requires active, verified resident binding for report, notification, and category Data API access. Reports remain owner-only and can only be inserted as pending/unapproved; residents can read their own notifications and update only `is_read`; categories are read-only. Anonymous client access is revoked. It also adds restrictive guards against broader existing policies. It does not grant management report review or public map access; those need their own API and policy design. Run [sql/test_report_ownership.sql](../../sql/test_report_ownership.sql) after SQL 006 in staging to exercise two-user isolation, inactive/unbound denial, notification privacy, and forbidden writes. The older SQL 001 is superseded and should not be used for the resident launch. These scripts have not been applied automatically to your project.
 
 ## Resident registration (v0.4.0)
 
-See [REGISTRATION_TESTING.md](REGISTRATION_TESTING.md) for the local sandbox, SQL 005, server settings, and full lifecycle.
+See [REGISTRATION_TESTING.md](../registration/REGISTRATION_TESTING.md) for the local sandbox, SQL 005, server settings, and full lifecycle.
 
 | Method/path | Authentication | Contract |
 | --- | --- | --- |
@@ -110,21 +108,21 @@ python -m pip install -r requirements.txt
 python -m uvicorn backend.main:app --reload
 python -B -m unittest -q backend.tests.test_cloud
 python -B -m unittest -q backend.tests.test_storage
-python -B -m backend.export_openapi
+python -B -m backend.tools.export_openapi
 ```
 
-The 35 offline tests use ephemeral signing keys, two synthetic users, and mocked Supabase/S3/AI services. Real storage, AI provider availability, and live RLS are separate integration checks.
+The 37 cloud API offline tests use ephemeral signing keys, synthetic residents, and mocked Supabase/S3/AI services. Real storage, AI provider availability, and live RLS are separate integration checks.
 
 In another terminal, test an existing confirmed Supabase App account:
 
 ```bash
-python -B -m backend.check_session
+python -B -m backend.tools.check_session
 ```
 
 To explicitly display the verified access token for local Swagger Authorize:
 
 ```bash
-python -B -m backend.check_session --show-token
+python -B -m backend.tools.check_session --show-token
 ```
 
 Tokens are hidden by default; the optional output is a real credential and should stay out of shared screenshots and files. The helper creates one login session but no accounts or reports. Its API target is loopback only, with optional `--port 8001` or `--port 8002`.
