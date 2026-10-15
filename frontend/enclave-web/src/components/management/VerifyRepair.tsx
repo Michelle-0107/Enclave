@@ -1,10 +1,6 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import type { ManagementReport } from '@/lib/mock-reports';
 
 type Props = {
@@ -12,8 +8,6 @@ type Props = {
 };
 
 export default function VerifyRepair({ report }: Props) {
-  const [preview, setPreview] = useState(false);
-
   return (
     <div className="flex flex-col gap-7">
       <Link
@@ -77,13 +71,12 @@ export default function VerifyRepair({ report }: Props) {
       </p>
 
       <div className="flex flex-col gap-3.5 sm:flex-row">
-        <Button
-          type="button"
-          onClick={() => setPreview(true)}
-          className="min-h-[52px] rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground sm:w-[280px]"
+        <Link
+          href={`/management/reports/${report.id}/resolved`}
+          className="flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 text-center text-sm font-semibold text-primary-foreground hover:opacity-90 sm:w-[280px]"
         >
           Mark resolved &amp; notify
-        </Button>
+        </Link>
 
         <Link
           href={`/management/reports/${report.id}/rework`}
@@ -93,27 +86,10 @@ export default function VerifyRepair({ report }: Props) {
         </Link>
       </div>
 
-      {preview && (
-        <div
-          role="status"
-          className="rounded-2xl border border-border bg-white p-5"
-        >
-          <p className="text-sm font-semibold text-primary">
-            Resolution preview
-          </p>
-
-          <p className="mt-3 text-sm text-muted-foreground">
-            #{report.id} · {report.title}
-          </p>
-
-          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            Demo only. The report status, live map and
-            notifications have not changed. Backend integration
-            must require management verification before
-            publishing the repair.
-          </p>
-        </div>
-      )}
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Demo navigation only. Resolving a report and sending
+        notifications require backend integration.
+      </p>
     </div>
   );
 }
