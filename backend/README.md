@@ -17,6 +17,10 @@ backend/
     models.py               Report and current-user response contracts
     repository.py           Owner-scoped Supabase persistence
     media.py                S3 upload and existing Bedrock/Gemini integration
+    map.py                  Approved community issue GeoJSON projection
+    map_demo.py             Isolated synthetic map practice
+    moderation.py           Management review and report history
+    workflow_demo.py        Isolated report review practice
   registration/
     __init__.py
     contracts.py            Signup, invitation, and residency contracts
@@ -45,7 +49,9 @@ python -B -m backend.tools.check_registration
 python -B -m backend.tools.check_session --port 8001 --show-token
 python -B -m backend.tools.check_storage
 python -B -m backend.registration.demo
-python -B -m unittest -q backend.tests.test_cloud backend.tests.test_entrypoint backend.tests.test_registration backend.tests.test_registration_setup backend.tests.test_storage
+python -B -m backend.reports.map_demo
+python -B -m backend.reports.workflow_demo
+python -B -m unittest -q backend.tests.test_report_workflow backend.tests.test_map backend.tests.test_cloud backend.tests.test_entrypoint backend.tests.test_registration backend.tests.test_registration_setup backend.tests.test_storage
 ```
 
 The signup demo uses synthetic accounts/email. Live integration requires the
@@ -62,3 +68,7 @@ updates: two in `routers/email.py` and one in `services/email_service.py`.
 The former `registration_config` and `registration_models` wrappers are no
 longer needed; imports now reference `registration/settings.py` and
 `registration/contracts.py` directly.
+
+Community map contract and practice: [COMMUNITY_MAP_TESTING.md](docs/api/COMMUNITY_MAP_TESTING.md).
+
+Management review contract and practice: [REPORT_WORKFLOW_TESTING.md](docs/api/REPORT_WORKFLOW_TESTING.md).

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Path, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Path, Query, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -19,6 +19,9 @@ from .core.config import ConfigurationError, Settings, load_settings
 from .reports.media import MediaServices, MediaUnavailable
 from .reports.models import AIAnalysis, CurrentUserResponse, ReportCreatedResponse, ReportListResponse, ReportResponse
 from .reports.repository import ReportAccessDenied, ReportsRepository, ReportsUnavailable
+from .reports.moderation import (ReportWorkflow, ReportStatus, StatusUpdate, StatusUpdated,
+                                 ManagementReportList, ReportHistory, WorkflowUnavailable, WorkflowRejected)
+from .reports.map import CommunityMapRepository, CommunityMapResponse, CommunityMapUnavailable, MapBounds
 from .registration.residents import ResidentAccessRepository, ResidentDirectoryUnavailable
 from .registration import RegistrationRejected, RegistrationService
 from .registration.clients import RegistrationUnavailable
@@ -69,6 +72,8 @@ def create_app(
     settings: Settings | None = None, *, auth_transport: httpx.BaseTransport | None = None,
     reports_transport: httpx.AsyncBaseTransport | None = None,
     residents_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
+    map_transport: httpx.AsyncBaseTransport | None = None,
+    workflow_transport: httpx.AsyncBaseTransport | None = None,
     registration_service: RegistrationService | None = None,
 ) -> FastAPI:
     
@@ -94,6 +99,8 @@ def create_app(
         application.state.verifier = verifier
         application.state.reports = repository
         application.state.residents = residents
+        application.state.community_map = CommunityMapRepository(configured, transport=map_transport)
+        application.state.report_workflow = ReportWorkflow(configured, transport=workflow_transport)
         application.state.media = media_services if media_services is not None else MediaServices(configured)
         application.state.registration = registration_service
         if registration_service is None and settings is None:
@@ -108,6 +115,8 @@ def create_app(
             verifier.close()
             await repository.close()
             await residents.close()
+            await application.state.community_map.close()
+            await application.state.report_workflow.close()
             if application.state.registration is not None:
                 application.state.registration.close()
 
@@ -142,6 +151,16 @@ def create_app(
     @application.exception_handler(ReportAccessDenied)
     async def denied_handler(request, error):
         return JSONResponse(status_code=403, content={"detail": "Report access denied by database policy"})
+
+    @application.exception_handler(WorkflowUnavailable)
+    async def workflow_unavailable(request, error):
+        return JSONResponse(status_code=503, content={"detail": "Report workflow unavailable; confirm SQL 007 is installed"},
+                            headers={"Cache-Control": "no-store"})
+
+    @application.exception_handler(WorkflowRejected)
+    async def workflow_rejected(request, error):
+        return JSONResponse(status_code=error.status, content={"detail": error.message},
+                            headers={"Cache-Control": "no-store"})
 
     @application.get("/", tags=["Health"])
     def root():
@@ -228,6 +247,71 @@ def create_app(
         if record is None:
             raise HTTPException(404, "Report not found")
         return record
+
+    @application.get(
+        "/api/v1/map/issues", response_model=CommunityMapResponse, tags=["Community Map"],
+        description="Approved community issue points for active verified residents. Excludes reporter identity, descriptions, and images.",
+        responses={401: {"description": "Invalid credentials."},
+                   403: {"description": "Active verified residency required."},
+                   503: {"description": "Community map or residency service unavailable."}},
+    )
+    async def community_issues(
+        request: Request, response: Response, user: AuthenticatedUser = Depends(active_resident),
+        bbox: str | None = Query(default=None, max_length=100,
+                                description="west,south,east,north in longitude/latitude degrees; no antimeridian crossing."),
+        include_resolved: bool = Query(default=False, description="Include approved resolved issues as historical points."),
+        limit: int = Query(default=100, ge=1, le=200), offset: int = Query(default=0, ge=0),
+    ):
+        response.headers["Cache-Control"] = "private, no-store"
+        try:
+            bounds = MapBounds.parse(bbox)
+        except (ValueError, OverflowError):
+            raise HTTPException(422, "bbox must be west,south,east,north within valid longitude/latitude ranges") from None
+        try:
+            return await request.app.state.community_map.list_issues(
+                bounds=bounds, limit=limit, offset=offset, include_resolved=include_resolved)
+        except CommunityMapUnavailable:
+            raise HTTPException(503, "Community map unavailable", headers={"Cache-Control": "no-store"}) from None
+
+    workflow_errors = {401: {"description": "Invalid credentials."},
+                       403: {"description": "Management role or active verified residency required."},
+                       404: {"description": "Unknown or inaccessible report."},
+                       409: {"description": "Stale status; refresh before retrying."},
+                       503: {"description": "Report workflow unavailable; confirm SQL 007 is installed."}}
+
+    @application.get("/api/v1/management/reports", response_model=ManagementReportList,
+                     tags=["Management Reports"], responses=workflow_errors,
+                     description="Management accounts only. Role is checked in the database, without requiring a resident binding.")
+    async def management_reports(
+        request: Request, response: Response, user: AuthenticatedUser = Depends(current_user),
+        status: ReportStatus | None = Query(default=None),
+        limit: int = Query(default=20, ge=1, le=100), offset: int = Query(default=0, ge=0),
+    ):
+        response.headers["Cache-Control"] = "private, no-store"
+        return await request.app.state.report_workflow.list_reports(user.user_id, status=status, limit=limit, offset=offset)
+
+    @application.patch("/api/v1/management/reports/{ticket_id}/status", response_model=StatusUpdated,
+                       tags=["Management Reports"], responses=workflow_errors,
+                       description="Management only. Updates status and audit history atomically. Notes are visible to the report owner. Resolution requires repair_verified=true.")
+    async def update_report_status(
+        request: Request, response: Response, body: StatusUpdate,
+        ticket_id: Annotated[str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")],
+        user: AuthenticatedUser = Depends(current_user),
+    ):
+        response.headers["Cache-Control"] = "private, no-store"
+        return await request.app.state.report_workflow.update(user.user_id, ticket_id, body)
+
+    @application.get("/api/v1/reports/{ticket_id}/history", response_model=ReportHistory,
+                     response_model_exclude_none=True, tags=["Reports"], responses=workflow_errors,
+                     description="Management can view any report. Active verified residents can view their own report only. Staff UUIDs are hidden from residents. Old reports may have no history before SQL 007.")
+    async def report_history(
+        request: Request, response: Response,
+        ticket_id: Annotated[str, Path(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")],
+        user: AuthenticatedUser = Depends(current_user),
+        limit: int = Query(default=20, ge=1, le=100), offset: int = Query(default=0, ge=0),
+    ):
+        response.headers["Cache-Control"] = "private, no-store"
+        return await request.app.state.report_workflow.history(user.user_id, ticket_id, limit=limit, offset=offset)
 
     return application
 

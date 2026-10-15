@@ -533,6 +533,373 @@
           }
         }
       }
+    },
+    "/api/v1/map/issues": {
+      "get": {
+        "tags": [
+          "Community Map"
+        ],
+        "summary": "Community Issues",
+        "description": "Approved community issue points for active verified residents. Excludes reporter identity, descriptions, and images.",
+        "operationId": "community_issues_api_v1_map_issues_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "west,south,east,north in longitude/latitude degrees; no antimeridian crossing.",
+              "title": "Bbox"
+            },
+            "description": "west,south,east,north in longitude/latitude degrees; no antimeridian crossing."
+          },
+          {
+            "name": "include_resolved",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include approved resolved issues as historical points.",
+              "default": false,
+              "title": "Include Resolved"
+            },
+            "description": "Include approved resolved issues as historical points."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityMapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active verified residency required."
+          },
+          "503": {
+            "description": "Community map or residency service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/reports": {
+      "get": {
+        "tags": [
+          "Management Reports"
+        ],
+        "summary": "Management Reports",
+        "description": "Management accounts only. Role is checked in the database, without requiring a resident binding.",
+        "operationId": "management_reports_api_v1_management_reports_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "approved",
+                    "rejected",
+                    "in_progress",
+                    "resolved"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementReportList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Management role or active verified residency required."
+          },
+          "404": {
+            "description": "Unknown or inaccessible report."
+          },
+          "409": {
+            "description": "Stale status; refresh before retrying."
+          },
+          "503": {
+            "description": "Report workflow unavailable; confirm SQL 007 is installed."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/reports/{ticket_id}/status": {
+      "patch": {
+        "tags": [
+          "Management Reports"
+        ],
+        "summary": "Update Report Status",
+        "description": "Management only. Updates status and audit history atomically. Notes are visible to the report owner. Resolution requires repair_verified=true.",
+        "operationId": "update_report_status_api_v1_management_reports__ticket_id__status_patch",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusUpdated"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Management role or active verified residency required."
+          },
+          "404": {
+            "description": "Unknown or inaccessible report."
+          },
+          "409": {
+            "description": "Stale status; refresh before retrying."
+          },
+          "503": {
+            "description": "Report workflow unavailable; confirm SQL 007 is installed."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/{ticket_id}/history": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Report History",
+        "description": "Management can view any report. Active verified residents can view their own report only. Staff UUIDs are hidden from residents. Old reports may have no history before SQL 007.",
+        "operationId": "report_history_api_v1_reports__ticket_id__history_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportHistory"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Management role or active verified residency required."
+          },
+          "404": {
+            "description": "Unknown or inaccessible report."
+          },
+          "409": {
+            "description": "Stale status; refresh before retrying."
+          },
+          "503": {
+            "description": "Report workflow unavailable; confirm SQL 007 is installed."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -643,6 +1010,32 @@
         ],
         "title": "Body_submit_report_api_v1_reports_post"
       },
+      "CommunityMapResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/MapIssueFeature"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/MapPagination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "features",
+          "pagination"
+        ],
+        "title": "CommunityMapResponse"
+      },
       "CurrentUserResponse": {
         "properties": {
           "user_id": {
@@ -713,6 +1106,190 @@
         ],
         "title": "InvitationResult"
       },
+      "ManagementReportList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowReport"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "ManagementReportList"
+      },
+      "MapIssueFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/MapPoint"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/MapIssueProperties"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "geometry",
+          "properties"
+        ],
+        "title": "MapIssueFeature"
+      },
+      "MapIssueProperties": {
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "reported_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported At"
+          },
+          "verified_at": {
+            "type": "null",
+            "title": "Verified At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "category",
+          "priority",
+          "status",
+          "reported_at"
+        ],
+        "title": "MapIssueProperties"
+      },
+      "MapPagination": {
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "returned": {
+            "type": "integer",
+            "title": "Returned"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "limit",
+          "offset",
+          "returned",
+          "has_more"
+        ],
+        "title": "MapPagination"
+      },
+      "MapPoint": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Point",
+            "title": "Type",
+            "default": "Point"
+          },
+          "coordinates": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Coordinates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "coordinates"
+        ],
+        "title": "MapPoint"
+      },
       "OTPAccepted": {
         "properties": {
           "challenge_id": {
@@ -772,6 +1349,42 @@
           "data"
         ],
         "title": "ReportCreatedResponse"
+      },
+      "ReportHistory": {
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StatusEvent"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "ReportHistory"
       },
       "ReportListResponse": {
         "properties": {
@@ -1018,6 +1631,142 @@
         ],
         "title": "SignupResult"
       },
+      "StatusEvent": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Id"
+          },
+          "from_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "From Status"
+          },
+          "to_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "To Status"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Note"
+          },
+          "repair_verified": {
+            "type": "boolean",
+            "title": "Repair Verified"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "actor_role": {
+            "type": "string",
+            "const": "management",
+            "title": "Actor Role",
+            "default": "management"
+          },
+          "changed_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changed By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "from_status",
+          "to_status",
+          "note",
+          "repair_verified",
+          "created_at"
+        ],
+        "title": "StatusEvent"
+      },
+      "StatusUpdate": {
+        "properties": {
+          "expected_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "Expected Status"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Note",
+            "description": "Resident-visible review or repair note; exclude private staff information."
+          },
+          "repair_verified": {
+            "type": "boolean",
+            "title": "Repair Verified",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_status",
+          "status",
+          "note"
+        ],
+        "title": "StatusUpdate"
+      },
+      "StatusUpdated": {
+        "properties": {
+          "report": {
+            "$ref": "#/components/schemas/WorkflowReport"
+          },
+          "event": {
+            "$ref": "#/components/schemas/StatusEvent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report",
+          "event"
+        ],
+        "title": "StatusUpdated"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -1087,6 +1836,102 @@
           "password"
         ],
         "title": "VerifySignup"
+      },
+      "WorkflowReport": {
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "in_progress",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "is_approved": {
+            "type": "boolean",
+            "title": "Is Approved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "user_id",
+          "description",
+          "status",
+          "latitude",
+          "longitude",
+          "is_approved"
+        ],
+        "title": "WorkflowReport"
       }
     },
     "securitySchemes": {
