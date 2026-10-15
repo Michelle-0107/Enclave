@@ -67,17 +67,6 @@ An empty successful result confirms this request is permitted; it does not demon
 
 ## 4. Troubleshooting
 
-<<<<<<< HEAD
-| Result | Next action |
-| ----------------------------- | --------------------------------------------------------------------------------- |
-| Configuration required | Fill both variables, use the hosted Project URL, and copy the Publishable key. |
-| HTTP 401 | Check that the key and URL belong to the same Enclave project. |
-| HTTP 403 or permission denied | Ask the project owner to check table grants for Data API access. |
-| HTTP 404 | Check that `reports` is in `public` and available through the Data API. |
-| Missing column | Compare the actual columns with `id, ticket_id, description, status, created_at`. |
-| Redirect | Recopy the Project URL from Connect. |
-| Timeout or network error | Check the network and project availability, then retry. |
-=======
 | Result | Next action |
 | --- | --- |
 | Configuration required | Fill both variables, use the hosted Project URL, and copy the project's backend-only secret/service-role key into `SUPABASE_KEY`. |
@@ -88,7 +77,6 @@ An empty successful result confirms this request is permitted; it does not demon
 | Redirect | Recopy the Project URL from Connect. |
 | Timeout or network error | Check the network and project availability, then retry. |
 
-> > > > > > > bc4a793581274422ca7e8a5ee2773ad21503e417
 
 The probe uses a backend-only key and requests zero rows. Keep this key private; do not put it in frontend configuration. Keep RLS enabled and review the team's Auth and resident/management policies separately.
 

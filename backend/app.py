@@ -25,7 +25,6 @@ from .registration.clients import RegistrationUnavailable
 from .registration_config import load_registration_settings
 from .routers.email import router as registration_router
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import reports
 
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -117,7 +116,6 @@ def create_app(
         description="Supabase JWT authentication, resident OTP registration, active-resident report access, and S3/AI submission.",
     )
     application.include_router(registration_router)
-    application.include_router(reports.router)
 
     @application.exception_handler(RegistrationRejected)
     async def registration_rejected(request, error):

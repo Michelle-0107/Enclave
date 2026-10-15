@@ -13,7 +13,7 @@ from ..config import ConfigurationError, ENV_FILE, Settings, _load_values
 
 OTP_PEPPER_VERSION = 1
 OTP_KEY_CONTEXT = b"Enclave resident OTP HMAC key v1"
-RESEND_SENDER = "Enclave <onboarding@resend.dev>"
+RESEND_SENDER = "Enclave <noreply@enclavehomes.app>"
 
 
 def derive_otp_pepper(supabase_key: str) -> bytes:

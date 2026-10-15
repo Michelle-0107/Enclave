@@ -58,19 +58,9 @@ class RegistrationSetupTests(unittest.TestCase):
         self.assertIsNone(settings)
         self.assertNotIn("too-short-secret", repr(result))
 
-<<<<<<< HEAD
-    def test_complete_synthetic_config_passes_without_any_provider_calls(self):
-        self.path.write_text("SUPABASE_URL=https://exampleproject.supabase.co\nSUPABASE_KEY=sb_publishable_fixture\nSUPABASE_SECRET_KEY=sb_secret_fixture\nRESEND_API_KEY=re_fixture\nRESEND_FROM_EMAIL=Enclave <fixture@example.com>\n", encoding="utf-8")
-        prepare_env(self.path)
-        result, settings = check_configuration(env_file=self.path, environ={})
-        self.assertTrue(result.ready)
-        self.assertNotIn(settings.admin_key, repr(result))
-        self.assertNotIn(settings.resend_key, repr(result))
-=======
     def test_shared_example_file_is_read_only_and_rejected_by_private_checker(self):
         with self.assertRaises(ConfigurationError):
             prepare_env(self.path.with_name(".env.example"))
->>>>>>> bc4a793581274422ca7e8a5ee2773ad21503e417
 
     def test_database_probe_uses_only_the_non_mutating_unknown_action(self):
         _, service, _, _, _ = demo_components()

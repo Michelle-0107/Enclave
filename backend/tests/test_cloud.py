@@ -146,6 +146,18 @@ class CloudTests(unittest.TestCase):
         self.assertEqual(self.media.uploads + self.media.analyses + self.requests, [])
         self.assertEqual(self.residency_requests, [])
 
+    def test_complete_report_form_without_token_is_denied_before_side_effects(self):
+        response = self.client().post(
+            "/api/v1/reports",
+            data={"description": "Broken streetlight", "latitude": "3.139", "longitude": "101.687",
+                  "user_id": OWNER_B},
+            files={"file": ("photo.jpg", b"synthetic-photo", "image/jpeg")},
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.headers["www-authenticate"], "Bearer")
+        self.assertEqual(self.media.uploads + self.media.analyses + self.requests, [])
+        self.assertEqual(self.auth_requests + self.residency_requests, [])
+
     def test_invalid_expired_wrong_project_and_wrong_audience_tokens_are_rejected(self):
         client = self.client()
         tokens = ["opaque-local-token", self.token(key=self.other_key),
@@ -412,7 +424,7 @@ class CloudTests(unittest.TestCase):
             self.assertEqual(configured.project_url, self.settings.project_url)
 
     def test_startup_error_is_sanitized(self):
-        with patch("backend.main.load_settings", side_effect=ConfigurationError("synthetic-secret")):
+        with patch("backend.app.load_settings", side_effect=ConfigurationError("synthetic-secret")):
             with self.assertRaises(RuntimeError) as captured:
                 with TestClient(create_app()):
                     pass
