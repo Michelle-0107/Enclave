@@ -19,7 +19,7 @@ from psycopg2.extras import Json
 
 from backend.registration import RegistrationService, RegistrationRejected
 from backend.registration.demo import DEMO_INVITATION, DEMO_PASSWORD, MANAGER, RESIDENT, FakeAccounts, FakeDelivery, demo_components
-from backend.registration_models import RequestOTP, VerifySignup
+from backend.registration.contracts import RequestOTP, VerifySignup
 
 
 KEY = "synthetic-postgres-idempotency-key-0000001"

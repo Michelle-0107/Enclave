@@ -7,7 +7,7 @@ import logging
 import threading
 from typing import Mapping
 
-from ..config import Settings
+from ..core.config import Settings
 
 
 logger = logging.getLogger(__name__)
@@ -116,3 +116,5 @@ class MediaServices:
         except Exception:
             logger.info("AI providers unavailable; report requires manual review.")
             return {"category": "Damaged Facility", "priority": "medium", "summary": description}
+
+__all__ = ['MediaServices', 'MediaUnavailable', 'aws_client_options', 'create_aws_client']

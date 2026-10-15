@@ -16,11 +16,11 @@ import httpx
 import jwt
 from PIL import Image
 
-from backend.config import ConfigurationError, Settings, load_settings
-from backend.auth import InvalidCredentials, TokenVerifier
+from backend.core.config import ConfigurationError, Settings, load_settings
+from backend.core.auth import InvalidCredentials, TokenVerifier
 from backend.tools.check_session import check_session
 from backend.app import AuthenticatedUser, MAX_PHOTO_BYTES, create_app
-from backend.media import MediaServices, MediaUnavailable
+from backend.reports.media import MediaServices, MediaUnavailable
 
 
 OWNER_A = "00000000-0000-4000-8000-000000000001"
@@ -128,7 +128,7 @@ class CloudTests(unittest.TestCase):
                            files={"file": ("../../untrusted-name.jpg", data, content_type)})
 
     def test_health_and_root_do_not_initialize_external_services(self):
-        with patch("backend.media.MediaServices._client", side_effect=AssertionError("No AWS calls allowed")):
+        with patch("backend.reports.media.MediaServices._client", side_effect=AssertionError("No AWS calls allowed")):
             client = self.client()
             self.assertEqual(client.get("/health").json(), {"status": "ok"})
             self.assertEqual(client.get("/").status_code, 200)

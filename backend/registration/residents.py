@@ -4,7 +4,7 @@ from uuid import UUID
 
 import httpx
 
-from ..config import Settings
+from ..core.config import Settings
 
 
 class ResidentDirectoryUnavailable(RuntimeError):
@@ -60,3 +60,5 @@ class ResidentAccessRepository:
         if not isinstance(status, str) or (verified_at is not None and not isinstance(verified_at, str)):
             raise ResidentDirectoryUnavailable()
         return matches_user and status == "active" and bool(verified_at)
+
+__all__ = ['ResidentAccessRepository', 'ResidentDirectoryUnavailable']

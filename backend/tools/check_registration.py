@@ -7,7 +7,7 @@ import sys
 
 import httpx
 
-from ..config import ConfigurationError, ENV_FILE, _load_values, load_settings
+from ..core.config import ConfigurationError, ENV_FILE, _load_values, load_settings
 from ..registration.settings import load_registration_settings
 
 

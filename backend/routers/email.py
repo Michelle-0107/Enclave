@@ -3,9 +3,9 @@
 from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from ..auth import AuthUnavailable, InvalidCredentials
+from ..core.auth import AuthUnavailable, InvalidCredentials
 from ..registration import RegistrationRejected
-from ..registration_models import (InvitationResult, OTPAccepted, RequestOTP, ResidentInput,
+from ..registration.contracts import (InvitationResult, OTPAccepted, RequestOTP, ResidentInput,
                                     Residency, SignupResult, VerifySignup)
 
 router = APIRouter(tags=["Registration"])

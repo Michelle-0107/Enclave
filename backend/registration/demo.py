@@ -5,8 +5,8 @@ import hashlib
 import threading
 from uuid import UUID, uuid4
 
-from ..auth import VerifiedUser, InvalidCredentials
-from ..config import Settings
+from ..core.auth import VerifiedUser, InvalidCredentials
+from ..core.config import Settings
 from .service import RegistrationService
 from .settings import RegistrationSettings
 from .contracts import AuthSession
