@@ -1,94 +1,128 @@
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import {
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
+import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import AccountScreen from './src/screens/AccountScreen';
 import { colors } from './src/theme';
 
-type Tab = 'Map' | 'Report' | 'Notifications' | 'My Account';
+type Tab = 'Home' | 'Map' | 'Report' | 'Notifications' | 'My Account';
 
-const tabs: Tab[] = [
-  'Map',
-  'Report',
-  'Notifications',
-  'My Account',
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const tabs: { name: Tab; icon: IconName }[] = [
+  { name: 'Home', icon: 'home-outline' },
+  { name: 'Map', icon: 'map-outline' },
+  { name: 'Report', icon: 'add-circle-outline' },
+  { name: 'Notifications', icon: 'notifications-outline' },
+  { name: 'My Account', icon: 'person-outline' },
 ];
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('Map');
+function ResidentApp() {
+  const [activeTab, setActiveTab] = useState<Tab>('Home');
+  const insets = useSafeAreaInsets();
 
   function renderScreen() {
     switch (activeTab) {
+      case 'Home':
+        return (
+          <HomeScreen
+            onReportPress={() => setActiveTab('Report')}
+            onNotificationsPress={() => setActiveTab('Notifications')}
+          />
+        );
+
       case 'Map':
         return (
-          <MapScreen onReportPress={() => setActiveTab('Report')} />
+          <MapScreen
+            onReportPress={() => setActiveTab('Report')}
+          />
         );
+
       case 'Report':
         return <ReportScreen />;
+
       case 'Notifications':
         return <NotificationsScreen />;
+
       case 'My Account':
         return <AccountScreen />;
     }
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" />
 
       <View style={styles.header}>
         <Text style={styles.brand}>ENCLAVE</Text>
-        <Text style={styles.tagline}>
-          Your community, connected.
-        </Text>
+        <Text style={styles.tagline}>Your community, connected.</Text>
       </View>
 
       <ScrollView
         key={activeTab}
         style={styles.scroll}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       >
         {renderScreen()}
       </ScrollView>
 
-      <View style={styles.tabBar}>
-        {tabs.map((tab) => {
-          const selected = activeTab === tab;
+      <View
+        style={[
+          styles.tabBar,
+          { paddingBottom: Math.max(insets.bottom, 12) },
+        ]}
+      >
+        {tabs.map(({ name, icon }) => {
+          const selected = activeTab === name;
 
           return (
             <Pressable
-              key={tab}
+              key={name}
               accessibilityRole="tab"
+              accessibilityLabel={name}
               accessibilityState={{ selected }}
-              onPress={() => setActiveTab(tab)}
-              style={[
+              onPress={() => setActiveTab(name)}
+              style={({ pressed }) => [
                 styles.tab,
                 selected && styles.selectedTab,
+                pressed && styles.pressed,
               ]}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  selected && styles.selectedTabText,
-                ]}
-              >
-                {tab}
-              </Text>
+              <Ionicons
+                name={icon}
+                size={23}
+                color={selected ? colors.white : colors.muted}
+              />
             </Pressable>
           );
         })}
       </View>
-    </View>
+    </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ResidentApp />
+    </SafeAreaProvider>
   );
 }
 
@@ -96,11 +130,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   header: {
+    paddingTop: 16,
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 28,
     gap: 6,
   },
   brand: {
@@ -118,6 +152,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 24,
+    paddingTop: 8,
     paddingBottom: 28,
   },
   tabBar: {
@@ -125,29 +160,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
-    gap: 4,
+    gap: 8,
   },
   tab: {
     flex: 1,
     minHeight: 48,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
   },
   selectedTab: {
     backgroundColor: colors.navy,
   },
-  tabText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.muted,
-    textAlign: 'center',
-  },
-  selectedTabText: {
-    color: colors.white,
+  pressed: {
+    opacity: 0.8,
   },
 });
