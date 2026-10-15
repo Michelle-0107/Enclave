@@ -1,5 +1,1 @@
-"""Owner-scoped Supabase report repository."""
-
-from .repository import ReportAccessDenied, ReportsRepository, ReportsUnavailable
-
-__all__ = ["ReportAccessDenied", "ReportsRepository", "ReportsUnavailable"]
+"""Report contracts, owner-scoped persistence, and S3/AI integration."""

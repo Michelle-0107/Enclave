@@ -9,7 +9,7 @@ from uuid import UUID
 import httpx
 import jwt
 
-from ..config import Settings
+from .config import Settings
 
 
 JWKS_CACHE_SECONDS = 300
@@ -145,3 +145,5 @@ class TokenVerifier:
             return VerifiedUser(user_id=user_id, email=email or None)
         except (jwt.PyJWTError, ValueError, TypeError, KeyError, AttributeError):
             raise InvalidCredentials() from None
+
+__all__ = ['AuthUnavailable', 'InvalidCredentials', 'TokenVerifier', 'VerifiedUser']

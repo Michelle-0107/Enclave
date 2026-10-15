@@ -6,7 +6,7 @@ import unittest
 
 import httpx
 
-from backend.config import ConfigurationError
+from backend.core.config import ConfigurationError
 from backend.registration.demo import demo_components
 from backend.tools.check_registration import check_configuration, check_database
 from backend.tools.setup_registration import prepare_env

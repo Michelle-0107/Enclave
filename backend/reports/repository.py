@@ -4,8 +4,8 @@ from uuid import UUID
 
 import httpx
 
-from ..config import Settings
-from ..models import ReportResponse
+from ..core.config import Settings
+from .models import ReportResponse
 
 
 REPORT_COLUMNS = "ticket_id,user_id,description,status,created_at,latitude,longitude,image_url,category,priority,is_approved"
@@ -99,3 +99,5 @@ class ReportsRepository:
         if len(records) != 1 or records[0].ticket_id != ticket_id:
             raise ReportsUnavailable()
         return records[0]
+
+__all__ = ['ReportAccessDenied', 'ReportsRepository', 'ReportsUnavailable']

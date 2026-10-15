@@ -11,9 +11,9 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 from PIL import Image
 
 from backend.tools.check_storage import check_storage, main, validate_storage_settings
-from backend.config import load_service_values
-from backend.media import MediaServices, MediaUnavailable, aws_client_options, create_aws_client
-from backend.config import Settings
+from backend.core.config import load_service_values
+from backend.reports.media import MediaServices, MediaUnavailable, aws_client_options, create_aws_client
+from backend.core.config import Settings
 
 
 VALUES = {

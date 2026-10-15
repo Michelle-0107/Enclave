@@ -6,7 +6,7 @@ import sys
 
 from dotenv import dotenv_values
 
-from ..config import ConfigurationError, ENV_FILE
+from ..core.config import ConfigurationError, ENV_FILE
 
 
 REQUIRED_REGISTRATION_FIELDS = ("SUPABASE_URL", "SUPABASE_KEY", "RESEND_API_KEY")

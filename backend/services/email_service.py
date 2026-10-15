@@ -2,7 +2,7 @@
 
 import re
 import httpx
-from ..registration_config import RegistrationSettings
+from ..registration.settings import RegistrationSettings
 
 
 class EmailUnavailable(RuntimeError):

@@ -14,15 +14,15 @@ from fastapi.exception_handlers import request_validation_exception_handler
 import httpx
 from pydantic import ValidationError
 
-from .auth import AuthUnavailable, InvalidCredentials, TokenVerifier, VerifiedUser
-from .config import ConfigurationError, Settings, load_settings
-from .media import MediaServices, MediaUnavailable
-from .models import AIAnalysis, CurrentUserResponse, ReportCreatedResponse, ReportListResponse, ReportResponse
-from .reports import ReportAccessDenied, ReportsRepository, ReportsUnavailable
-from .residents import ResidentAccessRepository, ResidentDirectoryUnavailable
+from .core.auth import AuthUnavailable, InvalidCredentials, TokenVerifier, VerifiedUser
+from .core.config import ConfigurationError, Settings, load_settings
+from .reports.media import MediaServices, MediaUnavailable
+from .reports.models import AIAnalysis, CurrentUserResponse, ReportCreatedResponse, ReportListResponse, ReportResponse
+from .reports.repository import ReportAccessDenied, ReportsRepository, ReportsUnavailable
+from .registration.residents import ResidentAccessRepository, ResidentDirectoryUnavailable
 from .registration import RegistrationRejected, RegistrationService
 from .registration.clients import RegistrationUnavailable
-from .registration_config import load_registration_settings
+from .registration.settings import load_registration_settings
 from .routers.email import router as registration_router
 from fastapi.middleware.cors import CORSMiddleware
 
