@@ -14,6 +14,7 @@ type Props = {
   report: ManagementReport;
   category: string;
   priority: ManagementReport['priority'];
+  initialInstructions?: string;
 };
 
 const teams = [
@@ -26,19 +27,23 @@ export default function AssignMaintenance({
   report,
   category,
   priority,
+  initialInstructions,
 }: Props) {
   const [team, setTeam] = useState(
     category === 'Streetlight'
       ? 'Electrical team'
-      : 'Facilities team',
+      : category === 'Accessibility' || category === 'Walkway'
+        ? 'Civil maintenance team'
+        : 'Facilities team',
   );
 
   const [targetDate, setTargetDate] = useState('');
 
   const [instructions, setInstructions] = useState(
-    category === 'Streetlight'
-      ? 'Inspect fitting and power supply. Test operation after repair.'
-      : '',
+    initialInstructions ??
+      (category === 'Streetlight'
+        ? 'Inspect fitting and power supply. Test operation after repair.'
+        : ''),
   );
 
   const [preview, setPreview] = useState(false);
@@ -54,7 +59,8 @@ export default function AssignMaintenance({
     }
 
     // Frontend preview only.
-    // Backend integration will create the task and notification.
+    // Backend integration will create the task
+    // and send the notification.
     setPreview(true);
   }
 
@@ -182,18 +188,26 @@ export default function AssignMaintenance({
               Assignment preview
             </p>
 
+            <p className="mt-2 text-xs text-muted-foreground">
+              #{report.id} · {report.title}
+            </p>
+
             <dl className="mt-4 grid gap-3 text-sm">
               <div>
                 <dt className="text-muted-foreground">
                   Maintenance team
                 </dt>
-                <dd className="mt-1 text-primary">{team}</dd>
+
+                <dd className="mt-1 text-primary">
+                  {team}
+                </dd>
               </div>
 
               <div>
                 <dt className="text-muted-foreground">
                   Target completion
                 </dt>
+
                 <dd className="mt-1 text-primary">
                   {targetDate}
                 </dd>
@@ -203,6 +217,7 @@ export default function AssignMaintenance({
                 <dt className="text-muted-foreground">
                   Category · Priority
                 </dt>
+
                 <dd className="mt-1 text-primary">
                   {category} · {priority}
                 </dd>
@@ -212,6 +227,7 @@ export default function AssignMaintenance({
                 <dt className="text-muted-foreground">
                   Repair instructions
                 </dt>
+
                 <dd className="mt-1 whitespace-pre-wrap break-words text-primary">
                   {instructions.trim()}
                 </dd>

@@ -55,6 +55,7 @@ export default function ReportDetails({ report }: Props) {
           className="size-1.5 rounded-full bg-current"
           aria-hidden="true"
         />
+
         {reportStatusLabels[report.status]}
       </div>
 
@@ -112,7 +113,9 @@ export default function ReportDetails({ report }: Props) {
             <select
               id="final-category"
               value={category}
-              onChange={(event) => setCategory(event.target.value)}
+              onChange={(event) =>
+                setCategory(event.target.value)
+              }
               className="min-h-[54px] w-full rounded-2xl border border-input bg-white px-4 text-sm text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="Streetlight">Streetlight</option>
@@ -149,11 +152,29 @@ export default function ReportDetails({ report }: Props) {
           </div>
 
           <p className="text-xs leading-relaxed text-muted-foreground">
-            AI suggestions are sample data until backend integration
-            is connected.
+            AI suggestions are sample data until backend
+            integration is connected.
           </p>
         </section>
       </div>
+
+      {report.status === 'awaiting-verification' && (
+  <Link
+    href={`${basePath}/verify`}
+    className="flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground sm:w-[280px]"
+  >
+    Verify repair
+  </Link>
+)}
+
+      {report.category === 'Accessibility' && (
+        <Link
+          href={`${basePath}/comparison`}
+          className="mt-1 flex min-h-[52px] items-center justify-center rounded-2xl bg-enclave-lavender px-6 text-center text-sm font-semibold text-primary transition-opacity hover:opacity-80 sm:w-[280px]"
+        >
+          Compare repair options
+        </Link>
+      )}
 
       <div className="mt-1 flex flex-col gap-3.5 sm:flex-row">
         <Link

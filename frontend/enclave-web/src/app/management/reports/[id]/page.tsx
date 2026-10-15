@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import ReportDetails from '@/components/management/ReportDetails';
+import VerifyRepair from '@/components/management/VerifyRepair';
 import { mockReports } from '@/lib/mock-reports';
 
 type Props = {
@@ -9,14 +9,19 @@ type Props = {
   }>;
 };
 
-export default async function ReportDetailsPage({ params }: Props) {
+export default async function VerifyRepairPage({
+  params,
+}: Props) {
   const { id } = await params;
 
   const report = mockReports.find((item) => item.id === id);
 
-  if (!report) {
+  if (
+    !report ||
+    report.status !== 'awaiting-verification'
+  ) {
     notFound();
   }
 
-  return <ReportDetails key={report.id} report={report} />;
+  return <VerifyRepair key={report.id} report={report} />;
 }
