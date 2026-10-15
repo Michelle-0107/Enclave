@@ -59,7 +59,7 @@ def compute_path_by_coordinates(start_lng: float, start_lat: float, end_lng: flo
     end_node = find_nearest_node(G, end_lat, end_lng)
     
     if not start_node or not end_node:
-        raise HTTPException(status_code=404, detail="无法在路网中匹配到对应的起点或终点位置")
+        raise HTTPException(status_code=404, detail="unable to match the start or end position in the road network")
 
     # 2. from Supabase get the current active obstacles
     obstacles_res = supabase.table("maintenance_tickets") \

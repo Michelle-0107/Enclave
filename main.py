@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.main import app
+from backend.routers import email, reports
 
 # Load environment variables
 load_dotenv()
@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # all routes
-app.include_router(auth.router)
+app.include_router(email.router)
 
 app.include_router(reports.router)
 

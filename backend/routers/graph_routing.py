@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from services.routing_service import compute_path_by_coordinates
+from services.graph_routing_service import compute_path_by_coordinates
 
 router = APIRouter(prefix="/api/routes", tags=["Routing"])
 
