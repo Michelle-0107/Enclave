@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # import the split-out routes
 from backend.routers import auth, reports
@@ -9,6 +10,14 @@ from backend.routers import auth, reports
 load_dotenv()
 
 app = FastAPI(title="Enclave Backend API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"], 
+)
 
 # all routes
 app.include_router(auth.router)
