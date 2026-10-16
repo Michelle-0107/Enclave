@@ -58,8 +58,7 @@ class RegistrationService:
         accepted = OTPAccepted(challenge_id=identifier)
         if not self._rate("request-ip", peer) or not self._rate("request-email", str(data.email)):
             return accepted, None
-        context = self.store.call("lookup_invitation", email=str(data.email),
-                                  token_digest=hashlib.sha256(data.invitation_token.encode()).hexdigest())
+        context = self.store.call("lookup_invitation", email=str(data.email))
         if context is None:
             return accepted, None
         try:

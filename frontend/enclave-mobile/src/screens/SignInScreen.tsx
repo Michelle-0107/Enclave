@@ -13,6 +13,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { supabase } from '../lib/supabase';
+import { saveAccessToken } from '../lib/session';
 import { colors } from '../theme';
 
 type Props = {
@@ -32,8 +34,9 @@ export default function SignInScreen({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleSignIn() {
+  async function handleSignIn() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError('Please enter a valid email address.');
       return;
@@ -46,9 +49,38 @@ export default function SignInScreen({
 
     Keyboard.dismiss();
     setError('');
+    setIsLoading(true);
 
-    // Demo only. Backend authentication comes later.
-    onDemoSignIn();
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (authError) {
+        const message = authError.message.toLowerCase();
+        if (message.includes('email not confirmed')) {
+          setError('Your account is not active yet. Please confirm your email first.');
+        } else if (message.includes('invalid login credentials')) {
+          setError('The email or password is incorrect.');
+        } else {
+          setError(authError.message);
+        }
+        return;
+      }
+
+      if (!data.session?.access_token) {
+        setError('Your account is not active yet. Please confirm your email first.');
+        return;
+      }
+
+      await saveAccessToken(data.session.access_token);
+      onDemoSignIn();
+    } catch {
+      setError('Unable to sign in right now. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -169,9 +201,11 @@ export default function SignInScreen({
               style={({ pressed }) => [
                 styles.signInButton,
                 pressed && styles.pressed,
+                isLoading && styles.disabled,
               ]}
+              disabled={isLoading}
             >
-              <Text style={styles.signInText}>Sign in</Text>
+              <Text style={styles.signInText}>{isLoading ? 'Signing in…' : 'Sign in'}</Text>
             </Pressable>
           </View>
 
@@ -186,10 +220,7 @@ export default function SignInScreen({
             </Text>
           </Pressable>
 
-          <Text style={styles.demoText}>
-            UI preview · Use any valid email and a non-empty password.
-            Authentication is not connected yet.
-          </Text>
+          <Text style={styles.demoText}>Use your Enclave account email and password to continue.</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -336,5 +367,8 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  disabled: {
+    opacity: 0.6,
   },
 });

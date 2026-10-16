@@ -27,7 +27,7 @@ class RegistrationTests(unittest.TestCase):
         self.addCleanup(self.service.close)
 
     def request(self, **changes):
-        body = {"email": "resident@example.com", "invitation_token": DEMO_INVITATION}
+        body = {"email": "resident@example.com"}
         body.update(changes)
         result, pending = self.service.request_otp(RequestOTP(**body), "test-peer")
         if pending:
@@ -87,8 +87,8 @@ class RegistrationTests(unittest.TestCase):
             self.verify(identifier)
         self.assertEqual(self.accounts.created, 0)
 
-    def test_unknown_invitation_returns_acceptance_without_delivery_or_row(self):
-        self.request(invitation_token="x" * 43)
+    def test_unknown_email_returns_acceptance_without_delivery_or_row(self):
+        self.request(email="unknown@example.com")
         self.assertEqual(self.delivery.sent, [])
         self.assertEqual(self.store.challenges, {})
 
@@ -186,7 +186,7 @@ class RegistrationAPITests(unittest.TestCase):
         self.addCleanup(self.client.__exit__, None, None, None)
 
     def request(self, path="/api/v1/registration/request-otp"):
-        return self.client.post(path, json={"email": "resident@example.com", "invitation_token": DEMO_INVITATION})
+        return self.client.post(path, json={"email": "resident@example.com"})
 
     def test_public_request_and_legacy_alias_never_return_code_or_provider_response(self):
         for path in ("/api/v1/registration/request-otp", "/api/send-verification-email"):
@@ -215,7 +215,7 @@ class RegistrationAPITests(unittest.TestCase):
 
     def test_clients_cannot_supply_role_or_user_identity(self):
         response = self.client.post("/api/v1/registration/request-otp", json={"email": "resident@example.com",
-                                    "invitation_token": DEMO_INVITATION, "role": "management", "user_id": str(MANAGER)})
+                                    "role": "management", "user_id": str(MANAGER)})
         self.assertEqual(response.status_code, 422)
 
     def test_missing_or_invalid_token_denies_management_and_residency(self):

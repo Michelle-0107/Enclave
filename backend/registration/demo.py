@@ -45,7 +45,7 @@ class MemoryStore:
                 self.rates[key] = self.rates.get(key, 0) + 1
                 return {"allowed": self.rates[key] <= limit}
             if action == "lookup_invitation":
-                if a["token_digest"] != self.invitation_digest or a["email"] != self.email or self.profile_id or not self.active:
+                if a["email"] != self.email or self.profile_id or not self.active:
                     return None
                 return {"resident_id": self.resident_id, "invitation_id": self.invitation_id, "email": self.email}
             if action == "create_challenge":

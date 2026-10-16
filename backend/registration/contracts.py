@@ -12,7 +12,6 @@ class RegistrationInput(BaseModel):
 
 class RequestOTP(RegistrationInput):
     email: EmailStr
-    invitation_token: str = Field(min_length=40, max_length=128, pattern=r"^[A-Za-z0-9_-]+$", repr=False)
 
     @field_validator("email")
     @classmethod

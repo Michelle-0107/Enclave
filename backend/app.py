@@ -76,16 +76,6 @@ def create_app(
     workflow_transport: httpx.AsyncBaseTransport | None = None,
     registration_service: RegistrationService | None = None,
 ) -> FastAPI:
-    
-    app = FastAPI()
-
-    app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  
-    allow_credentials=True,
-    allow_methods=["*"],  
-    allow_headers=["*"], 
-    )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -119,6 +109,23 @@ def create_app(
             await application.state.report_workflow.close()
             if application.state.registration is not None:
                 application.state.registration.close()
+
+    application = FastAPI(
+            title="Enclave Backend API",
+            version="0.4.0",
+            lifespan=lifespan,
+        )
+    
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     application = FastAPI(
         title="Enclave Backend API", version="0.4.0", lifespan=lifespan,

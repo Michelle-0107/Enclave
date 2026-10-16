@@ -27,7 +27,7 @@ class ResendDelivery:
             "html": ("<div style='font-family:Arial,sans-serif;padding:20px'>"
                      "<h2>Enclave resident registration</h2><p>Your email verification code is:</p>"
                      f"<h1 style='letter-spacing:2px'>{code}</h1>"
-                     "<p>This code expires in 5 minutes. Your resident invitation is a separate code.</p>"
+                     "<p>This code expires in 5 minutes.</p>"
                      "<p>If you did not request this email, please ignore it.</p></div>"),
         }
         try:

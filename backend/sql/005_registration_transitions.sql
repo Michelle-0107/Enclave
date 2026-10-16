@@ -49,8 +49,7 @@ BEGIN
     ELSIF p_action = 'lookup_invitation' THEN
         SELECT inv.id AS invitation_id, res.id AS resident_id, res.registered_email AS email INTO pr
         FROM public.resident_invitations inv JOIN public.residents res ON res.id = inv.resident_id
-        WHERE inv.token_digest = decode(p_args->>'token_digest', 'hex')
-          AND inv.invited_email = p_args->>'email' AND res.registered_email = inv.invited_email
+        WHERE inv.invited_email = p_args->>'email' AND res.registered_email = inv.invited_email
           AND inv.used_at IS NULL AND inv.revoked_at IS NULL AND inv.expires_at > v_now
           AND res.status = 'active' AND res.profile_id IS NULL;
         IF NOT FOUND THEN RETURN NULL; END IF;

@@ -44,7 +44,8 @@ export class ApiError extends Error {
 type RequestOptions = {
   method?: 'GET' | 'POST';
   accessToken?: string;
-  body?: FormData;
+  body?: FormData | Record<string, unknown>;
+  headers?: Record<string, string>;
 };
 
 function getBaseUrl(): string {
@@ -109,6 +110,7 @@ async function request<T>(
   try {
     const headers: Record<string, string> = {
       Accept: 'application/json',
+      ...options.headers,
     };
 
     if (options.accessToken) {
@@ -116,14 +118,20 @@ async function request<T>(
         `Bearer ${options.accessToken}`;
     }
 
-    /*
-     * Do not set Content-Type for FormData.
-     * fetch must generate the multipart boundary.
-     */
+    const body = options.body instanceof FormData
+      ? options.body
+      : options.body === undefined
+        ? undefined
+        : JSON.stringify(options.body);
+
+    if (options.body !== undefined && !(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(`${baseUrl}${path}`, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body,
+      body,
       signal: controller.signal,
     });
 
@@ -238,5 +246,54 @@ export const reportsApi = {
       `/api/v1/reports/${encodeURIComponent(ticketId)}`,
       { accessToken },
     );
+  },
+};
+
+export type RequestOtpPayload = {
+  email: string;
+};
+
+export type OtpAcceptedResponse = {
+  challenge_id: string;
+  message: string;
+};
+
+export type VerifySignupPayload = {
+  challenge_id: string;
+  otp: string;
+  password: string;
+};
+
+export type AuthSessionData = {
+  access_token: string;
+  refresh_token: string;
+  token_type: 'bearer';
+  expires_in: number;
+};
+
+export type SignupResultResponse = {
+  status: 'registered';
+  resident_id: string;
+  user_id: string;
+  session: AuthSessionData;
+};
+
+export const registrationApi = {
+  requestOtp(payload: RequestOtpPayload): Promise<OtpAcceptedResponse> {
+    return request<OtpAcceptedResponse>('/api/v1/registration/request-otp', {
+      method: 'POST',
+      body: payload,
+    });
+  },
+
+  verifyAndSignup(
+    payload: VerifySignupPayload,
+    idempotencyKey: string,
+  ): Promise<SignupResultResponse> {
+    return request<SignupResultResponse>('/api/v1/registration/verify-and-signup', {
+      method: 'POST',
+      body: payload,
+      headers: { 'Idempotency-Key': idempotencyKey },
+    });
   },
 };

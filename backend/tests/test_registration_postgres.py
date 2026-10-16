@@ -115,7 +115,7 @@ class PostgresRegistrationTests(unittest.TestCase):
         self.assertEqual(result["state"], "created")
 
     def request(self):
-        accepted, pending = self.service.request_otp(RequestOTP(email="resident@example.com", invitation_token=DEMO_INVITATION), "pg-peer")
+        accepted, pending = self.service.request_otp(RequestOTP(email="resident@example.com"), "pg-peer")
         if pending:
             self.service.deliver(pending)
         return accepted.challenge_id
