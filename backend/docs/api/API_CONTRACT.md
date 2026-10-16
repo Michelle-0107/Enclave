@@ -174,3 +174,17 @@ SQL 007 supports GET `/api/v1/management/reports`, PATCH
 events; residents can read their own history. pending -> approved/rejected;
 approved -> in_progress; in_progress -> resolved requires repair_verified=true.
 Service-team features are outside this change. See REPORT_WORKFLOW_TESTING.md.
+
+
+## Management What-if repair comparison
+
+GET `/api/v1/management/what-if/candidates` and POST
+`/api/v1/management/what-if/compare` require a verified JWT and trusted management
+profile role, with no resident binding. SQL 010 supplies a read-only candidate
+snapshot. Plans hypothetically remove selected facilities' current two-resident
+incident restrictions and retain all other obstacles. Management supplies major
+origin/destination journeys and optional MYR cost estimates/budget. Responses
+separate reference-intersecting path counts from actual restored/shortened paths.
+Accessible paths without a verified reference are not assessable. No live
+report/issue mutations, new env names, scenario persistence or user tracking.
+See [WHAT_IF_API.md](WHAT_IF_API.md) for the exact bounded contract and sandbox.

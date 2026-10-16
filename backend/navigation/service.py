@@ -37,18 +37,32 @@ class NavigationService:
         self.accessibility=accessibility
 
     async def route(self,body,actor_id=None):
+        self.validate_locations(body)
+        snapshot=None
+        if body.route_mode!='shortest':
+            if self.obstacles is None or actor_id is None:
+                raise NavigationUnavailable()
+            snapshot=await self.obstacles.active(actor_id)
+        return await self.route_with_snapshot(body,snapshot)
+
+    @staticmethod
+    def validate_locations(body):
         origin=(body.origin.longitude,body.origin.latitude)
         destination=(body.destination.longitude,body.destination.latitude)
         if not in_bounds(*origin) or not in_bounds(*destination):
             raise NavigationRejected(422,'Origin and destination must be inside the KL East pilot window')
         if distance_meters(origin,destination)<5:
             raise NavigationRejected(422,'Choose locations at least 5 meters apart')
-        snapshot=None
+
+    async def route_with_snapshot(self,body,snapshot=None):
+        """Internal reuse with a trusted frozen snapshot; never exposed as request data."""
+        self.validate_locations(body)
+        origin=(body.origin.longitude,body.origin.latitude)
+        destination=(body.destination.longitude,body.destination.latitude)
         boxes=[]
         if body.route_mode!='shortest':
-            if self.obstacles is None or actor_id is None:
+            if snapshot is None:
                 raise NavigationUnavailable()
-            snapshot=await self.obstacles.active(actor_id)
             for item in snapshot.items:
                 ring=item.exclusion_ring
                 bounds=(ring[0][0],ring[0][1],ring[2][0],ring[2][1])

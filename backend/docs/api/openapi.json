@@ -1551,6 +1551,104 @@
           }
         ]
       }
+    },
+    "/api/v1/management/what-if/candidates": {
+      "get": {
+        "tags": [
+          "Management What-if"
+        ],
+        "summary": "What If Candidates",
+        "description": "Management only, no resident binding required. Read current two-resident facility issues eligible for hypothetical repair. Does not save or repair anything.",
+        "operationId": "what_if_candidates_api_v1_management_what_if_candidates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairCandidates"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Management role required."
+          },
+          "503": {
+            "description": "Snapshot unavailable; confirm SQL 010."
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/management/what-if/compare": {
+      "post": {
+        "tags": [
+          "Management What-if"
+        ],
+        "summary": "Compare Repairs",
+        "description": "Read-only repair simulation on one snapshot: 1-5 management-defined major paths, 1-3 plans, optional MYR estimates and budget. Affected reference paths and actual restored/shortened paths are distinct metrics. No live report/issue changes and no saved scenarios.",
+        "operationId": "compare_repairs_api_v1_management_what_if_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompareResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Management role required."
+          },
+          "409": {
+            "description": "Selected repair candidates changed."
+          },
+          "429": {
+            "description": "Another comparison is running."
+          },
+          "503": {
+            "description": "Snapshot or routing dependency unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1625,6 +1723,41 @@
           "expires_in"
         ],
         "title": "AuthSession"
+      },
+      "BaselinePath": {
+        "properties": {
+          "path_id": {
+            "type": "string",
+            "title": "Path Id"
+          },
+          "path_name": {
+            "type": "string",
+            "title": "Path Name"
+          },
+          "route_mode": {
+            "type": "string",
+            "enum": [
+              "avoid_damage",
+              "accessible"
+            ],
+            "title": "Route Mode"
+          },
+          "current": {
+            "$ref": "#/components/schemas/RouteOutcome"
+          },
+          "reference_without_damage": {
+            "$ref": "#/components/schemas/RouteOutcome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path_id",
+          "path_name",
+          "route_mode",
+          "current",
+          "reference_without_damage"
+        ],
+        "title": "BaselinePath"
       },
       "Body_submit_report_api_v1_reports_post": {
         "properties": {
@@ -1844,6 +1977,153 @@
         ],
         "title": "CommunityObstacleSnapshot"
       },
+      "CompareRequest": {
+        "properties": {
+          "paths": {
+            "items": {
+              "$ref": "#/components/schemas/MajorPath"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Paths"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/RepairPlan"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Plans"
+          },
+          "route_modes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "avoid_damage",
+                "accessible"
+              ]
+            },
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Route Modes"
+          },
+          "budget_myr": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Myr"
+          },
+          "include_geometry": {
+            "type": "boolean",
+            "title": "Include Geometry",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "paths",
+          "plans"
+        ],
+        "title": "CompareRequest"
+      },
+      "CompareResponse": {
+        "properties": {
+          "simulation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Simulation Id"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "snapshot_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Snapshot At"
+          },
+          "simulation_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Simulation Only",
+            "default": true
+          },
+          "main_path_source": {
+            "type": "string",
+            "const": "management_defined",
+            "title": "Main Path Source",
+            "default": "management_defined"
+          },
+          "currency": {
+            "type": "string",
+            "const": "MYR",
+            "title": "Currency",
+            "default": "MYR"
+          },
+          "budget_myr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Myr"
+          },
+          "baseline_road_obstacle_count": {
+            "type": "integer",
+            "title": "Baseline Road Obstacle Count"
+          },
+          "baseline": {
+            "items": {
+              "$ref": "#/components/schemas/BaselinePath"
+            },
+            "type": "array",
+            "title": "Baseline"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PlanResult"
+            },
+            "type": "array",
+            "title": "Plans"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "simulation_id",
+          "generated_at",
+          "snapshot_at",
+          "budget_myr",
+          "baseline_road_obstacle_count",
+          "baseline",
+          "plans",
+          "warnings"
+        ],
+        "title": "CompareResponse"
+      },
       "CurrentUserResponse": {
         "properties": {
           "user_id": {
@@ -1974,6 +2254,47 @@
           "longitude"
         ],
         "title": "FacilityCreate"
+      },
+      "FacilityImpact": {
+        "properties": {
+          "facility_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Facility Id"
+          },
+          "facility_name": {
+            "type": "string",
+            "title": "Facility Name"
+          },
+          "repaired_issue_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Repaired Issue Ids"
+          },
+          "affects_routes": {
+            "type": "boolean",
+            "title": "Affects Routes"
+          },
+          "reference_intersecting_major_path_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reference Intersecting Major Path Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "facility_id",
+          "facility_name",
+          "repaired_issue_ids",
+          "affects_routes",
+          "reference_intersecting_major_path_ids"
+        ],
+        "title": "FacilityImpact"
       },
       "FacilityList": {
         "properties": {
@@ -2275,6 +2596,38 @@
         ],
         "title": "Location"
       },
+      "MajorPath": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Location"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "origin",
+          "destination"
+        ],
+        "title": "MajorPath"
+      },
       "ManagementReportList": {
         "properties": {
           "items": {
@@ -2449,6 +2802,83 @@
           "coordinates"
         ],
         "title": "MapPoint"
+      },
+      "ModeSummary": {
+        "properties": {
+          "route_mode": {
+            "type": "string",
+            "enum": [
+              "avoid_damage",
+              "accessible"
+            ],
+            "title": "Route Mode"
+          },
+          "designated_path_count": {
+            "type": "integer",
+            "title": "Designated Path Count"
+          },
+          "reference_assessable_path_count": {
+            "type": "integer",
+            "title": "Reference Assessable Path Count"
+          },
+          "affected_major_path_count": {
+            "type": "integer",
+            "title": "Affected Major Path Count"
+          },
+          "restored_path_count": {
+            "type": "integer",
+            "title": "Restored Path Count"
+          },
+          "shortened_path_count": {
+            "type": "integer",
+            "title": "Shortened Path Count"
+          },
+          "improved_path_count": {
+            "type": "integer",
+            "title": "Improved Path Count"
+          },
+          "longer_path_count": {
+            "type": "integer",
+            "title": "Longer Path Count"
+          },
+          "lost_route_count": {
+            "type": "integer",
+            "title": "Lost Route Count"
+          },
+          "not_assessable_path_count": {
+            "type": "integer",
+            "title": "Not Assessable Path Count"
+          },
+          "baseline_available_path_count": {
+            "type": "integer",
+            "title": "Baseline Available Path Count"
+          },
+          "after_available_path_count": {
+            "type": "integer",
+            "title": "After Available Path Count"
+          },
+          "distance_saved_on_comparable_paths_meters": {
+            "type": "number",
+            "title": "Distance Saved On Comparable Paths Meters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "route_mode",
+          "designated_path_count",
+          "reference_assessable_path_count",
+          "affected_major_path_count",
+          "restored_path_count",
+          "shortened_path_count",
+          "improved_path_count",
+          "longer_path_count",
+          "lost_route_count",
+          "not_assessable_path_count",
+          "baseline_available_path_count",
+          "after_available_path_count",
+          "distance_saved_on_comparable_paths_meters"
+        ],
+        "title": "ModeSummary"
       },
       "NavigationArea": {
         "properties": {
@@ -2771,6 +3201,305 @@
           "report_ticket_id"
         ],
         "title": "OpenIssue"
+      },
+      "PathImpact": {
+        "properties": {
+          "path_id": {
+            "type": "string",
+            "title": "Path Id"
+          },
+          "path_name": {
+            "type": "string",
+            "title": "Path Name"
+          },
+          "route_mode": {
+            "type": "string",
+            "enum": [
+              "avoid_damage",
+              "accessible"
+            ],
+            "title": "Route Mode"
+          },
+          "after": {
+            "$ref": "#/components/schemas/RouteOutcome"
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "restored",
+              "shortened",
+              "unchanged",
+              "longer",
+              "lost_route",
+              "still_unavailable",
+              "not_assessable"
+            ],
+            "title": "Effect"
+          },
+          "distance_saved_meters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Saved Meters"
+          },
+          "duration_saved_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Saved Seconds"
+          },
+          "reference_intersects_selected_repairs": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Intersects Selected Repairs"
+          },
+          "reference_intersecting_facility_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Reference Intersecting Facility Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path_id",
+          "path_name",
+          "route_mode",
+          "after",
+          "effect",
+          "distance_saved_meters",
+          "duration_saved_seconds",
+          "reference_intersects_selected_repairs",
+          "reference_intersecting_facility_ids"
+        ],
+        "title": "PathImpact"
+      },
+      "PlanResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "total_estimated_cost_myr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Estimated Cost Myr"
+          },
+          "known_estimated_subtotal_myr": {
+            "type": "string",
+            "title": "Known Estimated Subtotal Myr"
+          },
+          "missing_cost_facility_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Missing Cost Facility Ids"
+          },
+          "budget_status": {
+            "type": "string",
+            "enum": [
+              "within_budget",
+              "over_budget",
+              "unknown_cost",
+              "not_set"
+            ],
+            "title": "Budget Status"
+          },
+          "repaired_issue_count": {
+            "type": "integer",
+            "title": "Repaired Issue Count"
+          },
+          "remaining_road_obstacle_count": {
+            "type": "integer",
+            "title": "Remaining Road Obstacle Count"
+          },
+          "affected_major_path_count": {
+            "type": "integer",
+            "title": "Affected Major Path Count"
+          },
+          "improved_major_path_count": {
+            "type": "integer",
+            "title": "Improved Major Path Count"
+          },
+          "facility_impacts": {
+            "items": {
+              "$ref": "#/components/schemas/FacilityImpact"
+            },
+            "type": "array",
+            "title": "Facility Impacts"
+          },
+          "summaries": {
+            "items": {
+              "$ref": "#/components/schemas/ModeSummary"
+            },
+            "type": "array",
+            "title": "Summaries"
+          },
+          "paths": {
+            "items": {
+              "$ref": "#/components/schemas/PathImpact"
+            },
+            "type": "array",
+            "title": "Paths"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "total_estimated_cost_myr",
+          "known_estimated_subtotal_myr",
+          "missing_cost_facility_ids",
+          "budget_status",
+          "repaired_issue_count",
+          "remaining_road_obstacle_count",
+          "affected_major_path_count",
+          "improved_major_path_count",
+          "facility_impacts",
+          "summaries",
+          "paths"
+        ],
+        "title": "PlanResult"
+      },
+      "RepairCandidates": {
+        "properties": {
+          "snapshot_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Snapshot At"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/CommunityIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "confirmation_threshold": {
+            "type": "integer",
+            "const": 2,
+            "title": "Confirmation Threshold",
+            "default": 2
+          },
+          "main_path_source": {
+            "type": "string",
+            "const": "management_defined",
+            "title": "Main Path Source",
+            "default": "management_defined"
+          },
+          "currency": {
+            "type": "string",
+            "const": "MYR",
+            "title": "Currency",
+            "default": "MYR"
+          },
+          "persistence": {
+            "type": "string",
+            "const": "not_saved",
+            "title": "Persistence",
+            "default": "not_saved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "snapshot_at",
+          "issues"
+        ],
+        "title": "RepairCandidates"
+      },
+      "RepairEstimate": {
+        "properties": {
+          "facility_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Facility Id"
+          },
+          "estimated_cost_myr": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Myr"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "facility_id"
+        ],
+        "title": "RepairEstimate"
+      },
+      "RepairPlan": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "repairs": {
+            "items": {
+              "$ref": "#/components/schemas/RepairEstimate"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Repairs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "repairs"
+        ],
+        "title": "RepairPlan"
       },
       "ReportCreatedResponse": {
         "properties": {
@@ -3104,6 +3833,89 @@
           "coordinates"
         ],
         "title": "RouteGeometry"
+      },
+      "RouteOutcome": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "available",
+              "no_route",
+              "not_assessable"
+            ],
+            "title": "State"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "distance_meters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteGeometry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Source"
+          },
+          "field_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "title": "RouteOutcome"
       },
       "RouteResponse": {
         "properties": {
