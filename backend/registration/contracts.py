@@ -66,6 +66,7 @@ class ResidentInput(RegistrationInput):
 
 class Residency(BaseModel):
     resident_id: UUID
+    full_name: str | None = None
     unit_number: str
     status: Literal["active", "inactive"]
     verified_at: datetime | None

@@ -29,6 +29,8 @@ from .navigation.service import NavigationService
 from .reports.issues import (CommunityIssues,FacilityCreate,Facility,FacilityList,OpenIssue,JoinIssue,
                              IssueLinked,IssueList,IssueMapResponse,CommunityObstacleSnapshot,IssueUnavailable,IssueRejected)
 from .navigation.accessibility import VerifiedNetwork
+from .notifications.models import NotificationCreate, NotificationListResponse, NotificationResponse
+from .notifications.repository import NotificationAccessDenied, NotificationsRepository, NotificationsUnavailable
 from .registration.residents import ResidentAccessRepository, ResidentDirectoryUnavailable
 from .registration import RegistrationRejected, RegistrationService
 from .registration.clients import RegistrationUnavailable
@@ -98,10 +100,12 @@ def create_app(
         verifier = TokenVerifier(configured, transport=auth_transport)
         repository = ReportsRepository(configured, transport=reports_transport)
         residents = ResidentAccessRepository(configured, transport=residents_transport)
+        notifications = NotificationsRepository(configured)
         application.state.verifier = verifier
         application.state.reports = repository
         application.state.residents = residents
         application.state.community_issues = CommunityIssues(configured,transport=community_transport if community_transport is not None else map_transport)
+        application.state.notifications = notifications
         application.state.report_workflow = ReportWorkflow(configured, transport=workflow_transport)
         routing_provider = ValhallaProvider(navigation_settings or NavigationSettings(), transport=navigation_transport)
         application.state.accessibility = accessibility_network or VerifiedNetwork()
@@ -121,6 +125,7 @@ def create_app(
             await repository.close()
             await residents.close()
             await application.state.community_issues.close()
+            await notifications.close()
             await application.state.report_workflow.close()
             await routing_provider.close()
             if application.state.registration is not None:
@@ -174,6 +179,14 @@ def create_app(
     @application.exception_handler(ReportAccessDenied)
     async def denied_handler(request, error):
         return JSONResponse(status_code=403, content={"detail": "Report access denied by database policy"})
+
+    @application.exception_handler(NotificationsUnavailable)
+    async def notifications_unavailable_handler(request, error):
+        return JSONResponse(status_code=503, content={"detail": "Notifications service unavailable"})
+
+    @application.exception_handler(NotificationAccessDenied)
+    async def notifications_denied_handler(request, error):
+        return JSONResponse(status_code=403, content={"detail": "Notification access denied by database policy"})
 
     @application.exception_handler(WorkflowUnavailable)
     async def workflow_unavailable(request, error):
@@ -277,6 +290,39 @@ def create_app(
     ):
         records = await request.app.state.reports.list_for_owner(user.access_token, user.user_id, limit=limit, offset=offset)
         return ReportListResponse(items=records, limit=limit, offset=offset)
+
+    @application.get("/api/v1/notifications", response_model=NotificationListResponse,
+                     tags=["Notifications"], responses=errors,
+                     description="Published management broadcasts for the authenticated resident.")
+    async def resident_notifications(
+        request: Request, user: AuthenticatedUser = Depends(active_resident),
+        limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),
+    ):
+        items = await request.app.state.notifications.list_for_user(
+            user.access_token, user.user_id, limit=limit, offset=offset)
+        return NotificationListResponse(items=items, limit=limit, offset=offset)
+
+    @application.post("/api/v1/management/notifications", response_model=NotificationResponse,
+                      status_code=201, tags=["Management Notifications"],
+                      responses={401: {"description": "Invalid credentials."},
+                                 403: {"description": "Management role required."},
+                                 503: {"description": "Notifications service unavailable."}})
+    async def create_management_notification(
+        request: Request, body: NotificationCreate,
+        user: AuthenticatedUser = Depends(current_user),
+    ):
+        return await request.app.state.notifications.create_broadcast(
+            user.access_token, user.user_id, body)
+
+    @application.post("/api/v1/notifications/{notification_id}/read", status_code=204,
+                      tags=["Notifications"], responses=errors)
+    async def mark_notification_read(
+        request: Request, notification_id: Annotated[int, Path(gt=0)],
+        user: AuthenticatedUser = Depends(active_resident),
+    ):
+        await request.app.state.notifications.mark_read(
+            user.access_token, user.user_id, notification_id)
+        return Response(status_code=204)
 
     @application.get("/api/v1/reports/{ticket_id}", response_model=ReportResponse, tags=["Reports"],
                      description="Requires an active, verified resident binding and returns only that resident's report.",

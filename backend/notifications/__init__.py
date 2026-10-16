@@ -1,0 +1,1 @@
+"""Management broadcast notifications."""

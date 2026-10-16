@@ -11,11 +11,27 @@ export type CurrentUser = {
   email: string | null;
 };
 
-/**
- * Full report fields need confirmation from reports/models.py.
- * Keep unknown fields explicit until those models are supplied.
- */
-export type ReportRecord = Record<string, unknown>;
+export type ResidencyRecord = {
+  resident_id: string;
+  full_name: string | null;
+  unit_number: string;
+  status: 'active' | 'inactive';
+  verified_at: string | null;
+};
+
+export type ReportRecord = {
+  ticket_id: string;
+  user_id: string;
+  description: string;
+  status: string;
+  created_at: string | null;
+  latitude: number;
+  longitude: number;
+  image_url: string | null;
+  category: string | null;
+  priority: string | null;
+  is_approved: boolean;
+};
 
 export type ReportListResponse = {
   items: ReportRecord[];
@@ -28,6 +44,65 @@ export type ReportCreatedResponse = {
   ai_analysis: Record<string, unknown>;
   image_url: string;
   data: ReportRecord[];
+};
+
+export type MapIssueFeature = {
+  id: string;
+  geometry: {
+    coordinates: [number, number];
+  };
+  properties: {
+    ticket_id: string;
+    category: string | null;
+    priority: 'high' | 'medium' | 'low' | null;
+    status: 'approved' | 'in_progress' | 'resolved';
+    reported_at: string | null;
+  };
+};
+
+export type CommunityMapResponse = {
+  type: 'FeatureCollection';
+  features: MapIssueFeature[];
+  pagination: {
+    limit: number;
+    offset: number;
+    returned: number;
+    has_more: boolean;
+  };
+};
+
+export type ReportHistoryEvent = {
+  id: number;
+  from_status: string;
+  to_status: string;
+  note: string;
+  repair_verified: boolean;
+  created_at: string;
+};
+
+export type ReportHistoryResponse = {
+  ticket_id: string;
+  items: ReportHistoryEvent[];
+  limit: number;
+  offset: number;
+  has_more: boolean;
+};
+
+export type NotificationRecord = {
+  id: number;
+  title: string;
+  message: string;
+  related_report_id: number | null;
+  is_read: boolean;
+  created_at: string;
+  published_at: string | null;
+  expires_at: string | null;
+};
+
+export type NotificationListResponse = {
+  items: NotificationRecord[];
+  limit: number;
+  offset: number;
 };
 
 export class ApiError extends Error {
@@ -198,6 +273,14 @@ export const authApi = {
   },
 };
 
+export const residencyApi = {
+  getMyResidency(accessToken: string): Promise<ResidencyRecord> {
+    return request<ResidencyRecord>('/api/v1/me/residency', {
+      accessToken,
+    });
+  },
+};
+
 export const reportsApi = {
   /**
    * Required FormData fields:
@@ -220,6 +303,16 @@ export const reportsApi = {
         accessToken,
         body: form,
       },
+    );
+  },
+
+  getCommunityIssues(
+    accessToken: string,
+    limit = 50,
+  ): Promise<CommunityMapResponse> {
+    return request<CommunityMapResponse>(
+      `/api/v1/map/issues?limit=${encodeURIComponent(String(limit))}`,
+      { accessToken },
     );
   },
 
@@ -246,6 +339,32 @@ export const reportsApi = {
       `/api/v1/reports/${encodeURIComponent(ticketId)}`,
       { accessToken },
     );
+  },
+
+  getReportHistory(
+    accessToken: string,
+    ticketId: string,
+  ): Promise<ReportHistoryResponse> {
+    return request<ReportHistoryResponse>(
+      `/api/v1/reports/${encodeURIComponent(ticketId)}/history?limit=50`,
+      { accessToken },
+    );
+  },
+};
+
+export const notificationsApi = {
+  getAll(accessToken: string, limit = 50, offset = 0): Promise<NotificationListResponse> {
+    return request<NotificationListResponse>(
+      `/api/v1/notifications?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`,
+      { accessToken },
+    );
+  },
+
+  markRead(accessToken: string, notificationId: number): Promise<void> {
+    return request<void>(`/api/v1/notifications/${notificationId}/read`, {
+      method: 'POST',
+      accessToken,
+    });
   },
 };
 

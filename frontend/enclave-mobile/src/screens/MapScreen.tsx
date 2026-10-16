@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   StyleSheet,
@@ -7,6 +8,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { reportsApi, type ApiError, type MapIssueFeature } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
 type Props = {
@@ -18,8 +21,37 @@ export default function MapScreen({
   onReportPress,
   onChooseRoute,
 }: Props) {
-  const [start, setStart] = useState('Community Clubhouse');
-  const [destination, setDestination] = useState('Lakeside Park');
+  const [start, setStart] = useState('');
+  const [destination, setDestination] = useState('');
+  const [issues, setIssues] = useState<MapIssueFeature[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadIssues() {
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        const accessToken = data.session?.access_token;
+        if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+        const response = await reportsApi.getCommunityIssues(accessToken);
+        if (mounted) setIssues(response.features);
+      } catch (loadError) {
+        if (!mounted) return;
+        const apiError = loadError as ApiError;
+        setError(apiError.message || 'Unable to load community issues.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadIssues();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function handleChooseRoute() {
     const startingPoint = start.trim();
@@ -33,14 +65,9 @@ export default function MapScreen({
       return;
     }
 
-    if (onChooseRoute) {
-      onChooseRoute(startingPoint, endPoint);
-      return;
-    }
-
     Alert.alert(
       'Route options',
-      'The Route options page will be connected next.'
+      'Route planning is not available from the backend yet.'
     );
   }
 
@@ -88,25 +115,38 @@ export default function MapScreen({
         </View>
       </View>
 
-      {/* Replace this placeholder with the map component later. */}
       <View style={styles.map}>
         <Text style={styles.mapTitle}>Community map</Text>
 
         <Text style={styles.mapHint}>
-          Map integration comes next.
+          Approved community issues are loaded from Enclave.
         </Text>
       </View>
 
-      {/* Demo issue; replace with reviewed issues from the API. */}
-      <View style={styles.closureNotice}>
-        <Text style={styles.closureTitle}>
-          Walkway closure · Park Entrance
-        </Text>
-
-        <Text style={styles.closureDescription}>
-          Reviewed by management · Avoid this section.
-        </Text>
-      </View>
+      {isLoading ? (
+        <View style={styles.issueState}>
+          <ActivityIndicator size="small" color={colors.navy} />
+          <Text style={styles.mapHint}>Loading approved issues...</Text>
+        </View>
+      ) : error ? (
+        <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+      ) : issues.length === 0 ? (
+        <View style={styles.issueState}>
+          <Text style={styles.closureTitle}>No approved issues nearby.</Text>
+          <Text style={styles.closureDescription}>New issues appear after management review.</Text>
+        </View>
+      ) : (
+        issues.map((issue) => (
+          <View key={issue.id} style={styles.closureNotice}>
+            <Text style={styles.closureTitle}>
+              {issue.properties.category || 'Community issue'} · {issue.properties.status}
+            </Text>
+            <Text style={styles.closureDescription}>
+              #{issue.properties.ticket_id} · {issue.geometry.coordinates[1].toFixed(5)}, {issue.geometry.coordinates[0].toFixed(5)}
+            </Text>
+          </View>
+        ))
+      )}
 
       <Pressable
         accessibilityRole="button"
@@ -218,6 +258,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     color: colors.muted,
+  },
+  issueState: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 18,
+    gap: 8,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#A63E37',
   },
   chooseButton: {
     minHeight: 50,

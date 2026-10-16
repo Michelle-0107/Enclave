@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   StyleSheet,
@@ -6,6 +8,8 @@ import {
   View,
 } from 'react-native';
 
+import { reportsApi, type ApiError, type ReportHistoryEvent } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import type {
   ResidentReport,
@@ -22,8 +26,6 @@ export type ReportProgressItem = {
 type Props = {
   report: ResidentReport;
   onBack: () => void;
-  progress?: ReportProgressItem[];
-  isDemo?: boolean;
 };
 
 const tones = {
@@ -54,105 +56,50 @@ function getStatusStyle(status: ReportStatus) {
   };
 }
 
-function getDemoProgress(
-  report: ResidentReport,
-): ReportProgressItem[] {
-  const submitted: ReportProgressItem = {
-    id: 'submitted',
-    title: 'Submitted',
-    description: `${report.date} · Report received.`,
-    tone: 'normal',
-  };
-
-  switch (report.status) {
-    case 'Pending management review':
-      return [
-        submitted,
-        {
-          id: 'pending',
-          title: 'Pending management review',
-          description:
-            'Your report is waiting for management review.',
-          tone: 'orange',
-        },
-      ];
-
-    case 'Needs information':
-      return [
-        submitted,
-        {
-          id: 'information',
-          title: 'Needs information',
-          description:
-            'Management has requested more information about this report.',
-          tone: 'red',
-        },
-      ];
-
-    case 'In progress':
-      return [
-        submitted,
-        {
-          id: 'approved',
-          title: 'Approved',
-          description:
-            'Reviewed by management.',
-          tone: 'green',
-        },
-        {
-          id: 'in-progress',
-          title: 'In progress',
-          description:
-            'Maintenance team is working on the issue.',
-          tone: 'orange',
-        },
-        {
-          id: 'resolved',
-          title: 'Resolved',
-          description:
-            'Awaiting repair completion and verification.',
-          tone: 'green',
-        },
-      ];
-
-    case 'Resolved':
-      return [
-        submitted,
-        {
-          id: 'approved',
-          title: 'Approved',
-          description:
-            'Reviewed by management.',
-          tone: 'green',
-        },
-        {
-          id: 'maintenance',
-          title: 'Maintenance completed',
-          description:
-            'The maintenance team has completed the repair.',
-          tone: 'green',
-        },
-        {
-          id: 'resolved',
-          title: 'Resolved',
-          description:
-            'Repair completion has been verified by management.',
-          tone: 'green',
-        },
-      ];
-  }
-}
-
 export default function ReportDetailsScreen({
   report,
   onBack,
-  progress,
-  isDemo = true,
 }: Props) {
   const statusStyle = getStatusStyle(report.status);
+  const [progressItems, setProgressItems] = useState<ReportProgressItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const progressItems =
-    progress ?? (isDemo ? getDemoProgress(report) : []);
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadHistory() {
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        const accessToken = data.session?.access_token;
+        if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+        const history = await reportsApi.getReportHistory(accessToken, report.id);
+        if (mounted) {
+          setProgressItems([
+            {
+              id: 'submitted',
+              title: 'Submitted',
+              description: `${report.date} · Report received.`,
+              tone: 'normal',
+            },
+            ...history.items.map(mapHistoryEvent),
+          ]);
+        }
+      } catch (loadError) {
+        if (!mounted) return;
+        const apiError = loadError as ApiError;
+        setError(apiError.message || 'Unable to load report history.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadHistory();
+    return () => {
+      mounted = false;
+    };
+  }, [report.date, report.id]);
 
   return (
     <View style={styles.container}>
@@ -229,11 +176,7 @@ export default function ReportDetailsScreen({
             accessibilityLabel="Submitted report photo"
           />
         ) : (
-          <Text style={styles.photoPlaceholder}>
-            {isDemo
-              ? 'Submitted photo preview'
-              : 'No photo available'}
-          </Text>
+          <Text style={styles.photoPlaceholder}>No photo available</Text>
         )}
       </View>
 
@@ -242,7 +185,14 @@ export default function ReportDetailsScreen({
           Progress
         </Text>
 
-        {progressItems.length > 0 ? (
+        {isLoading ? (
+          <View style={styles.progressLoading}>
+            <ActivityIndicator size="small" color={colors.navy} />
+            <Text style={styles.meta}>Loading report history...</Text>
+          </View>
+        ) : error ? (
+          <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+        ) : progressItems.length > 0 ? (
           progressItems.map((item) => (
             <View
               key={item.id}
@@ -271,13 +221,22 @@ export default function ReportDetailsScreen({
         )}
       </View>
 
-      {isDemo && (
-        <Text style={styles.demoText}>
-          Sample report and progress for design preview
-        </Text>
-      )}
     </View>
   );
+}
+
+function mapHistoryEvent(event: ReportHistoryEvent): ReportProgressItem {
+  const tone: ReportProgressItem['tone'] = event.to_status === 'rejected'
+    ? 'red'
+    : event.to_status === 'resolved'
+      ? 'green'
+      : 'orange';
+  return {
+    id: String(event.id),
+    title: event.to_status.replaceAll('_', ' '),
+    description: `${new Date(event.created_at).toLocaleDateString('en-GB')} · ${event.note}`,
+    tone,
+  };
 }
 
 const styles = StyleSheet.create({
@@ -401,9 +360,14 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
 
-  demoText: {
-    fontSize: 10,
-    lineHeight: 18,
-    color: colors.muted,
+  progressLoading: {
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+
+  errorText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#A63E37',
   },
 });

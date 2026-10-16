@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
+import { reportsApi, type ApiError, type ReportRecord } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
 export type ReportStatus =
@@ -26,49 +29,12 @@ export type ResidentReport = {
   photoUri?: string;
 };
 
-export const demoReports: ResidentReport[] = [
-  {
-    id: 'HP-1024',
-    title: 'Streetlight malfunction',
-    location: 'Park Entrance',
-    date: '14 Oct 2026',
-    status: 'In progress',
-    description:
-      'The streetlight near the park entrance is not working at night.',
-    category: 'Streetlight',
-    priority: 'High',
-  },
-  {
-    id: 'HP-1025',
-    title: 'Damaged kerb ramp',
-    location: 'Maple Road',
-    date: '13 Oct 2026',
-    status: 'Needs information',
-    description:
-      'The kerb ramp is cracked and uneven.',
-    category: 'Accessibility',
-    priority: 'High',
-  },
-  {
-    id: 'HP-1012',
-    title: 'Broken park bench',
-    location: 'Central Park',
-    date: '10 Oct 2026',
-    status: 'Resolved',
-    description:
-      'The park bench has a damaged seat.',
-    category: 'Facility',
-    priority: 'Medium',
-  },
-];
-
 type Filter = 'All' | 'Open' | 'Resolved';
 
 type Props = {
   onBack: () => void;
   onReportPress: (report: ResidentReport) => void;
   reports?: ResidentReport[];
-  isDemo?: boolean;
 };
 
 const filters: Filter[] = ['All', 'Open', 'Resolved'];
@@ -89,13 +55,56 @@ function getStatusColor(status: ReportStatus) {
 export default function MyReportsScreen({
   onBack,
   onReportPress,
-  reports = demoReports,
-  isDemo = true,
+  reports = [],
 }: Props) {
   const [activeFilter, setActiveFilter] =
     useState<Filter>('All');
+  const [serverReports, setServerReports] = useState<ResidentReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const visibleReports = reports.filter((report) => {
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadReports() {
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        const accessToken = data.session?.access_token;
+        if (!accessToken) {
+          throw new Error('Your session has expired. Please sign in again.');
+        }
+
+        const response = await reportsApi.getMyReports(accessToken, 50);
+        if (mounted) setServerReports(response.items.map(mapReportRecord));
+      } catch (loadError) {
+        if (!mounted) return;
+        const apiError = loadError as ApiError;
+        setError(apiError.message || 'Unable to load your reports.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadReports();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const allReports = useMemo(() => {
+    const combined = [...reports, ...serverReports];
+    return combined.filter(
+      (report, index, items) =>
+        items.findIndex((item) => item.id === report.id) === index,
+    );
+  }, [reports, serverReports]);
+
+  const visibleReports = allReports.filter((report) => {
     if (activeFilter === 'Open') {
       return report.status !== 'Resolved';
     }
@@ -158,7 +167,18 @@ export default function MyReportsScreen({
           })}
         </View>
 
-        {visibleReports.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="small" color={colors.navy} />
+            <Text style={styles.subtitle}>Loading your reports...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.emptyState}>
+            <Text accessibilityRole="alert" style={styles.errorText}>
+              {error}
+            </Text>
+          </View>
+        ) : visibleReports.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>
               {activeFilter === 'Resolved'
@@ -210,14 +230,48 @@ export default function MyReportsScreen({
           ))
         )}
 
-        {isDemo && (
-          <Text style={styles.demoText}>
-            Sample reports for design preview
-          </Text>
-        )}
       </View>
     </View>
   );
+}
+
+function mapReportRecord(record: ReportRecord): ResidentReport {
+  const status = mapReportStatus(record.status);
+  const date = record.created_at
+    ? new Date(record.created_at).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : 'Date unavailable';
+
+  return {
+    id: record.ticket_id,
+    title: record.category || 'Community report',
+    location: `${record.latitude.toFixed(5)}, ${record.longitude.toFixed(5)}`,
+    date,
+    status,
+    description: record.description,
+    category: record.category || 'Uncategorised',
+    priority: record.priority || 'Not set',
+    photoUri: record.image_url || undefined,
+  };
+}
+
+function mapReportStatus(value: string): ReportStatus {
+  switch (value.toLowerCase()) {
+    case 'resolved':
+      return 'Resolved';
+    case 'in_progress':
+    case 'in progress':
+      return 'In progress';
+    case 'needs_information':
+    case 'needs information':
+    case 'rejected':
+      return 'Needs information';
+    default:
+      return 'Pending management review';
+  }
 }
 
 const styles = StyleSheet.create({
@@ -324,18 +378,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  loadingState: {
+    paddingVertical: 32,
+    gap: 12,
+    alignItems: 'center',
+  },
+
+  errorText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#A63E37',
+  },
+
   emptyTitle: {
     fontSize: 17,
     fontWeight: '600',
     lineHeight: 24,
     color: colors.navy,
-  },
-
-  demoText: {
-    marginTop: 8,
-    fontSize: 10,
-    lineHeight: 18,
-    color: colors.muted,
   },
 
   pressed: {
