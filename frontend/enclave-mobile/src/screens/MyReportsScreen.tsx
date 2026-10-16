@@ -13,9 +13,10 @@ import { colors } from '../theme';
 
 export type ReportStatus =
   | 'Pending management review'
-  | 'In progress'
-  | 'Needs information'
-  | 'Resolved';
+  | 'Approved for maintenance'
+  | 'Rejected'
+  | 'Repair in progress'
+  | 'Repair verified / resolved';
 
 export type ResidentReport = {
   id: string;
@@ -41,10 +42,10 @@ const filters: Filter[] = ['All', 'Open', 'Resolved'];
 
 function getStatusColor(status: ReportStatus) {
   switch (status) {
-    case 'Needs information':
+    case 'Rejected':
       return '#A63E37';
 
-    case 'Resolved':
+    case 'Repair verified / resolved':
       return '#2D7050';
 
     default:
@@ -79,8 +80,25 @@ export default function MyReportsScreen({
           throw new Error('Your session has expired. Please sign in again.');
         }
 
-        const response = await reportsApi.getMyReports(accessToken, 50);
-        if (mounted) setServerReports(response.items.map(mapReportRecord));
+        const loaded: ResidentReport[] = [];
+        let offset = 0;
+        const limit = 20;
+
+        while (mounted) {
+          const response = await reportsApi.getMyReports(accessToken, limit, offset);
+          loaded.push(...response.items.map(mapReportRecord));
+
+          if (response.items.length < limit) break;
+          const nextOffset = offset + response.items.length;
+          if (nextOffset <= offset) throw new Error('Invalid report pagination response.');
+          offset = nextOffset;
+        }
+
+        if (mounted) {
+          setServerReports(loaded.filter((report, index, items) =>
+            items.findIndex((item) => item.id === report.id) === index,
+          ));
+        }
       } catch (loadError) {
         if (!mounted) return;
         const apiError = loadError as ApiError;
@@ -106,11 +124,11 @@ export default function MyReportsScreen({
 
   const visibleReports = allReports.filter((report) => {
     if (activeFilter === 'Open') {
-      return report.status !== 'Resolved';
+      return report.status !== 'Repair verified / resolved' && report.status !== 'Rejected';
     }
 
     if (activeFilter === 'Resolved') {
-      return report.status === 'Resolved';
+      return report.status === 'Repair verified / resolved';
     }
 
     return true;
@@ -261,14 +279,14 @@ function mapReportRecord(record: ReportRecord): ResidentReport {
 function mapReportStatus(value: string): ReportStatus {
   switch (value.toLowerCase()) {
     case 'resolved':
-      return 'Resolved';
+      return 'Repair verified / resolved';
+    case 'approved':
+      return 'Approved for maintenance';
     case 'in_progress':
     case 'in progress':
-      return 'In progress';
-    case 'needs_information':
-    case 'needs information':
+      return 'Repair in progress';
     case 'rejected':
-      return 'Needs information';
+      return 'Rejected';
     default:
       return 'Pending management review';
   }

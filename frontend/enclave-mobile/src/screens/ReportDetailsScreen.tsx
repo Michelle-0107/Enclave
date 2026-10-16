@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import { reportsApi, type ApiError, type ReportHistoryEvent } from '../lib/api';
+import { reportsApi, type ApiError, type ReportHistoryEvent, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import type {
@@ -36,14 +36,14 @@ const tones = {
 };
 
 function getStatusStyle(status: ReportStatus) {
-  if (status === 'Resolved') {
+  if (status === 'Repair verified / resolved') {
     return {
       text: '#2D7050',
       background: '#E5F3EA',
     };
   }
 
-  if (status === 'Needs information') {
+  if (status === 'Rejected') {
     return {
       text: '#A63E37',
       background: '#FBE9E7',
@@ -60,7 +60,8 @@ export default function ReportDetailsScreen({
   report,
   onBack,
 }: Props) {
-  const statusStyle = getStatusStyle(report.status);
+  const [currentReport, setCurrentReport] = useState(report);
+  const statusStyle = getStatusStyle(currentReport.status);
   const [progressItems, setProgressItems] = useState<ReportProgressItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -74,13 +75,17 @@ export default function ReportDetailsScreen({
         if (sessionError) throw sessionError;
         const accessToken = data.session?.access_token;
         if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
-        const history = await reportsApi.getReportHistory(accessToken, report.id);
+        const [latest, history] = await Promise.all([
+          reportsApi.getReport(accessToken, report.id),
+          reportsApi.getReportHistory(accessToken, report.id),
+        ]);
         if (mounted) {
+          setCurrentReport(mapReportRecord(latest));
           setProgressItems([
             {
               id: 'submitted',
               title: 'Submitted',
-              description: `${report.date} · Report received.`,
+              description: `${mapReportRecord(latest).date} · Report received.`,
               tone: 'normal',
             },
             ...history.items.map(mapHistoryEvent),
@@ -99,7 +104,7 @@ export default function ReportDetailsScreen({
     return () => {
       mounted = false;
     };
-  }, [report.date, report.id]);
+  }, [report.id]);
 
   return (
     <View style={styles.container}>
@@ -116,11 +121,11 @@ export default function ReportDetailsScreen({
 
       <View style={styles.heading}>
         <Text style={styles.title}>
-          {report.title}
+          {currentReport.title}
         </Text>
 
         <Text style={styles.meta}>
-          #{report.id} · Submitted {report.date}
+          #{currentReport.id} · Submitted {currentReport.date}
         </Text>
       </View>
 
@@ -149,29 +154,29 @@ export default function ReportDetailsScreen({
             },
           ]}
         >
-          {report.status}
+          {currentReport.status}
         </Text>
       </View>
 
       <View style={styles.issueDetails}>
         <Text style={styles.location}>
-          {report.location}
+          {currentReport.location}
         </Text>
 
         <Text style={styles.description}>
-          {report.description}
+          {currentReport.description}
         </Text>
 
         <Text style={styles.meta}>
-          Category: {report.category} · Priority:{' '}
-          {report.priority}
+          Category: {currentReport.category} · Priority:{' '}
+          {currentReport.priority}
         </Text>
       </View>
 
       <View style={styles.photoContainer}>
-        {report.photoUri ? (
+        {currentReport.photoUri ? (
           <Image
-            source={{ uri: report.photoUri }}
+            source={{ uri: currentReport.photoUri }}
             style={styles.photo}
             accessibilityLabel="Submitted report photo"
           />
@@ -236,6 +241,31 @@ function mapHistoryEvent(event: ReportHistoryEvent): ReportProgressItem {
     title: event.to_status.replaceAll('_', ' '),
     description: `${new Date(event.created_at).toLocaleDateString('en-GB')} · ${event.note}`,
     tone,
+  };
+}
+
+function mapReportRecord(record: ReportRecord): ResidentReport {
+  const status = record.status === 'resolved'
+    ? 'Repair verified / resolved'
+    : record.status === 'approved'
+      ? 'Approved for maintenance'
+      : record.status === 'rejected'
+        ? 'Rejected'
+        : record.status === 'in_progress'
+          ? 'Repair in progress'
+          : 'Pending management review';
+  return {
+    id: record.ticket_id,
+    title: record.category || 'Community report',
+    location: `${record.latitude.toFixed(5)}, ${record.longitude.toFixed(5)}`,
+    date: record.created_at
+      ? new Date(record.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'Date unavailable',
+    status,
+    description: record.description,
+    category: record.category || 'Uncategorised',
+    priority: record.priority || 'Not set',
+    photoUri: record.image_url || undefined,
   };
 }
 

@@ -18,6 +18,24 @@ type Props = {
   onContinue: (photo: ImagePicker.ImagePickerAsset) => void;
 };
 
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
+function validatePhoto(photo: ImagePicker.ImagePickerAsset): string | null {
+  if (photo.mimeType !== 'image/jpeg' && photo.mimeType !== 'image/png') {
+    return 'Please choose a JPEG or PNG image.';
+  }
+
+  if (photo.fileSize === 0) {
+    return 'The selected image is empty. Please choose another image.';
+  }
+
+  if (photo.fileSize && photo.fileSize > MAX_PHOTO_BYTES) {
+    return 'The image must be 10 MB or smaller.';
+  }
+
+  return null;
+}
+
 export default function ReportPhotoScreen({
   initialPhoto,
   onBack,
@@ -66,7 +84,13 @@ export default function ReportPhotoScreen({
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhoto(result.assets[0]);
+        const selected = result.assets[0];
+        const error = validatePhoto(selected);
+        if (error) {
+          Alert.alert('Unsupported image', error);
+        } else {
+          setPhoto(selected);
+        }
       }
     } catch {
       Alert.alert(
@@ -92,7 +116,13 @@ export default function ReportPhotoScreen({
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhoto(result.assets[0]);
+        const selected = result.assets[0];
+        const error = validatePhoto(selected);
+        if (error) {
+          Alert.alert('Unsupported image', error);
+        } else {
+          setPhoto(selected);
+        }
       }
     } catch {
       Alert.alert(
@@ -188,7 +218,13 @@ export default function ReportPhotoScreen({
 
       <Pressable
         onPress={() => {
-          if (photo) onContinue(photo);
+          if (!photo) return;
+          const error = validatePhoto(photo);
+          if (error) {
+            Alert.alert('Unsupported image', error);
+            return;
+          }
+          onContinue(photo);
         }}
         disabled={!photo || busy}
         accessibilityRole="button"

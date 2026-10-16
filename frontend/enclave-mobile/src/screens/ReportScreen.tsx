@@ -22,10 +22,12 @@ import type { ResidentReport } from './MyReportsScreen';
 import {
   communityIssuesApi,
   facilitiesApi,
+  navigationApi,
   reportsApi,
   type CommunityIssueRecord,
   type FacilityRecord,
   type FaultKind,
+  type IssueLinkResponse,
   type ReportRecord,
 } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -122,6 +124,10 @@ export default function ReportScreen({
   const [ticketId, setTicketId] = useState('');
   const [pendingTicket, setPendingTicket] = useState('');
   const [linkError, setLinkError] = useState('');
+  const [linkOutcome, setLinkOutcome] = useState<Pick<
+    IssueLinkResponse,
+    'community_visible' | 'deduplicated'
+  > & { reporter_count: number } | null>(null);
 
   const [uploadUncertain, setUploadUncertain] =
     useState(false);
@@ -317,11 +323,17 @@ export default function ReportScreen({
         }
       }
 
-      await linkTicket(
+      const linkResponse = await linkTicket(
         accessToken,
         uploadedTicket,
         selection,
       );
+
+      setLinkOutcome({
+        community_visible: linkResponse.community_visible,
+        deduplicated: linkResponse.deduplicated,
+        reporter_count: linkResponse.issue.reporter_count,
+      });
 
       goToStep('success');
     } catch (submitError) {
@@ -498,6 +510,9 @@ export default function ReportScreen({
         return (
           <ReportSuccessScreen
             ticketId={ticketId}
+            communityVisible={linkOutcome?.community_visible ?? null}
+            reporterCount={linkOutcome?.reporter_count ?? null}
+            deduplicated={linkOutcome?.deduplicated ?? false}
             onViewReports={onViewReports}
             onGoHome={onGoHome}
           />
@@ -572,6 +587,7 @@ function IssueSelection({
 
       try {
         const token = await getAccessToken();
+        const area = await navigationApi.getArea(token);
 
         const facilityItems: FacilityRecord[] = [];
         const issueItems: CommunityIssueRecord[] = [];
@@ -584,6 +600,7 @@ function IssueSelection({
             {
               limit: 100,
               offset,
+              bbox: area.bbox,
             },
           );
 
@@ -618,6 +635,7 @@ function IssueSelection({
             {
               limit: 100,
               offset,
+              bbox: area.bbox,
             },
           );
 

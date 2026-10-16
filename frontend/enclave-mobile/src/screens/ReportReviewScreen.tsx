@@ -126,18 +126,20 @@ export default function ReportReviewScreen({
 
       <View style={styles.aiNote}>
         <Text style={styles.aiTitle}>
-          AI suggestions · review required
+          Server AI analysis
         </Text>
 
         <Text style={styles.noteText}>
-          You can edit these suggestions. Management makes
-          the final assessment.
+          The backend analyzes the uploaded image and saves
+          its category and priority with the report.
         </Text>
 
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Category</Text>
+        <Text style={styles.label}>
+          Local reference only · not sent to backend
+        </Text>
 
         <Pressable
           accessibilityRole="button"
@@ -158,9 +160,7 @@ export default function ReportReviewScreen({
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>
-          Suggested priority
-        </Text>
+        <Text style={styles.label}>Local priority reference only</Text>
 
         <Pressable
           accessibilityRole="button"
@@ -181,7 +181,8 @@ export default function ReportReviewScreen({
       </View>
 
       <Text style={styles.noteText}>
-        If AI is unavailable, complete these details manually.
+        These selections are not saved. The saved values come
+        from the backend response.
       </Text>
 
       <Pressable

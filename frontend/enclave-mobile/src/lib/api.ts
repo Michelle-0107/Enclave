@@ -29,7 +29,7 @@ export type ReportRecord = {
   ticket_id: string;
   user_id: string;
   description: string;
-  status: string;
+  status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'resolved' | string;
   created_at: string | null;
   latitude: number;
   longitude: number;
@@ -59,6 +59,7 @@ export type ReportHistoryEvent = {
   note: string;
   repair_verified: boolean;
   created_at: string;
+  actor_role: 'management';
 };
 
 export type ReportHistoryResponse = {
@@ -118,7 +119,7 @@ export type MapIssueFeature = {
     confirmation_threshold: 2;
     status: 'open' | 'resolved';
     affects_routes: boolean;
-    reported_at: string;
+    reported_at: string | null;
     resolved_at: string | null;
     verification: 'community_reported';
   };
@@ -128,6 +129,20 @@ export type CommunityMapResponse = {
   type: 'FeatureCollection';
   features: MapIssueFeature[];
   pagination: Pagination;
+};
+
+export type NavigationArea = {
+  id: string;
+  name: string;
+  bbox: [number, number, number, number];
+  center: [number, number];
+  map_style_url: string;
+  attribution_url: string;
+  supported_route_modes: Array<'shortest' | 'avoid_damage' | 'accessible'>;
+  accessible_network_available: boolean;
+  verified_accessible_segments: number;
+  field_verified: false;
+  official_boundary: false;
 };
 
 export type FacilityRecord = {
@@ -705,6 +720,9 @@ export type NavigationManeuver = {
 
 export type NavigationRouteResponse = {
   route_id: string;
+  generated_at: string;
+  area: string;
+  routing_engine: 'valhalla' | 'verified_network';
   route_mode: RouteMode;
   geometry: {
     type: 'LineString';
@@ -712,6 +730,8 @@ export type NavigationRouteResponse = {
   };
   distance_meters: number;
   duration_seconds: number;
+  origin_snap_distance_meters: number;
+  destination_snap_distance_meters: number;
   maneuvers: NavigationManeuver[];
   community_issue_avoidance:
     | 'not_applied'
@@ -719,13 +739,21 @@ export type NavigationRouteResponse = {
     | 'no_active_obstacles';
   obstacle_count: number;
   obstacle_snapshot_at: string | null;
-
-  // Keep the raw warnings until their exact item schema
-  // is verified against the backend response.
-  warnings: unknown[];
+  obstacle_source: 'community_reports' | null;
+  confirmation_threshold: 2;
+  data_source: 'openstreetmap_unverified' | 'synthetic_demo' | 'verified_accessibility_network';
+  field_verified: boolean;
+  accessibility_status: 'not_requested' | 'verified_network' | 'synthetic_network';
+  warnings: string[];
+  attribution: string;
+  attribution_url: string;
 };
 
 export const navigationApi = {
+  getArea(accessToken: string): Promise<NavigationArea> {
+    return request<NavigationArea>('/api/v1/navigation/area', { accessToken });
+  },
+
   getRoute(
     accessToken: string,
     payload: NavigationRequest,

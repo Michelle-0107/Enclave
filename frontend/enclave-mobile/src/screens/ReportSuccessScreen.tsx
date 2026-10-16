@@ -7,14 +7,18 @@ type Props = {
   ticketId: string;
   onViewReports: () => void;
   onGoHome: () => void;
-  isDemo?: boolean;
+  communityVisible: boolean | null;
+  reporterCount: number | null;
+  deduplicated: boolean;
 };
 
 export default function ReportSuccessScreen({
   ticketId,
   onViewReports,
   onGoHome,
-  isDemo = false,
+  communityVisible,
+  reporterCount,
+  deduplicated,
 }: Props) {
   const displayTicketId = ticketId.startsWith('#')
     ? ticketId
@@ -52,17 +56,24 @@ export default function ReportSuccessScreen({
         </Text>
 
         <Text style={styles.description}>
-          You’ll receive updates in Notifications. Your
-          report appears on the community map only after
-          approval.
+          Your private ticket is saved. Community visibility
+          depends on reports from distinct verified residents,
+          not management approval.
         </Text>
 
-        {isDemo && (
-          <Text style={styles.demoText}>
-            Demo only · This report has not been sent to
-            management.
+        {deduplicated ? (
+          <Text style={styles.communityResult}>
+            You have already contributed to this community issue.
           </Text>
-        )}
+        ) : communityVisible ? (
+          <Text style={styles.communityResult}>
+            This issue is now visible on the community map.
+          </Text>
+        ) : reporterCount !== null ? (
+          <Text style={styles.communityResult}>
+            {reporterCount} resident report{reporterCount === 1 ? '' : 's'} recorded. Waiting for another resident.
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.actions}>
@@ -165,7 +176,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
 
-  demoText: {
+  communityResult: {
     fontSize: 11,
     lineHeight: 18,
     color: colors.muted,

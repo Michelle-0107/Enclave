@@ -79,8 +79,8 @@ export default function NotificationsScreen({
       </Text>
 
       <Text style={styles.subtitle}>
-        Community alerts and report progress, all in
-        one place.
+        Management announcements and community alerts,
+        all in one place.
       </Text>
 
       {isLoading ? (
@@ -97,8 +97,8 @@ export default function NotificationsScreen({
           </Text>
 
           <Text style={styles.subtitle}>
-            Updates about your reports and followed
-            areas will appear here.
+            Published announcements from management will
+            appear here.
           </Text>
         </View>
       ) : (
@@ -180,9 +180,9 @@ function mapNotification(notification: NotificationRecord): ResidentNotification
       : 'Management announcement',
     time: formatRelativeTime(notification.created_at),
     read: notification.is_read,
-    target: notification.related_report_id
-      ? { type: 'report', reportId: String(notification.related_report_id) }
-      : { type: 'map' },
+    // related_report_id is an internal numeric database ID, not a ticket_id.
+    // Keep the broadcast non-navigable until the backend exposes a safe ticket mapping.
+    target: { type: 'map' },
   };
 }
 

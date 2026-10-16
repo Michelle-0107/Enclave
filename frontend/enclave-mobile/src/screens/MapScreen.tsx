@@ -15,8 +15,10 @@ import {
 } from '@maplibre/maplibre-react-native';
 
 import {
+  navigationApi,
   reportsApi,
   type MapIssueFeature,
+  type NavigationArea,
 } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
@@ -37,13 +39,6 @@ const MAP_STYLE =
 const PILOT_CENTER: [number, number] = [
   101.731,
   3.226,
-];
-
-const PILOT_BBOX: [number, number, number, number] = [
-  101.7211,
-  3.2171,
-  101.7409,
-  3.2349,
 ];
 
 function formatFacilityType(value: string): string {
@@ -75,6 +70,7 @@ export default function MapScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [area, setArea] = useState<NavigationArea | null>(null);
 
   const [mapError, setMapError] = useState(false);
   const [mapKey, setMapKey] = useState(0);
@@ -103,6 +99,11 @@ export default function MapScreen({
           );
         }
 
+        const navigationArea = await navigationApi.getArea(accessToken);
+
+        if (!mounted) return;
+        setArea(navigationArea);
+
         const loaded = new globalThis.Map<
           string,
           MapIssueFeature
@@ -116,7 +117,7 @@ export default function MapScreen({
               accessToken,
               100,
               offset,
-              PILOT_BBOX,
+              navigationArea.bbox,
               false,
             );
 
@@ -267,7 +268,7 @@ export default function MapScreen({
         <Map
           key={mapKey}
           style={styles.map}
-          mapStyle={MAP_STYLE}
+          mapStyle={area?.map_style_url || MAP_STYLE}
           androidView="texture"
           compass
           attribution
@@ -276,7 +277,7 @@ export default function MapScreen({
         >
           <Camera
             initialViewState={{
-              center: PILOT_CENTER,
+              center: area?.center || PILOT_CENTER,
               zoom: 15,
             }}
           />
@@ -342,7 +343,7 @@ export default function MapScreen({
               ? 'Community issues unavailable'
               : `${issues.length} community issue${
                   issues.length === 1 ? '' : 's'
-                } in KL East`}
+                } in this area`}
         </Text>
 
         <Pressable
