@@ -29,6 +29,9 @@ from .navigation.service import NavigationService
 from .reports.issues import (CommunityIssues,FacilityCreate,Facility,FacilityList,OpenIssue,JoinIssue,
                              IssueLinked,IssueList,IssueMapResponse,CommunityObstacleSnapshot,IssueUnavailable,IssueRejected)
 from .navigation.accessibility import VerifiedNetwork
+from .what_if.contracts import CompareRequest, CompareResponse, RepairCandidates
+from .what_if.repository import WhatIfRepository, WhatIfRejected, WhatIfUnavailable
+from .what_if.service import WhatIfService
 from .notifications.models import NotificationCreate, NotificationListResponse, NotificationResponse
 from .notifications.repository import NotificationAccessDenied, NotificationsRepository, NotificationsUnavailable
 from .registration.residents import ResidentAccessRepository, ResidentDirectoryUnavailable
@@ -88,6 +91,7 @@ def create_app(
     obstacles_transport: httpx.AsyncBaseTransport | None = None,  # Legacy injection; no longer used.
     community_transport: httpx.AsyncBaseTransport | None = None,
     accessibility_network: VerifiedNetwork | None = None,
+    what_if_transport: httpx.AsyncBaseTransport | None = None,
     registration_service: RegistrationService | None = None,
 ) -> FastAPI:
 
@@ -110,6 +114,8 @@ def create_app(
         routing_provider = ValhallaProvider(navigation_settings or NavigationSettings(), transport=navigation_transport)
         application.state.accessibility = accessibility_network or VerifiedNetwork()
         application.state.navigation = NavigationService(routing_provider,application.state.community_issues,application.state.accessibility)
+        application.state.what_if_repository = WhatIfRepository(configured, transport=what_if_transport)
+        application.state.what_if = WhatIfService(application.state.what_if_repository, application.state.navigation)
         application.state.media = media_services if media_services is not None else MediaServices(configured)
         application.state.registration = registration_service
         if registration_service is None and settings is None:
@@ -128,6 +134,7 @@ def create_app(
             await notifications.close()
             await application.state.report_workflow.close()
             await routing_provider.close()
+            await application.state.what_if_repository.close()
             if application.state.registration is not None:
                 application.state.registration.close()
 
@@ -195,6 +202,16 @@ def create_app(
 
     @application.exception_handler(WorkflowRejected)
     async def workflow_rejected(request, error):
+        return JSONResponse(status_code=error.status, content={"detail": error.message},
+                            headers={"Cache-Control": "no-store"})
+
+    @application.exception_handler(WhatIfUnavailable)
+    async def what_if_unavailable(request, error):
+        return JSONResponse(status_code=503, content={"detail": "Repair comparison unavailable; confirm SQL 010 and the routing engine are ready"},
+                            headers={"Cache-Control": "no-store"})
+
+    @application.exception_handler(WhatIfRejected)
+    async def what_if_rejected(request, error):
         return JSONResponse(status_code=error.status, content={"detail": error.message},
                             headers={"Cache-Control": "no-store"})
 
@@ -453,6 +470,24 @@ def create_app(
                                  user: AuthenticatedUser = Depends(active_resident)):
         response.headers["Cache-Control"] = "private, no-store"
         return await request.app.state.navigation.route(body,user.user_id)
+
+    @application.get("/api/v1/management/what-if/candidates", response_model=RepairCandidates,
+                     tags=["Management What-if"], responses={401: {"description": "Invalid credentials."},
+                         403: {"description": "Management role required."}, 503: {"description": "Snapshot unavailable; confirm SQL 010."}},
+                     description="Management only, no resident binding required. Read current two-resident facility issues eligible for hypothetical repair. Does not save or repair anything.")
+    async def what_if_candidates(request: Request, response: Response, user: AuthenticatedUser = Depends(current_user)):
+        response.headers["Cache-Control"] = "private, no-store"
+        return await request.app.state.what_if.candidates(user.user_id)
+
+    @application.post("/api/v1/management/what-if/compare", response_model=CompareResponse,
+                      tags=["Management What-if"], responses={401: {"description": "Invalid credentials."},
+                          403: {"description": "Management role required."}, 409: {"description": "Selected repair candidates changed."},
+                          429: {"description": "Another comparison is running."}, 503: {"description": "Snapshot or routing dependency unavailable."}},
+                      description="Read-only repair simulation on one snapshot: 1-5 management-defined major paths, 1-3 plans, optional MYR estimates and budget. Affected reference paths and actual restored/shortened paths are distinct metrics. No live report/issue changes and no saved scenarios.")
+    async def compare_repairs(request: Request, response: Response, body: CompareRequest,
+                              user: AuthenticatedUser = Depends(current_user)):
+        response.headers["Cache-Control"] = "private, no-store"
+        return await request.app.state.what_if.compare(user.user_id, body)
 
     return application
 

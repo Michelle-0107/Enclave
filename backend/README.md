@@ -81,3 +81,5 @@ KL East directions and local engine: [NAVIGATION_TESTING.md](docs/api/NAVIGATION
 Historical obstacle guide (superseded by SQL 009): [OBSTACLE_ROUTING_TESTING.md](docs/api/OBSTACLE_ROUTING_TESTING.md).
 
 Current two-resident map and three route modes: [COMMUNITY_ROUTES_TESTING.md](docs/api/COMMUNITY_ROUTES_TESTING.md).
+
+Management repair simulation: [WHAT_IF_API.md](docs/api/WHAT_IF_API.md).

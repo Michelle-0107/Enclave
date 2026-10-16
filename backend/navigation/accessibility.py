@@ -71,9 +71,13 @@ class NetworkDocument(BaseModel):
 
 
 class VerifiedNetwork:
-    def __init__(self,path=None,*,document=None):
+    def __init__(self,path=None,*,document=None,assessment_time=None):
         self.path=Path(path) if path else Path(__file__).parent/'data/accessibility_network.json'
         self.document=document
+        # What-if compares a frozen survey at one instant; normal navigation uses now.
+        if assessment_time is not None and assessment_time.tzinfo is None:
+            raise ValueError('Assessment time must include a timezone')
+        self.assessment_time=assessment_time
 
     def load(self):
         try:
@@ -83,12 +87,12 @@ class VerifiedNetwork:
         except (OSError,ValueError,TypeError,RecursionError): raise NavigationUnavailable() from None
 
     def coverage(self):
-        document=self.load(); now=datetime.now(timezone.utc)
+        document=self.load(); now=self.assessment_time or datetime.now(timezone.utc)
         count=sum(edge.usable(now) for edge in document.edges)
         return {'accessible_network_available':bool(count),'verified_accessible_segments':count}
 
     def route(self,body,snapshot,boxes):
-        document=self.load(); now=datetime.now(timezone.utc)
+        document=self.load(); now=self.assessment_time or datetime.now(timezone.utc)
         if not document.edges:
             raise NavigationRejected(422,'No verified accessible network is available for this area; stairs and unknown paths cannot be assumed accessible')
         nodes={n.id:n.coordinate for n in document.nodes}
