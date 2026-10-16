@@ -22,3 +22,7 @@ node_modules/
 backups/
 .git
 .pytest_cache
+
+# Local routing packages/tiles are platform-specific; rebuild inside the image.
+**/.runtime/
+.local-backups/
