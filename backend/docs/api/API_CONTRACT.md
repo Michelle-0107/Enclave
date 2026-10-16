@@ -40,6 +40,8 @@ The example is synthetic. Email can be null. The endpoint reads verified token c
 
 ### POST /api/v1/reports
 
+For mobile/web handoff, request examples, response fields, and deployment availability, see [REPORT_FRONTEND_INTEGRATION.md](REPORT_FRONTEND_INTEGRATION.md).
+
 Content type: **multipart/form-data**. All four fields are required:
 
 | Field         | Type           | Rules                                                                       |
@@ -132,40 +134,43 @@ The server reads the `.env` in the parent directory of the package, with explici
 References: [Supabase JWTs](https://supabase.com/docs/guides/auth/jwts), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [PostgreSQL policy composition](https://www.postgresql.org/docs/current/sql-createpolicy.html).
 
 
-## Community issue map
+## Community issues and route choices
 
-`GET /api/v1/map/issues` requires an active verified resident and returns GeoJSON
-points for approved community issues, including reports submitted by other residents.
-It omits reporter identity, descriptions, and images; private report reads remain owner-only.
-Query parameters: optional `bbox=west,south,east,north`, `include_resolved=false`,
-`limit=100` (1-200), and `offset=0`. Default statuses are `approved` and `in_progress`;
-resolved issues are opt-in. Coordinates use longitude then latitude. The response
-includes `pagination` with limit, offset, returned, and has_more. Continue paging
-while has_more is true. An empty FeatureCollection is a successful response.
+The current map is independent of maintenance approval: one marker per explicit
+facility incident after two distinct verified residents link their own report tickets.
+Photo reports remain private. Unlinked legacy reports are not guessed into groups.
 
-The current schema has no trustworthy report verification timestamp, so `verified_at`
-is null and `reported_at` contains creation time. This endpoint does not update
-approval state, expose private evidence, or change graph routing or database policies.
-The trusted backend reader uses the existing server-only key and explicit filters;
-that key is never exposed to clients. The ten-variable environment contract is unchanged.
-
-See [COMMUNITY_MAP_TESTING.md](COMMUNITY_MAP_TESTING.md) for full semantics,
-privacy boundaries, local demo on port 8003, and real-provider validation limits.
-
-
-## Management report review and status history
-
-Requires manually applying `backend/sql/007_report_workflow.sql` before real use.
-See [REPORT_WORKFLOW_TESTING.md](REPORT_WORKFLOW_TESTING.md) for bodies, roles,
-transaction guarantees, errors, local sandbox, and real Swagger instructions.
-
-| Method | Path | Access |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/v1/management/reports` | Management, optional status filter and pagination |
-| PATCH | `/api/v1/management/reports/{ticket_id}/status` | Management, expected_status/status/note/repair_verified |
-| GET | `/api/v1/reports/{ticket_id}/history` | Management or the active verified report owner |
+| GET/POST | `/api/v1/facilities` | Select/create a facility point |
+| GET/POST | `/api/v1/community/issues` | Discover points (including count 1) or open/reuse a facility incident |
+| POST | `/api/v1/community/issues/{issue_id}/reports` | Link an owned report ticket, one vote per resident |
+| GET | `/api/v1/map/issues` | GeoJSON points with at least two reporters |
+| GET | `/api/v1/navigation/obstacles` | Current threshold-qualified road incident zones |
+| GET | `/api/v1/navigation/area` | Pilot and accessibility coverage metadata |
+| POST | `/api/v1/navigation/routes` | shortest / avoid_damage / accessible |
 
-Transitions: pending -> approved/rejected; approved -> in_progress; in_progress ->
-resolved (repair verification required). Each success inserts an audit event in the
-same transaction. Resolved issues leave the default map, with historical display
-available through include_resolved. No new environment variables are introduced.
+All these endpoints require active verified residency. SQL 009 is required for
+community data/damage modes; SQL 007 remains the maintenance workflow. Management
+approval/rejection does not publish/remove an incident. A verified repair audit closes
+it; the next fresh incident resets the count. SQL 008 is historical, with its old
+management routing-impact endpoints retired. No hosted SQL is applied automatically.
+
+Shortest ignores incident damage while respecting walking access. Avoid_damage excludes
+two-resident road issues without approval. Accessible excludes those issues and uses
+only assessed, unexpired step-free connections. Current real accessible coverage is
+empty: return 422/no verified route, never an ordinary route labelled accessible.
+Routing responses expose snapshot counts/time and source, not reporter identity or
+private evidence. No new application environment variables are required.
+
+See [COMMUNITY_ROUTES_TESTING.md](COMMUNITY_ROUTES_TESTING.md) for request/response
+fields, errors, lifecycle, the sandbox, migration order, and accessible graph schema.
+
+## Maintenance review (unchanged)
+
+SQL 007 supports GET `/api/v1/management/reports`, PATCH
+`/api/v1/management/reports/{ticket_id}/status`, and GET
+`/api/v1/reports/{ticket_id}/history`. Management reviews atomically append audit
+events; residents can read their own history. pending -> approved/rejected;
+approved -> in_progress; in_progress -> resolved requires repair_verified=true.
+Service-team features are outside this change. See REPORT_WORKFLOW_TESTING.md.

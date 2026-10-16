@@ -118,7 +118,7 @@ def create_workflow_demo_app():
 
     app = create_app(Settings('https://exampleproject.supabase.co','sb_secret_workflow_fixture_only'),
         auth_transport=httpx.MockTransport(unavailable),reports_transport=httpx.MockTransport(reports),
-        residents_transport=httpx.MockTransport(residency),map_transport=httpx.MockTransport(maps),
+        residents_transport=httpx.MockTransport(residency),map_transport=httpx.MockTransport(maps),community_transport=httpx.MockTransport(unavailable),
         workflow_transport=httpx.MockTransport(workflow),media_services=DemoMedia())
 
     def demo_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
@@ -129,7 +129,7 @@ def create_workflow_demo_app():
 
     app.dependency_overrides[current_user] = demo_user
     app.title = 'Enclave LOCAL report workflow sandbox'
-    app.description = ('Synthetic data only. Switch between demo-management-token and demo-resident-token. '
+    app.description = ("Maintenance-only sandbox; use port 8006 for community map/consensus. " 'Synthetic data only. Switch between demo-management-token and demo-resident-token. '
                        'Starts with DEMO-REVIEW-001 pending. Data resets on restart. No real provider calls.')
     return app
 

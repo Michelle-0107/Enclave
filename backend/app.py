@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Path, Query, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -21,7 +21,14 @@ from .reports.models import AIAnalysis, CurrentUserResponse, ReportCreatedRespon
 from .reports.repository import ReportAccessDenied, ReportsRepository, ReportsUnavailable
 from .reports.moderation import (ReportWorkflow, ReportStatus, StatusUpdate, StatusUpdated,
                                  ManagementReportList, ReportHistory, WorkflowUnavailable, WorkflowRejected)
-from .reports.map import CommunityMapRepository, CommunityMapResponse, CommunityMapUnavailable, MapBounds
+from .reports.map import MapBounds
+from .navigation.config import NavigationSettings, PILOT_BBOX, MAP_CENTER
+from .navigation.contracts import NavigationArea, WalkingRouteRequest, RouteResponse
+from .navigation.provider import ValhallaProvider, NavigationRejected, NavigationUnavailable
+from .navigation.service import NavigationService
+from .reports.issues import (CommunityIssues,FacilityCreate,Facility,FacilityList,OpenIssue,JoinIssue,
+                             IssueLinked,IssueList,IssueMapResponse,CommunityObstacleSnapshot,IssueUnavailable,IssueRejected)
+from .navigation.accessibility import VerifiedNetwork
 from .registration.residents import ResidentAccessRepository, ResidentDirectoryUnavailable
 from .registration import RegistrationRejected, RegistrationService
 from .registration.clients import RegistrationUnavailable
@@ -74,6 +81,11 @@ def create_app(
     residents_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
     map_transport: httpx.AsyncBaseTransport | None = None,
     workflow_transport: httpx.AsyncBaseTransport | None = None,
+    navigation_settings: NavigationSettings | None = None,
+    navigation_transport: httpx.AsyncBaseTransport | None = None,
+    obstacles_transport: httpx.AsyncBaseTransport | None = None,  # Legacy injection; no longer used.
+    community_transport: httpx.AsyncBaseTransport | None = None,
+    accessibility_network: VerifiedNetwork | None = None,
     registration_service: RegistrationService | None = None,
 ) -> FastAPI:
 
@@ -89,8 +101,11 @@ def create_app(
         application.state.verifier = verifier
         application.state.reports = repository
         application.state.residents = residents
-        application.state.community_map = CommunityMapRepository(configured, transport=map_transport)
+        application.state.community_issues = CommunityIssues(configured,transport=community_transport if community_transport is not None else map_transport)
         application.state.report_workflow = ReportWorkflow(configured, transport=workflow_transport)
+        routing_provider = ValhallaProvider(navigation_settings or NavigationSettings(), transport=navigation_transport)
+        application.state.accessibility = accessibility_network or VerifiedNetwork()
+        application.state.navigation = NavigationService(routing_provider,application.state.community_issues,application.state.accessibility)
         application.state.media = media_services if media_services is not None else MediaServices(configured)
         application.state.registration = registration_service
         if registration_service is None and settings is None:
@@ -105,8 +120,9 @@ def create_app(
             verifier.close()
             await repository.close()
             await residents.close()
-            await application.state.community_map.close()
+            await application.state.community_issues.close()
             await application.state.report_workflow.close()
+            await routing_provider.close()
             if application.state.registration is not None:
                 application.state.registration.close()
 
@@ -145,7 +161,7 @@ def create_app(
 
     @application.exception_handler(RequestValidationError)
     async def sanitized_registration_validation(request, error):
-        if request.url.path.startswith(("/api/v1/registration/", "/api/v1/management/")) or request.url.path == "/api/send-verification-email":
+        if request.url.path.startswith(("/api/v1/registration/", "/api/v1/management/", "/api/v1/navigation/", "/api/v1/community/", "/api/v1/facilities")) or request.url.path == "/api/send-verification-email":
             # FastAPI's default validation output includes input values, including passwords/OTPs.
             details = [{"loc": e["loc"], "type": e["type"], "msg": "Invalid request field"} for e in error.errors()]
             return JSONResponse(status_code=422, content={"detail": details}, headers={"Cache-Control": "no-store"})
@@ -166,6 +182,25 @@ def create_app(
 
     @application.exception_handler(WorkflowRejected)
     async def workflow_rejected(request, error):
+        return JSONResponse(status_code=error.status, content={"detail": error.message},
+                            headers={"Cache-Control": "no-store"})
+
+    @application.exception_handler(NavigationUnavailable)
+    async def navigation_unavailable(request, error):
+        return JSONResponse(status_code=503, content={"detail": "Walking directions unavailable; confirm the routing engine and KL East data are ready"},
+                            headers={"Cache-Control": "no-store"})
+
+    @application.exception_handler(IssueUnavailable)
+    async def issue_unavailable(request,error):
+        return JSONResponse(status_code=503,content={"detail":"Community issue service unavailable; confirm SQL 009 is installed"},
+                            headers={"Cache-Control":"no-store"})
+
+    @application.exception_handler(IssueRejected)
+    async def issue_rejected(request,error):
+        return JSONResponse(status_code=error.status,content={"detail":error.message},headers={"Cache-Control":"no-store"})
+
+    @application.exception_handler(NavigationRejected)
+    async def navigation_rejected(request, error):
         return JSONResponse(status_code=error.status, content={"detail": error.message},
                             headers={"Cache-Control": "no-store"})
 
@@ -255,9 +290,44 @@ def create_app(
             raise HTTPException(404, "Report not found")
         return record
 
+    def community_bounds(bbox):
+        try: return MapBounds.parse(bbox)
+        except (ValueError,OverflowError): raise HTTPException(422,"Invalid bounding box") from None
+
+    @application.post("/api/v1/facilities",response_model=Facility,status_code=201,tags=["Community Issues"],responses=errors,
+                      description="Create an explicit facility point; reuse existing facilities instead of guessing groups by proximity. Requires SQL 009.")
+    async def add_facility(request: Request,response: Response,body: FacilityCreate,user: AuthenticatedUser=Depends(active_resident)):
+        response.headers["Cache-Control"]="private, no-store"
+        return await request.app.state.community_issues.create_facility(user.user_id,body)
+
+    @application.get("/api/v1/facilities",response_model=FacilityList,tags=["Community Issues"],responses=errors)
+    async def facilities(request: Request,response: Response,user: AuthenticatedUser=Depends(active_resident),
+        bbox: str | None=Query(default=None,max_length=100),limit: int=Query(default=100,ge=1,le=200),offset: int=Query(default=0,ge=0)):
+        response.headers["Cache-Control"]="private, no-store"
+        return await request.app.state.community_issues.listing(user.user_id,"facilities",bounds=community_bounds(bbox),limit=limit,offset=offset)
+
+    @application.get("/api/v1/community/issues",response_model=IssueList,tags=["Community Issues"],responses=errors,
+                     description="Discover open incident points including those with only one reporter, so another resident can select the same issue. No private evidence/identities.")
+    async def issue_choices(request: Request,response: Response,user: AuthenticatedUser=Depends(active_resident),
+        bbox: str | None=Query(default=None,max_length=100),limit: int=Query(default=100,ge=1,le=200),offset: int=Query(default=0,ge=0)):
+        response.headers["Cache-Control"]="private, no-store"
+        return await request.app.state.community_issues.listing(user.user_id,"issues",bounds=community_bounds(bbox),limit=limit,offset=offset)
+
+    @application.post("/api/v1/community/issues",response_model=IssueLinked,tags=["Community Issues"],responses=errors,
+                      description="Open/reuse an incident at the selected facility using an existing owned report ticket. One resident counts once; report must be within 100m of the facility. Requires SQL 009.")
+    async def open_issue(request: Request,response: Response,body: OpenIssue,user: AuthenticatedUser=Depends(active_resident)):
+        response.headers["Cache-Control"]="private, no-store"
+        return await request.app.state.community_issues.link(user.user_id,body)
+
+    @application.post("/api/v1/community/issues/{issue_id}/reports",response_model=IssueLinked,tags=["Community Issues"],responses=errors,
+                      description="Report the exact same incident using your own report ticket. Repeated submissions count once; repaired incidents need fresh evidence/new incident.")
+    async def join_issue(request: Request,response: Response,issue_id: UUID,body: JoinIssue,user: AuthenticatedUser=Depends(active_resident)):
+        response.headers["Cache-Control"]="private, no-store"
+        return await request.app.state.community_issues.link(user.user_id,body,issue_id)
+
     @application.get(
-        "/api/v1/map/issues", response_model=CommunityMapResponse, tags=["Community Map"],
-        description="Approved community issue points for active verified residents. Excludes reporter identity, descriptions, and images.",
+        "/api/v1/map/issues", response_model=IssueMapResponse, tags=["Community Map"],
+        description="One point per incident reported by at least two distinct verified residents. Independent of maintenance approval. Requires SQL 009; excludes private evidence and identities.",
         responses={401: {"description": "Invalid credentials."},
                    403: {"description": "Active verified residency required."},
                    503: {"description": "Community map or residency service unavailable."}},
@@ -266,7 +336,7 @@ def create_app(
         request: Request, response: Response, user: AuthenticatedUser = Depends(active_resident),
         bbox: str | None = Query(default=None, max_length=100,
                                 description="west,south,east,north in longitude/latitude degrees; no antimeridian crossing."),
-        include_resolved: bool = Query(default=False, description="Include approved resolved issues as historical points."),
+        include_resolved: bool = Query(default=False, description="Include resolved community incidents as historical points (threshold still required)."),
         limit: int = Query(default=100, ge=1, le=200), offset: int = Query(default=0, ge=0),
     ):
         response.headers["Cache-Control"] = "private, no-store"
@@ -274,11 +344,8 @@ def create_app(
             bounds = MapBounds.parse(bbox)
         except (ValueError, OverflowError):
             raise HTTPException(422, "bbox must be west,south,east,north within valid longitude/latitude ranges") from None
-        try:
-            return await request.app.state.community_map.list_issues(
-                bounds=bounds, limit=limit, offset=offset, include_resolved=include_resolved)
-        except CommunityMapUnavailable:
-            raise HTTPException(503, "Community map unavailable", headers={"Cache-Control": "no-store"}) from None
+        return await request.app.state.community_issues.listing(user.user_id,"map",
+            bounds=bounds, limit=limit, offset=offset, include_resolved=include_resolved)
 
     workflow_errors = {401: {"description": "Invalid credentials."},
                        403: {"description": "Management role or active verified residency required."},
@@ -319,6 +386,27 @@ def create_app(
     ):
         response.headers["Cache-Control"] = "private, no-store"
         return await request.app.state.report_workflow.history(user.user_id, ticket_id, limit=limit, offset=offset)
+
+    @application.get("/api/v1/navigation/obstacles",response_model=CommunityObstacleSnapshot,tags=["Navigation"],responses=errors,
+                     description="Open road-facility incidents reported by at least two distinct verified residents; maintenance approval is irrelevant. Requires SQL 009.")
+    async def navigation_obstacles(request: Request,response: Response,user: AuthenticatedUser=Depends(active_resident)):
+        response.headers["Cache-Control"]="private, no-store"
+        return await request.app.state.community_issues.active(user.user_id)
+
+    @application.get("/api/v1/navigation/area", response_model=NavigationArea, tags=["Navigation"],
+                     responses=errors, description="Development window for the KL East walking pilot; not an official township boundary or field-verified access map.")
+    async def navigation_area(request: Request, response: Response, user: AuthenticatedUser = Depends(active_resident)):
+        response.headers["Cache-Control"] = "private, no-store"
+        return NavigationArea(bbox=PILOT_BBOX, center=MAP_CENTER,**request.app.state.accessibility.coverage())
+
+    @application.post("/api/v1/navigation/routes", response_model=RouteResponse, tags=["Navigation"],
+                      description="Select route_mode: shortest ignores damage; avoid_damage avoids two-resident road-facility issues; accessible uses only surveyed step-free connections and also avoids damage. SQL 009 is required for damage modes. No fallback to ordinary walking for accessible mode.",
+                      responses={**errors, 409: {"description": "Origin or destination is inside a community-reported damaged area."},
+                                 422: {"description": "Invalid location, unsupported profile, outside pilot window, or no walking route."}})
+    async def walking_directions(request: Request, response: Response, body: WalkingRouteRequest,
+                                 user: AuthenticatedUser = Depends(active_resident)):
+        response.headers["Cache-Control"] = "private, no-store"
+        return await request.app.state.navigation.route(body,user.user_id)
 
     return application
 
