@@ -677,3 +677,66 @@ export const registrationApi = {
     );
   },
 };
+
+export type RouteMode =
+  | 'shortest'
+  | 'avoid_damage'
+  | 'accessible';
+
+export type NavigationPoint = {
+  latitude: number;
+  longitude: number;
+};
+
+export type NavigationRequest = {
+  origin: NavigationPoint;
+  destination: NavigationPoint;
+  profile: 'walking';
+  language: 'en';
+  route_mode: RouteMode;
+};
+
+export type NavigationManeuver = {
+  instruction: string;
+  spoken_instruction: string;
+  coordinate: [number, number];
+  distance_from_start_meters: number;
+};
+
+export type NavigationRouteResponse = {
+  route_id: string;
+  route_mode: RouteMode;
+  geometry: {
+    type: 'LineString';
+    coordinates: [number, number][];
+  };
+  distance_meters: number;
+  duration_seconds: number;
+  maneuvers: NavigationManeuver[];
+  community_issue_avoidance:
+    | 'not_applied'
+    | 'applied'
+    | 'no_active_obstacles';
+  obstacle_count: number;
+  obstacle_snapshot_at: string | null;
+
+  // Keep the raw warnings until their exact item schema
+  // is verified against the backend response.
+  warnings: unknown[];
+};
+
+export const navigationApi = {
+  getRoute(
+    accessToken: string,
+    payload: NavigationRequest,
+  ): Promise<NavigationRouteResponse> {
+    return request<NavigationRouteResponse>(
+      '/api/v1/navigation/routes',
+      {
+        method: 'POST',
+        accessToken,
+        body: payload,
+      },
+    );
+  },
+};

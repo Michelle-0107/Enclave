@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -9,6 +8,13 @@ import {
   View,
 } from 'react-native';
 import * as Location from 'expo-location';
+import {
+  Camera,
+  Map,
+  Marker,
+  type CameraRef,
+} from '@maplibre/maplibre-react-native';
+
 import { colors } from '../theme';
 
 export type ReportLocationDetails = {
@@ -26,29 +32,104 @@ type Props = {
   onContinue: (details: ReportLocationDetails) => void;
 };
 
+type Coordinates = NonNullable<
+  ReportLocationDetails['coordinates']
+>;
+
+const MAP_STYLE =
+  'https://tiles.openfreemap.org/styles/liberty';
+
+// Pilot overview, not an automatically selected report location.
+const PILOT_CENTER: [number, number] = [
+  101.731,
+  3.226,
+];
+
+function isInsidePilot(value: Coordinates): boolean {
+  return (
+    Number.isFinite(value.latitude) &&
+    Number.isFinite(value.longitude) &&
+    value.latitude >= 3.2171 &&
+    value.latitude <= 3.2349 &&
+    value.longitude >= 101.7211 &&
+    value.longitude <= 101.7409
+  );
+}
+
+function coordinateLabel(value: Coordinates): string {
+  return (
+    `${value.latitude.toFixed(5)}, ` +
+    `${value.longitude.toFixed(5)}`
+  );
+}
+
 export default function ReportLocationScreen({
   initialDetails,
   onBack,
   onContinue,
 }: Props) {
+  const cameraRef = useRef<CameraRef>(null);
+  const locationLock = useRef(false);
+
   const [location, setLocation] = useState(
-    initialDetails?.location ?? ''
+    initialDetails?.location ?? '',
   );
 
   const [description, setDescription] = useState(
-    initialDetails?.description ?? ''
+    initialDetails?.description ?? '',
   );
 
-  const [coordinates, setCoordinates] = useState<
-    ReportLocationDetails['coordinates']
-  >(initialDetails?.coordinates ?? null);
+  const [coordinates, setCoordinates] =
+    useState<ReportLocationDetails['coordinates']>(
+      initialDetails?.coordinates ?? null,
+    );
 
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
+  const [mapError, setMapError] = useState(false);
+  const [mapKey, setMapKey] = useState(0);
+
+  const initialCoordinates = initialDetails?.coordinates;
+
+  const initialCenter: [number, number] =
+    initialCoordinates && isInsidePilot(initialCoordinates)
+      ? [
+          initialCoordinates.longitude,
+          initialCoordinates.latitude,
+        ]
+      : PILOT_CENTER;
+
+  function selectMapLocation(
+    longitude: number,
+    latitude: number,
+  ) {
+    if (locationLock.current) {
+      return;
+    }
+
+    const next = { latitude, longitude };
+
+    if (!isInsidePilot(next)) {
+      setError(
+        'Please select an issue location inside the KL East pilot area.',
+      );
+      return;
+    }
+
+    setCoordinates(next);
+
+    // Changing the pin resets its label to avoid retaining
+    // a place name that belongs to the previous location.
+    setLocation(coordinateLabel(next));
+    setError('');
+  }
 
   async function useCurrentLocation() {
-    if (locating) return;
+    if (locationLock.current) {
+      return;
+    }
 
+    locationLock.current = true;
     setLocating(true);
     setError('');
 
@@ -57,82 +138,80 @@ export default function ReportLocationScreen({
         await Location.requestForegroundPermissionsAsync();
 
       if (!permission.granted) {
-        Alert.alert(
-          'Location access needed',
-          'Allow location access in your phone settings, or enter the issue location manually.'
+        setError(
+          'Location access was not granted. You can still tap the map to select the actual issue location.',
         );
         return;
       }
 
-      const servicesEnabled =
+      const enabled =
         await Location.hasServicesEnabledAsync();
 
-      if (!servicesEnabled) {
-        Alert.alert(
-          'Turn on location',
-          'Enable your phone’s location services, or enter the location manually.'
+      if (!enabled) {
+        setError(
+          'Turn on your phone’s Location / GPS, or select the issue location on the map.',
         );
         return;
       }
 
-      const result = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const result =
+        await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
 
-      const nextCoordinates = {
+      const next: Coordinates = {
         latitude: result.coords.latitude,
         longitude: result.coords.longitude,
       };
 
-      setCoordinates(nextCoordinates);
-
-      // Coordinates remain usable even if address lookup fails.
-      let label =
-        `${nextCoordinates.latitude.toFixed(5)}, ` +
-        `${nextCoordinates.longitude.toFixed(5)}`;
-
-      try {
-        const addresses = await Location.reverseGeocodeAsync(
-          nextCoordinates
+      if (!isInsidePilot(next)) {
+        setError(
+          'Your current location is outside KL East. It has not been used. Select the actual issue location on the map.',
         );
-
-        const address = addresses[0];
-
-        if (address) {
-          const parts = [
-            address.name,
-            address.street,
-            address.district,
-            address.city,
-          ].filter(
-            (part): part is string =>
-              typeof part === 'string' && part.trim().length > 0
-          );
-
-          const addressLabel = [...new Set(parts)].join(', ');
-
-          if (addressLabel) {
-            label = addressLabel;
-          }
-        }
-      } catch {
-        // Keep the coordinate label when no address is available.
+        return;
       }
 
-      setLocation(label);
+      setCoordinates(next);
+      setLocation(coordinateLabel(next));
+
+      cameraRef.current?.easeTo({
+        center: [next.longitude, next.latitude],
+        zoom: 17,
+        duration: 700,
+      });
+
+      if (
+        result.coords.accuracy !== null &&
+        result.coords.accuracy > 50
+      ) {
+        setError(
+          'GPS accuracy is low. Check the pin and tap the map to correct the issue location.',
+        );
+      }
     } catch {
-      Alert.alert(
-        'Unable to get location',
-        'Please try again or enter the issue location manually.'
+      setError(
+        'Unable to get your location. Try again or tap the actual issue location on the map.',
       );
     } finally {
+      locationLock.current = false;
       setLocating(false);
     }
   }
 
   function handleContinue() {
+    if (locationLock.current) {
+      return;
+    }
+
+    if (!coordinates || !isInsidePilot(coordinates)) {
+      setError(
+        'Select the actual issue location inside KL East on the map first.',
+      );
+      return;
+    }
+
     if (!location.trim()) {
-      setError('Please enter the issue location.');
+      setError('Please add a location label.');
       return;
     }
 
@@ -162,14 +241,17 @@ export default function ReportLocationScreen({
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
 
-        <Text style={styles.step}>STEP 02 OF 03</Text>
+        <Text style={styles.step}>STEP 02 OF 04</Text>
       </View>
 
       <View style={styles.introduction}>
-        <Text style={styles.title}>Where is the issue?</Text>
+        <Text style={styles.title}>
+          Where is the issue?
+        </Text>
 
         <Text style={styles.subtitle}>
-          Add the location and a short description.
+          Tap the actual issue location on the map,
+          then add a short description.
         </Text>
       </View>
 
@@ -187,47 +269,112 @@ export default function ReportLocationScreen({
           pressed && styles.pressed,
         ]}
       >
-        {locating ? (
+        {locating && (
           <ActivityIndicator color={colors.navy} />
-        ) : null}
+        )}
 
         <Text style={styles.locationButtonText}>
-          {locating ? 'Finding location...' : 'Use current location'}
+          {locating
+            ? 'Finding location…'
+            : 'Use current location'}
         </Text>
       </Pressable>
 
-      <View style={styles.map}>
-        <Text style={styles.mapTitle}>Location map</Text>
+      <View style={styles.mapContainer}>
+        <Map
+          key={mapKey}
+          style={styles.map}
+          mapStyle={MAP_STYLE}
+          androidView="texture"
+          compass
+          attribution
+          onPress={(event) => {
+            const [longitude, latitude] =
+              event.nativeEvent.lngLat;
 
-        <Text style={styles.mapHint}>
-          {coordinates
-            ? `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`
-            : 'Map integration comes next.'}
-        </Text>
+            selectMapLocation(longitude, latitude);
+          }}
+          onDidFinishLoadingMap={() => setMapError(false)}
+          onDidFailLoadingMap={() => setMapError(true)}
+        >
+          <Camera
+            ref={cameraRef}
+            initialViewState={{
+              center: initialCenter,
+              zoom: 15,
+            }}
+          />
+
+          {coordinates && isInsidePilot(coordinates) && (
+            <Marker
+              id="report-location"
+              lngLat={[
+                coordinates.longitude,
+                coordinates.latitude,
+              ]}
+            >
+              <View
+                collapsable={false}
+                style={styles.pin}
+                accessible
+                accessibilityLabel="Selected issue location"
+              >
+                <Text style={styles.pinText}>!</Text>
+              </View>
+            </Marker>
+          )}
+        </Map>
+
+        {mapError && (
+          <View style={styles.mapErrorCard}>
+            <Text style={styles.label}>
+              Unable to load map
+            </Text>
+
+            <Text style={styles.helper}>
+              Check your internet connection.
+            </Text>
+
+            <Pressable
+              accessibilityRole="button"
+              style={styles.backButton}
+              onPress={() => {
+                setMapError(false);
+                setMapKey((value) => value + 1);
+              }}
+            >
+              <Text style={styles.backText}>Retry map</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
+      <Text style={styles.helper}>
+        {coordinates && isInsidePilot(coordinates)
+          ? `Selected pin: ${coordinateLabel(coordinates)}`
+          : 'No issue location selected yet.'}
+      </Text>
+
       <View style={styles.field}>
-        <Text style={styles.label}>Location</Text>
+        <Text style={styles.label}>Location label</Text>
 
         <TextInput
-          accessibilityLabel="Issue location"
+          accessibilityLabel="Issue location label"
           value={location}
           onChangeText={(value) => {
             setLocation(value);
-
-            // Manual changes need a new map/geocoding selection
-            // before coordinates can be associated with this text.
-            setCoordinates(null);
-            setError('');
           }}
           editable={!locating}
-          placeholder="e.g. Park Entrance"
+          placeholder="e.g. Walkway beside the entrance"
           placeholderTextColor={colors.muted}
+          maxLength={200}
           style={styles.input}
         />
 
         <Text style={styles.helper}>
-          Confirm the exact spot before continuing.
+          This label describes the selected pin.
+          To change the location, tap a different spot
+          on the map.
         </Text>
       </View>
 
@@ -237,24 +384,28 @@ export default function ReportLocationScreen({
         <TextInput
           accessibilityLabel="Issue description"
           value={description}
-          onChangeText={(value) => {
-            setDescription(value);
-            setError('');
-          }}
-          placeholder="Describe what is damaged and how it affects residents."
+          onChangeText={setDescription}
+          editable={!locating}
+          placeholder="Describe the damage or obstruction and how it affects residents."
           placeholderTextColor={colors.muted}
           multiline
           textAlignVertical="top"
           maxLength={500}
-          style={[styles.input, styles.descriptionInput]}
+          style={[
+            styles.input,
+            styles.descriptionInput,
+          ]}
         />
       </View>
 
-      {error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
+      {!!error && (
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+        >
           {error}
         </Text>
-      ) : null}
+      )}
 
       <Pressable
         accessibilityRole="button"
@@ -266,7 +417,9 @@ export default function ReportLocationScreen({
           pressed && styles.pressed,
         ]}
       >
-        <Text style={styles.continueText}>Continue</Text>
+        <Text style={styles.continueText}>
+          Continue
+        </Text>
       </Pressable>
     </View>
   );
@@ -328,25 +481,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.navy,
   },
-  map: {
-    height: 140,
+  mapContainer: {
+    height: 280,
     borderRadius: 18,
+    overflow: 'hidden',
     backgroundColor: colors.lavender,
+  },
+  map: {
+    flex: 1,
+  },
+  pin: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.navy,
+    borderWidth: 3,
+    borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    gap: 8,
   },
-  mapTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.navy,
+  pinText: {
+    fontSize: 23,
+    lineHeight: 28,
+    fontWeight: '700',
+    color: colors.white,
   },
-  mapHint: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.muted,
-    textAlign: 'center',
+  mapErrorCard: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: colors.white,
+    gap: 6,
   },
   field: {
     gap: 8,
