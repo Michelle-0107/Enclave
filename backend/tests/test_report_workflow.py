@@ -27,21 +27,17 @@ class ReportWorkflowTests(unittest.TestCase):
             json={'expected_status':before,'status':after,'note':'Checked on site',
                   'repair_verified':after == 'resolved',**extra})
 
-    def test_full_review_map_history_flow(self):
+    def test_full_review_history_flow(self):
         client = self.demo()
-        self.assertEqual(client.get('/api/v1/map/issues',headers=self.headers()).json()['features'],[])
         for before,after in [('pending','approved'),('approved','in_progress'),('in_progress','resolved')]:
             response = self.patch(client,before,after)
             self.assertEqual(response.status_code,200,response.text)
             self.assertEqual(response.json()['event']['changed_by'],str(MANAGER))
             self.assertEqual(response.headers['cache-control'],'private, no-store')
-            points = client.get('/api/v1/map/issues',headers=self.headers()).json()['features']
-            self.assertEqual(len(points),int(after != 'resolved'))
         history = client.get('/api/v1/reports/DEMO-REVIEW-001/history',headers=self.headers())
         self.assertEqual(len(history.json()['items']),3)
         self.assertNotIn(str(MANAGER),history.text)
         self.assertNotIn('changed_by',history.text)
-        self.assertEqual(len(client.get('/api/v1/map/issues?include_resolved=true',headers=self.headers()).json()['features']),1)
 
     def test_resident_cannot_moderate_and_other_owner_cannot_read_history(self):
         client=self.demo()
@@ -92,8 +88,6 @@ class ReportWorkflowTests(unittest.TestCase):
         ticket=response.json()['ticket_id']
         self.assertEqual(client.patch('/api/v1/management/reports/'+ticket+'/status',headers=self.headers(True),
             json={'expected_status':'pending','status':'approved','note':'Verified'}).status_code,200)
-        points=client.get('/api/v1/map/issues',headers=self.headers()).json()['features']
-        self.assertEqual(points[0]['properties']['ticket_id'],ticket)
         self.assertEqual(len(client.get('/api/v1/reports',headers=self.headers()).json()['items']),2)
 
     def rpc_client(self, handler, *, actor=MANAGER, key='sb_secret_workflow_fixture_only'):

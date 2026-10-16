@@ -17,10 +17,13 @@ backend/
     models.py               Report and current-user response contracts
     repository.py           Owner-scoped Supabase persistence
     media.py                S3 upload and existing Bedrock/Gemini integration
-    map.py                  Approved community issue GeoJSON projection
+    map.py                  Shared GeoJSON and geographic bounds
+    issues.py               Explicit facility/incident grouping and two-resident counting
+    community_demo.py       Two-resident sandbox with real local routing
     map_demo.py             Isolated synthetic map practice
     moderation.py           Management review and report history
     workflow_demo.py        Isolated report review practice
+  navigation/               KL East walking directions, contracts, local engine, and road snapshot
   registration/
     __init__.py
     contracts.py            Signup, invitation, and residency contracts
@@ -72,3 +75,9 @@ longer needed; imports now reference `registration/settings.py` and
 Community map contract and practice: [COMMUNITY_MAP_TESTING.md](docs/api/COMMUNITY_MAP_TESTING.md).
 
 Management review contract and practice: [REPORT_WORKFLOW_TESTING.md](docs/api/REPORT_WORKFLOW_TESTING.md).
+
+KL East directions and local engine: [NAVIGATION_TESTING.md](docs/api/NAVIGATION_TESTING.md).
+
+Historical obstacle guide (superseded by SQL 009): [OBSTACLE_ROUTING_TESTING.md](docs/api/OBSTACLE_ROUTING_TESTING.md).
+
+Current two-resident map and three route modes: [COMMUNITY_ROUTES_TESTING.md](docs/api/COMMUNITY_ROUTES_TESTING.md).

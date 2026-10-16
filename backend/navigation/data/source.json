@@ -1,0 +1,43 @@
+{
+  "source_url": "https://api.openstreetmap.org/api/0.6/map?bbox=101.719,3.212,101.745,3.240",
+  "attribution": "OpenStreetMap contributors",
+  "license": "ODbL 1.0",
+  "copyright_url": "https://www.openstreetmap.org/copyright",
+  "downloaded_at": "2026-10-15T16:56:52.994438+00:00",
+  "extract_bbox": [
+    101.719,
+    3.212,
+    101.745,
+    3.24
+  ],
+  "counts": {
+    "bounds": 1,
+    "node": 20765,
+    "way": 5037,
+    "relation": 120
+  },
+  "highway_types": {
+    "secondary": 103,
+    "residential": 360,
+    "trunk_link": 45,
+    "secondary_link": 16,
+    "unclassified": 35,
+    "primary": 21,
+    "motorway_link": 11,
+    "service": 680,
+    "tertiary": 74,
+    "construction": 1,
+    "trunk": 32,
+    "path": 136,
+    "footway": 252,
+    "steps": 50,
+    "tertiary_link": 1,
+    "primary_link": 1,
+    "track": 2,
+    "motorway": 9,
+    "cycleway": 12
+  },
+  "pbf_sha256": "54f7ffb546167642b6fa95e8833475c8968d242a84d60a6ac6c11add14285a3a",
+  "field_verified": false,
+  "official_township_boundary": false
+}

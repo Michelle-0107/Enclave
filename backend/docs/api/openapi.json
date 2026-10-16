@@ -471,6 +471,182 @@
         }
       }
     },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Resident Notifications",
+        "description": "Published management broadcasts for the authenticated resident.",
+        "operationId": "resident_notifications_api_v1_notifications_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/notifications": {
+      "post": {
+        "tags": [
+          "Management Notifications"
+        ],
+        "summary": "Create Management Notification",
+        "operationId": "create_management_notification_api_v1_management_notifications_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Management role required."
+          },
+          "503": {
+            "description": "Notifications service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/read": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark Notification Read",
+        "operationId": "mark_notification_read_api_v1_notifications__notification_id__read_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Notification Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reports/{ticket_id}": {
       "get": {
         "tags": [
@@ -534,13 +710,364 @@
         }
       }
     },
+    "/api/v1/facilities": {
+      "post": {
+        "tags": [
+          "Community Issues"
+        ],
+        "summary": "Add Facility",
+        "description": "Create an explicit facility point; reuse existing facilities instead of guessing groups by proximity. Requires SQL 009.",
+        "operationId": "add_facility_api_v1_facilities_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacilityCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Facility"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Community Issues"
+        ],
+        "summary": "Facilities",
+        "operationId": "facilities_api_v1_facilities_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bbox"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacilityList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/issues": {
+      "get": {
+        "tags": [
+          "Community Issues"
+        ],
+        "summary": "Issue Choices",
+        "description": "Discover open incident points including those with only one reporter, so another resident can select the same issue. No private evidence/identities.",
+        "operationId": "issue_choices_api_v1_community_issues_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bbox"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Community Issues"
+        ],
+        "summary": "Open Issue",
+        "description": "Open/reuse an incident at the selected facility using an existing owned report ticket. One resident counts once; report must be within 100m of the facility. Requires SQL 009.",
+        "operationId": "open_issue_api_v1_community_issues_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueLinked"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/issues/{issue_id}/reports": {
+      "post": {
+        "tags": [
+          "Community Issues"
+        ],
+        "summary": "Join Issue",
+        "description": "Report the exact same incident using your own report ticket. Repeated submissions count once; repaired incidents need fresh evidence/new incident.",
+        "operationId": "join_issue_api_v1_community_issues__issue_id__reports_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinIssue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueLinked"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/map/issues": {
       "get": {
         "tags": [
           "Community Map"
         ],
         "summary": "Community Issues",
-        "description": "Approved community issue points for active verified residents. Excludes reporter identity, descriptions, and images.",
+        "description": "One point per incident reported by at least two distinct verified residents. Independent of maintenance approval. Requires SQL 009; excludes private evidence and identities.",
         "operationId": "community_issues_api_v1_map_issues_get",
         "security": [
           {
@@ -573,11 +1100,11 @@
             "required": false,
             "schema": {
               "type": "boolean",
-              "description": "Include approved resolved issues as historical points.",
+              "description": "Include resolved community incidents as historical points (threshold still required).",
               "default": false,
               "title": "Include Resolved"
             },
-            "description": "Include approved resolved issues as historical points."
+            "description": "Include resolved community incidents as historical points (threshold still required)."
           },
           {
             "name": "limit",
@@ -609,7 +1136,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CommunityMapResponse"
+                  "$ref": "#/components/schemas/IssueMapResponse"
                 }
               }
             }
@@ -900,6 +1427,130 @@
           }
         }
       }
+    },
+    "/api/v1/navigation/obstacles": {
+      "get": {
+        "tags": [
+          "Navigation"
+        ],
+        "summary": "Navigation Obstacles",
+        "description": "Open road-facility incidents reported by at least two distinct verified residents; maintenance approval is irrelevant. Requires SQL 009.",
+        "operationId": "navigation_obstacles_api_v1_navigation_obstacles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityObstacleSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/navigation/area": {
+      "get": {
+        "tags": [
+          "Navigation"
+        ],
+        "summary": "Navigation Area",
+        "description": "Development window for the KL East walking pilot; not an official township boundary or field-verified access map.",
+        "operationId": "navigation_area_api_v1_navigation_area_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NavigationArea"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/navigation/routes": {
+      "post": {
+        "tags": [
+          "Navigation"
+        ],
+        "summary": "Walking Directions",
+        "description": "Select route_mode: shortest ignores damage; avoid_damage avoids two-resident road-facility issues; accessible uses only surveyed step-free connections and also avoids damage. SQL 009 is required for damage modes. No fallback to ordinary walking for accessible mode.",
+        "operationId": "walking_directions_api_v1_navigation_routes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalkingRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "409": {
+            "description": "Origin or destination is inside a community-reported damaged area."
+          },
+          "422": {
+            "description": "Invalid location, unsupported profile, outside pilot window, or no walking route."
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1010,31 +1661,188 @@
         ],
         "title": "Body_submit_report_api_v1_reports_post"
       },
-      "CommunityMapResponse": {
+      "CommunityIssue": {
         "properties": {
-          "type": {
+          "id": {
             "type": "string",
-            "const": "FeatureCollection",
-            "title": "Type",
-            "default": "FeatureCollection"
+            "format": "uuid",
+            "title": "Id"
           },
-          "features": {
-            "items": {
-              "$ref": "#/components/schemas/MapIssueFeature"
-            },
-            "type": "array",
-            "title": "Features"
+          "facility_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Facility Id"
           },
-          "pagination": {
-            "$ref": "#/components/schemas/MapPagination"
+          "facility_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Facility Name"
+          },
+          "facility_type": {
+            "type": "string",
+            "enum": [
+              "path_surface",
+              "ramp",
+              "stairs",
+              "kerb",
+              "crossing",
+              "elevator",
+              "streetlight",
+              "drainage",
+              "bench",
+              "other"
+            ],
+            "title": "Facility Type"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 3.2349,
+            "minimum": 3.2171,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 101.7409,
+            "minimum": 101.7211,
+            "title": "Longitude"
+          },
+          "fault_kind": {
+            "type": "string",
+            "enum": [
+              "damage",
+              "obstruction"
+            ],
+            "title": "Fault Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "reporter_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Reporter Count"
+          },
+          "affects_routes": {
+            "type": "boolean",
+            "title": "Affects Routes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
           }
         },
         "type": "object",
         "required": [
-          "features",
-          "pagination"
+          "id",
+          "facility_id",
+          "facility_name",
+          "facility_type",
+          "latitude",
+          "longitude",
+          "fault_kind",
+          "status",
+          "reporter_count",
+          "affects_routes",
+          "created_at"
         ],
-        "title": "CommunityMapResponse"
+        "title": "CommunityIssue"
+      },
+      "CommunityObstacle": {
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          },
+          "facility_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Facility Id"
+          },
+          "reporter_count": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Reporter Count"
+          },
+          "exclusion_ring": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Exclusion Ring"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue_id",
+          "facility_id",
+          "reporter_count",
+          "exclusion_ring"
+        ],
+        "title": "CommunityObstacle"
+      },
+      "CommunityObstacleSnapshot": {
+        "properties": {
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "confirmation_threshold": {
+            "type": "integer",
+            "const": 2,
+            "title": "Confirmation Threshold",
+            "default": 2
+          },
+          "source": {
+            "type": "string",
+            "const": "community_reports",
+            "title": "Source",
+            "default": "community_reports"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CommunityObstacle"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checked_at",
+          "items"
+        ],
+        "title": "CommunityObstacleSnapshot"
       },
       "CurrentUserResponse": {
         "properties": {
@@ -1061,6 +1869,131 @@
           "email"
         ],
         "title": "CurrentUserResponse"
+      },
+      "Facility": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "facility_type": {
+            "type": "string",
+            "enum": [
+              "path_surface",
+              "ramp",
+              "stairs",
+              "kerb",
+              "crossing",
+              "elevator",
+              "streetlight",
+              "drainage",
+              "bench",
+              "other"
+            ],
+            "title": "Facility Type"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 3.2349,
+            "minimum": 3.2171,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 101.7409,
+            "minimum": 101.7211,
+            "title": "Longitude"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "facility_type",
+          "latitude",
+          "longitude",
+          "id",
+          "created_at"
+        ],
+        "title": "Facility"
+      },
+      "FacilityCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "facility_type": {
+            "type": "string",
+            "enum": [
+              "path_surface",
+              "ramp",
+              "stairs",
+              "kerb",
+              "crossing",
+              "elevator",
+              "streetlight",
+              "drainage",
+              "bench",
+              "other"
+            ],
+            "title": "Facility Type"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 3.2349,
+            "minimum": 3.2171,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 101.7409,
+            "minimum": 101.7211,
+            "title": "Longitude"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "facility_type",
+          "latitude",
+          "longitude"
+        ],
+        "title": "FacilityCreate"
+      },
+      "FacilityList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Facility"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/MapPagination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "FacilityList"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1106,6 +2039,242 @@
         ],
         "title": "InvitationResult"
       },
+      "IssueLinked": {
+        "properties": {
+          "issue": {
+            "$ref": "#/components/schemas/CommunityIssue"
+          },
+          "deduplicated": {
+            "type": "boolean",
+            "title": "Deduplicated"
+          },
+          "community_visible": {
+            "type": "boolean",
+            "title": "Community Visible"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue",
+          "deduplicated",
+          "community_visible"
+        ],
+        "title": "IssueLinked"
+      },
+      "IssueList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CommunityIssue"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/MapPagination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "IssueList"
+      },
+      "IssueMapFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/MapPoint"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/IssueMapProperties"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "geometry",
+          "properties"
+        ],
+        "title": "IssueMapFeature"
+      },
+      "IssueMapProperties": {
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          },
+          "facility_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Facility Id"
+          },
+          "facility_name": {
+            "type": "string",
+            "title": "Facility Name"
+          },
+          "facility_type": {
+            "type": "string",
+            "enum": [
+              "path_surface",
+              "ramp",
+              "stairs",
+              "kerb",
+              "crossing",
+              "elevator",
+              "streetlight",
+              "drainage",
+              "bench",
+              "other"
+            ],
+            "title": "Facility Type"
+          },
+          "fault_kind": {
+            "type": "string",
+            "enum": [
+              "damage",
+              "obstruction"
+            ],
+            "title": "Fault Kind"
+          },
+          "reporter_count": {
+            "type": "integer",
+            "title": "Reporter Count"
+          },
+          "confirmation_threshold": {
+            "type": "integer",
+            "const": 2,
+            "title": "Confirmation Threshold",
+            "default": 2
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "affects_routes": {
+            "type": "boolean",
+            "title": "Affects Routes"
+          },
+          "reported_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Reported At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "verification": {
+            "type": "string",
+            "const": "community_reported",
+            "title": "Verification",
+            "default": "community_reported"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue_id",
+          "facility_id",
+          "facility_name",
+          "facility_type",
+          "fault_kind",
+          "reporter_count",
+          "status",
+          "affects_routes",
+          "reported_at",
+          "resolved_at"
+        ],
+        "title": "IssueMapProperties"
+      },
+      "IssueMapResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/IssueMapFeature"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/MapPagination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "features",
+          "pagination"
+        ],
+        "title": "IssueMapResponse"
+      },
+      "JoinIssue": {
+        "properties": {
+          "report_ticket_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Report Ticket Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "report_ticket_id"
+        ],
+        "title": "JoinIssue"
+      },
+      "Location": {
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "title": "Location"
+      },
       "ManagementReportList": {
         "properties": {
           "items": {
@@ -1137,101 +2306,92 @@
         ],
         "title": "ManagementReportList"
       },
-      "MapIssueFeature": {
+      "Maneuver": {
         "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Index"
+          },
           "type": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Type"
+          },
+          "instruction": {
             "type": "string",
-            "const": "Feature",
-            "title": "Type",
-            "default": "Feature"
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Instruction"
           },
-          "id": {
+          "spoken_instruction": {
             "type": "string",
-            "title": "Id"
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Spoken Instruction"
           },
-          "geometry": {
-            "$ref": "#/components/schemas/MapPoint"
+          "distance_meters": {
+            "type": "number",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Distance Meters"
           },
-          "properties": {
-            "$ref": "#/components/schemas/MapIssueProperties"
+          "duration_seconds": {
+            "type": "number",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Duration Seconds"
+          },
+          "begin_shape_index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Begin Shape Index"
+          },
+          "end_shape_index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "End Shape Index"
+          },
+          "distance_from_start_meters": {
+            "type": "number",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Distance From Start Meters"
+          },
+          "coordinate": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Coordinate"
           }
         },
         "type": "object",
         "required": [
-          "id",
-          "geometry",
-          "properties"
+          "index",
+          "type",
+          "instruction",
+          "spoken_instruction",
+          "distance_meters",
+          "duration_seconds",
+          "begin_shape_index",
+          "end_shape_index",
+          "distance_from_start_meters",
+          "coordinate"
         ],
-        "title": "MapIssueFeature"
-      },
-      "MapIssueProperties": {
-        "properties": {
-          "ticket_id": {
-            "type": "string",
-            "title": "Ticket Id"
-          },
-          "category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
-          },
-          "priority": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "high",
-                  "medium",
-                  "low"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Priority"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "approved",
-              "in_progress",
-              "resolved"
-            ],
-            "title": "Status"
-          },
-          "reported_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reported At"
-          },
-          "verified_at": {
-            "type": "null",
-            "title": "Verified At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "ticket_id",
-          "category",
-          "priority",
-          "status",
-          "reported_at"
-        ],
-        "title": "MapIssueProperties"
+        "title": "Maneuver"
       },
       "MapPagination": {
         "properties": {
@@ -1290,6 +2450,277 @@
         ],
         "title": "MapPoint"
       },
+      "NavigationArea": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "const": "kl-east-pilot",
+            "title": "Id",
+            "default": "kl-east-pilot"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "KL East walking pilot"
+          },
+          "bbox": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Bbox"
+          },
+          "center": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Center"
+          },
+          "boundary_type": {
+            "type": "string",
+            "const": "development_window",
+            "title": "Boundary Type",
+            "default": "development_window"
+          },
+          "official_boundary": {
+            "type": "boolean",
+            "const": false,
+            "title": "Official Boundary",
+            "default": false
+          },
+          "field_verified": {
+            "type": "boolean",
+            "const": false,
+            "title": "Field Verified",
+            "default": false
+          },
+          "supported_profiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Supported Profiles",
+            "default": [
+              "walking"
+            ]
+          },
+          "supported_languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Supported Languages",
+            "default": [
+              "en"
+            ]
+          },
+          "supported_route_modes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Supported Route Modes",
+            "default": [
+              "shortest",
+              "avoid_damage",
+              "accessible"
+            ]
+          },
+          "accessible_network_available": {
+            "type": "boolean",
+            "title": "Accessible Network Available",
+            "default": false
+          },
+          "verified_accessible_segments": {
+            "type": "integer",
+            "title": "Verified Accessible Segments",
+            "default": 0
+          },
+          "community_issue_avoidance": {
+            "type": "string",
+            "const": "two_resident_issue_points",
+            "title": "Community Issue Avoidance",
+            "default": "two_resident_issue_points"
+          },
+          "map_style_url": {
+            "type": "string",
+            "title": "Map Style Url",
+            "default": "https://tiles.openfreemap.org/styles/liberty"
+          },
+          "attribution_url": {
+            "type": "string",
+            "title": "Attribution Url",
+            "default": "https://www.openstreetmap.org/copyright"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bbox",
+          "center"
+        ],
+        "title": "NavigationArea"
+      },
+      "NotificationCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "related_report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Report Id"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "message"
+        ],
+        "title": "NotificationCreate"
+      },
+      "NotificationListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "title": "NotificationListResponse"
+      },
+      "NotificationResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "related_report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Report Id"
+          },
+          "is_read": {
+            "type": "boolean",
+            "title": "Is Read",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "message",
+          "created_at"
+        ],
+        "title": "NotificationResponse"
+      },
       "OTPAccepted": {
         "properties": {
           "challenge_id": {
@@ -1308,6 +2739,38 @@
           "challenge_id"
         ],
         "title": "OTPAccepted"
+      },
+      "OpenIssue": {
+        "properties": {
+          "facility_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Facility Id"
+          },
+          "fault_kind": {
+            "type": "string",
+            "enum": [
+              "damage",
+              "obstruction"
+            ],
+            "title": "Fault Kind",
+            "default": "damage"
+          },
+          "report_ticket_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Report Ticket Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "facility_id",
+          "report_ticket_id"
+        ],
+        "title": "OpenIssue"
       },
       "ReportCreatedResponse": {
         "properties": {
@@ -1507,20 +2970,12 @@
             "type": "string",
             "format": "email",
             "title": "Email"
-          },
-          "invitation_token": {
-            "type": "string",
-            "maxLength": 128,
-            "minLength": 40,
-            "pattern": "^[A-Za-z0-9_-]+$",
-            "title": "Invitation Token"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "email",
-          "invitation_token"
+          "email"
         ],
         "title": "RequestOTP"
       },
@@ -1530,6 +2985,17 @@
             "type": "string",
             "format": "uuid",
             "title": "Resident Id"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
           },
           "unit_number": {
             "type": "string",
@@ -1600,6 +3066,233 @@
           "registered_email"
         ],
         "title": "ResidentInput"
+      },
+      "RouteGeometry": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "LineString",
+            "title": "Type",
+            "default": "LineString"
+          },
+          "coordinates": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "maximum": 180.0,
+                  "minimum": -180.0
+                },
+                {
+                  "type": "number",
+                  "maximum": 90.0,
+                  "minimum": -90.0
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "minItems": 2,
+            "title": "Coordinates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "coordinates"
+        ],
+        "title": "RouteGeometry"
+      },
+      "RouteResponse": {
+        "properties": {
+          "route_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Route Id"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "area": {
+            "type": "string",
+            "const": "kl-east-pilot",
+            "title": "Area",
+            "default": "kl-east-pilot"
+          },
+          "profile": {
+            "type": "string",
+            "const": "walking",
+            "title": "Profile",
+            "default": "walking"
+          },
+          "language": {
+            "type": "string",
+            "const": "en",
+            "title": "Language",
+            "default": "en"
+          },
+          "route_mode": {
+            "type": "string",
+            "enum": [
+              "shortest",
+              "avoid_damage",
+              "accessible"
+            ],
+            "title": "Route Mode",
+            "default": "shortest"
+          },
+          "routing_engine": {
+            "type": "string",
+            "enum": [
+              "valhalla",
+              "verified_network"
+            ],
+            "title": "Routing Engine",
+            "default": "valhalla"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/RouteGeometry"
+          },
+          "distance_meters": {
+            "type": "number",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Duration Seconds"
+          },
+          "origin_snap_distance_meters": {
+            "type": "number",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Origin Snap Distance Meters"
+          },
+          "destination_snap_distance_meters": {
+            "type": "number",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Destination Snap Distance Meters"
+          },
+          "maneuvers": {
+            "items": {
+              "$ref": "#/components/schemas/Maneuver"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "minItems": 2,
+            "title": "Maneuvers"
+          },
+          "data_source": {
+            "type": "string",
+            "enum": [
+              "openstreetmap_unverified",
+              "synthetic_demo",
+              "verified_accessibility_network"
+            ],
+            "title": "Data Source"
+          },
+          "field_verified": {
+            "type": "boolean",
+            "title": "Field Verified",
+            "default": false
+          },
+          "accessibility_status": {
+            "type": "string",
+            "enum": [
+              "not_requested",
+              "verified_network",
+              "synthetic_network"
+            ],
+            "title": "Accessibility Status",
+            "default": "not_requested"
+          },
+          "community_issue_avoidance": {
+            "type": "string",
+            "enum": [
+              "not_applied",
+              "applied",
+              "no_active_obstacles"
+            ],
+            "title": "Community Issue Avoidance",
+            "default": "not_applied"
+          },
+          "obstacle_snapshot_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obstacle Snapshot At"
+          },
+          "obstacle_count": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Obstacle Count",
+            "default": 0
+          },
+          "obstacle_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "community_reports"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obstacle Source"
+          },
+          "confirmation_threshold": {
+            "type": "integer",
+            "const": 2,
+            "title": "Confirmation Threshold",
+            "default": 2
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "attribution": {
+            "type": "string",
+            "title": "Attribution",
+            "default": "OpenStreetMap contributors"
+          },
+          "attribution_url": {
+            "type": "string",
+            "title": "Attribution Url",
+            "default": "https://www.openstreetmap.org/copyright"
+          }
+        },
+        "type": "object",
+        "required": [
+          "route_id",
+          "generated_at",
+          "geometry",
+          "distance_meters",
+          "duration_seconds",
+          "origin_snap_distance_meters",
+          "destination_snap_distance_meters",
+          "maneuvers",
+          "data_source",
+          "warnings"
+        ],
+        "title": "RouteResponse"
       },
       "SignupResult": {
         "properties": {
@@ -1836,6 +3529,73 @@
           "password"
         ],
         "title": "VerifySignup"
+      },
+      "WalkingRouteRequest": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "profile": {
+            "type": "string",
+            "const": "walking",
+            "title": "Profile",
+            "default": "walking"
+          },
+          "language": {
+            "type": "string",
+            "const": "en",
+            "title": "Language",
+            "default": "en"
+          },
+          "route_mode": {
+            "type": "string",
+            "enum": [
+              "shortest",
+              "avoid_damage",
+              "accessible"
+            ],
+            "title": "Route Mode",
+            "default": "shortest"
+          },
+          "avoid_confirmed_obstacles": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avoid Confirmed Obstacles",
+            "description": "Compatibility alias only: true means avoid_damage using two-resident issues, never management approval. Prefer route_mode.",
+            "deprecated": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "origin",
+          "destination"
+        ],
+        "title": "WalkingRouteRequest",
+        "examples": [
+          {
+            "destination": {
+              "latitude": 3.227217,
+              "longitude": 101.731778
+            },
+            "language": "en",
+            "origin": {
+              "latitude": 3.225377,
+              "longitude": 101.730331
+            },
+            "profile": "walking",
+            "route_mode": "shortest"
+          }
+        ]
       },
       "WorkflowReport": {
         "properties": {

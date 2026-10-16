@@ -1,3 +1,8 @@
+> Updated community rule: approval here is for maintenance only. It does not
+> control map visibility/avoidance. SQL 009 uses two residents; see
+> [COMMUNITY_ROUTES_TESTING.md](COMMUNITY_ROUTES_TESTING.md). The maintenance-only
+> sandbox on 8004 has no community map flow; use 8006 for that.
+
 # Management report review and history
 
 The review API lives in `backend/reports/moderation.py`. Existing teammate routers,
@@ -79,32 +84,14 @@ unknown/inaccessible ticket returns 404; unavailable RPC/database returns a gene
 The database locks the report row until the transaction ends. If audit insertion
 fails, the report update rolls back too. Audit history is append-only for the service
 role. Existing reports receive no invented historical events or approval timestamp.
-The map's `verified_at` remains null because the current report schema has no such field.
+Community points are labelled community_reported, not management-verified.
 
-## Local practice without providers
+## Local maintenance practice
 
-From the repository root:
-
-```powershell
-& ".\.venv\Scripts\python.exe" -B -m backend.reports.workflow_demo
-```
-
-Open `http://127.0.0.1:8004/docs`. This separate sandbox has no real Supabase, AWS,
-AI, or email requests, and does not load `.env`. All data resets when restarted.
-
-1. Authorize with `demo-resident-token`, without a `Bearer` prefix. `GET /api/v1/map/issues`
-   starts empty; `DEMO-REVIEW-001` is pending. Optionally submit a new photo report;
-   storage and analysis are synthetic in this sandbox.
-2. Logout in Authorize, then authorize with `demo-management-token`.
-3. `GET /api/v1/management/reports?status=pending` shows the pending reports.
-4. PATCH `DEMO-REVIEW-001` with the approval body above. Expect 200 and an audit event.
-5. Switch to `demo-resident-token`; `GET /api/v1/map/issues` now contains that issue.
-   Its history contains one approval event without a staff UUID.
-6. Switch to management and progress `approved` -> `in_progress` -> `resolved`.
-7. Switch to resident. The default map is empty again. `include_resolved=true` includes
-   the resolved point; history contains three events.
-8. A resident PATCH/list-management request must fail with 403. Authorize with
-   `demo-other-token` and request that ticket's history: expect 404.
+Run python -B -m backend.reports.workflow_demo and open port 8004/docs. Use
+demo-management-token for review/status, demo-resident-token for owned history.
+The demo has no cloud calls. Community map/route testing now uses port 8006 and
+COMMUNITY_ROUTES_TESTING.md; approval does not publish map points.
 
 ## Real Swagger test
 
@@ -114,7 +101,7 @@ AI, or email requests, and does not load `.env`. All data resets when restarted.
 3. Follow the same flow at `http://127.0.0.1:8001/docs`, using a real ticket ID and real
    access tokens. Do not use sandbox tokens or the server Admin key here.
 4. Check `report_status_events` in Supabase. Each successful transition has one row;
-   the report's status and map visibility agree. Old reports can legitimately have
+   the report's maintenance status and audit history agree. Old reports can legitimately have
    no events until their next status change.
 
 ## Automated validation
