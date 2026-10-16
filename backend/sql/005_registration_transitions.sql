@@ -208,7 +208,7 @@ BEGIN
                 (p_args->>'actor_id')::uuid) RETURNING id, expires_at INTO pr;
         RETURN jsonb_build_object('state', 'created', 'invitation_id', pr.id, 'expires_at', pr.expires_at);
     ELSIF p_action = 'residency' THEN
-        SELECT id AS resident_id, unit_number, status, verified_at INTO pr FROM public.residents
+        SELECT id AS resident_id, full_name, unit_number, status, verified_at INTO pr FROM public.residents
         WHERE profile_id = (p_args->>'user_id')::uuid;
         IF NOT FOUND THEN RETURN NULL; END IF;
         RETURN to_jsonb(pr);

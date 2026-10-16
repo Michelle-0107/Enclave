@@ -11,11 +11,13 @@ import ReportReviewScreen, {
 } from './ReportReviewScreen';
 import ReportSuccessScreen from './ReportSuccessScreen';
 import type { ResidentReport } from './MyReportsScreen';
+import { reportsApi, type ReportRecord } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 type Props = {
   onGoHome: () => void;
   onViewReports: () => void;
-  onDemoReportCreated: (report: ResidentReport) => void;
+  onReportCreated: (report: ResidentReport) => void;
   onStepChange?: () => void;
 };
 
@@ -24,7 +26,7 @@ type Step = 'photo' | 'location' | 'review' | 'success';
 export default function ReportScreen({
   onGoHome,
   onViewReports,
-  onDemoReportCreated,
+  onReportCreated,
   onStepChange,
 }: Props) {
   const [step, setStep] = useState<Step>('photo');
@@ -39,6 +41,7 @@ export default function ReportScreen({
     useState<ReportReviewData | undefined>();
 
   const [ticketId, setTicketId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function goToStep(nextStep: Step) {
     setStep(nextStep);
@@ -59,7 +62,7 @@ export default function ReportScreen({
     goToStep('review');
   }
 
-  function handleSubmit(reviewData: ReportReviewData) {
+  async function handleSubmit(reviewData: ReportReviewData) {
     if (!photo || !details) {
       Alert.alert(
         'Missing report details',
@@ -70,31 +73,51 @@ export default function ReportScreen({
       return;
     }
 
-    const now = new Date();
-    const id = `DEMO-${now.getTime()}`;
+    if (!details.coordinates) {
+      Alert.alert(
+        'Location required',
+        'Use your current location before submitting this report.',
+      );
+      goToStep('location');
+      return;
+    }
 
-    const report: ResidentReport = {
-      id,
-      title: `${reviewData.category} issue`,
-      location: details.location,
-      date: now.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }),
-      status: 'Pending management review',
-      description: details.description,
-      category: reviewData.category,
-      priority: reviewData.priority,
-      photoUri: photo.uri,
-    };
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    // Frontend demo only. No backend request yet.
-    onDemoReportCreated(report);
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const accessToken = data.session?.access_token;
+      if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
 
-    setReview(reviewData);
-    setTicketId(id);
-    goToStep('success');
+      const form = new FormData();
+      form.append('description', details.description);
+      form.append('latitude', String(details.coordinates.latitude));
+      form.append('longitude', String(details.coordinates.longitude));
+      form.append('file', {
+        uri: photo.uri,
+        name: photo.fileName || `report-${Date.now()}.jpg`,
+        type: photo.mimeType || 'image/jpeg',
+      } as unknown as Blob);
+
+      const response = await reportsApi.submit(accessToken, form);
+      const record = response.data[0];
+      if (!record) throw new Error('The report was submitted without a record response.');
+
+      const report = mapCreatedReport(record, details.location, photo.uri);
+      onReportCreated(report);
+      setReview(reviewData);
+      setTicketId(report.id);
+      goToStep('success');
+    } catch (submitError) {
+      Alert.alert(
+        'Unable to submit report',
+        submitError instanceof Error ? submitError.message : 'Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function renderStep() {
@@ -136,7 +159,6 @@ export default function ReportScreen({
         return (
           <ReportSuccessScreen
             ticketId={ticketId}
-            isDemo
             onViewReports={onViewReports}
             onGoHome={onGoHome}
           />
@@ -149,6 +171,30 @@ export default function ReportScreen({
       {renderStep()}
     </View>
   );
+}
+
+function mapCreatedReport(
+  record: ReportRecord,
+  location: string,
+  photoUri: string,
+): ResidentReport {
+  return {
+    id: record.ticket_id,
+    title: record.category || 'Community report',
+    location,
+    date: record.created_at
+      ? new Date(record.created_at).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      : 'Just now',
+    status: 'Pending management review',
+    description: record.description,
+    category: record.category || 'Uncategorised',
+    priority: record.priority || 'Not set',
+    photoUri: record.image_url || photoUri,
+  };
 }
 
 const styles = StyleSheet.create({

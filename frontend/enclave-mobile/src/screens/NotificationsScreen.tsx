@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   StyleSheet,
@@ -6,6 +8,8 @@ import {
   View,
 } from 'react-native';
 
+import { notificationsApi, type ApiError, type NotificationRecord } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
 export type ResidentNotification = {
@@ -25,57 +29,45 @@ export type ResidentNotification = {
       };
 };
 
-export const demoNotifications: ResidentNotification[] = [
-  {
-    id: 'notification-1',
-    title: 'Your report is in progress',
-    description:
-      'Work has started on your streetlight report.',
-    reference: '#HP-1024 · Park Entrance',
-    time: '10m',
-    read: false,
-    target: {
-      type: 'report',
-      reportId: 'HP-1024',
-    },
-  },
-  {
-    id: 'notification-2',
-    title: 'Walkway closure reviewed',
-    description:
-      'An approved closure affects Park Entrance.',
-    reference: 'Followed area · Park Entrance',
-    time: '1h',
-    read: false,
-    target: {
-      type: 'map',
-    },
-  },
-  {
-    id: 'notification-3',
-    title: 'Repair verified',
-    description:
-      'The Lake Walk surface repair is complete.',
-    reference: 'Followed area · Lake Walk',
-    time: 'Yesterday',
-    read: true,
-    target: {
-      type: 'map',
-    },
-  },
-];
-
 type Props = {
-  notifications: ResidentNotification[];
   onNotificationPress: (
     notification: ResidentNotification,
   ) => void;
 };
 
 export default function NotificationsScreen({
-  notifications,
   onNotificationPress,
 }: Props) {
+  const [notifications, setNotifications] = useState<ResidentNotification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadNotifications() {
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        const accessToken = data.session?.access_token;
+        if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+        const response = await notificationsApi.getAll(accessToken, 50);
+        if (mounted) setNotifications(response.items.map(mapNotification));
+      } catch (loadError) {
+        if (!mounted) return;
+        const apiError = loadError as ApiError;
+        setError(apiError.message || 'Unable to load your notifications.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadNotifications();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.eyebrow}>
@@ -91,7 +83,14 @@ export default function NotificationsScreen({
         one place.
       </Text>
 
-      {notifications.length === 0 ? (
+      {isLoading ? (
+        <View style={styles.emptyState}>
+          <ActivityIndicator size="small" color={colors.navy} />
+          <Text style={styles.subtitle}>Loading your updates...</Text>
+        </View>
+      ) : error ? (
+        <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+      ) : notifications.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>
             You’re all caught up
@@ -112,9 +111,13 @@ export default function NotificationsScreen({
                 `${notification.read ? '' : 'Unread. '}` +
                 notification.title
               }
-              onPress={() =>
-                onNotificationPress(notification)
-              }
+              onPress={() => {
+                setNotifications((current) => current.map((item) =>
+                  item.id === notification.id ? { ...item, read: true } : item,
+                ));
+                void markNotificationRead(notification);
+                onNotificationPress(notification);
+              }}
               style={({ pressed }) => [
                 styles.notificationRow,
                 pressed && styles.pressed,
@@ -163,11 +166,47 @@ export default function NotificationsScreen({
         </View>
       )}
 
-      <Text style={styles.demoText}>
-        Sample notifications for design preview
-      </Text>
     </View>
   );
+}
+
+function mapNotification(notification: NotificationRecord): ResidentNotification {
+  return {
+    id: String(notification.id),
+    title: notification.title,
+    description: notification.message,
+    reference: notification.related_report_id
+      ? `Related report #${notification.related_report_id}`
+      : 'Management announcement',
+    time: formatRelativeTime(notification.created_at),
+    read: notification.is_read,
+    target: notification.related_report_id
+      ? { type: 'report', reportId: String(notification.related_report_id) }
+      : { type: 'map' },
+  };
+}
+
+async function markNotificationRead(notification: ResidentNotification) {
+  const notificationId = Number(notification.id);
+  if (!Number.isInteger(notificationId)) return;
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) return;
+  try {
+    await notificationsApi.markRead(accessToken, notificationId);
+  } catch {
+    // The local state remains useful if a read receipt cannot be saved.
+  }
+}
+
+function formatRelativeTime(value: string | null): string {
+  if (!value) return 'Date unavailable';
+  const age = Math.max(0, Date.now() - new Date(value).getTime());
+  const minutes = Math.floor(age / 60000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
 }
 
 const styles = StyleSheet.create({
@@ -272,10 +311,10 @@ const styles = StyleSheet.create({
     color: colors.navy,
   },
 
-  demoText: {
-    fontSize: 10,
-    lineHeight: 18,
-    color: colors.muted,
+  errorText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#A63E37',
   },
 
   pressed: {

@@ -1,4 +1,13 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { reportsApi, residencyApi, type ApiError, type ReportRecord } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
 type Props = {
@@ -10,10 +19,48 @@ export default function HomeScreen({
   onReportPress,
   onNotificationsPress,
 }: Props) {
+  const [name, setName] = useState('Resident');
+  const [latestReport, setLatestReport] = useState<ReportRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadHomeData() {
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        const accessToken = data.session?.access_token;
+        if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+
+        const [residency, reports] = await Promise.all([
+          residencyApi.getMyResidency(accessToken),
+          reportsApi.getMyReports(accessToken, 1),
+        ]);
+
+        if (!mounted) return;
+        setName(residency.full_name?.trim() || 'Resident');
+        setLatestReport(reports.items[0] ?? null);
+      } catch (loadError) {
+        if (!mounted) return;
+        const apiError = loadError as ApiError;
+        setError(apiError.message || 'Unable to load your community data.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadHomeData();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.introduction}>
-        <Text style={styles.title}>Hi, Florence.</Text>
+        <Text style={styles.title}>Hi, {name}.</Text>
         <Text style={styles.subtitle}>Your community.</Text>
       </View>
 
@@ -50,17 +97,27 @@ export default function HomeScreen({
         </Pressable>
       </View>
 
-      <View style={styles.updateCard}>
-        <Text style={styles.eyebrow}>SAMPLE UPDATE</Text>
-
-        <Text style={styles.updateTitle}>
-          Park entrance repairs completed
-        </Text>
-
-        <Text style={styles.description}>
-          The reported pathway issue has been resolved.
-        </Text>
-      </View>
+      {isLoading ? (
+        <View style={styles.updateCard}>
+          <ActivityIndicator size="small" color={colors.navy} />
+          <Text style={styles.description}>Loading your latest update...</Text>
+        </View>
+      ) : error ? (
+        <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+      ) : latestReport ? (
+        <View style={styles.updateCard}>
+          <Text style={styles.eyebrow}>{latestReport.status.toUpperCase()}</Text>
+          <Text style={styles.updateTitle}>
+            {latestReport.category || 'Community report'} · #{latestReport.ticket_id}
+          </Text>
+          <Text style={styles.description}>{latestReport.description}</Text>
+        </View>
+      ) : (
+        <View style={styles.updateCard}>
+          <Text style={styles.updateTitle}>No report updates yet.</Text>
+          <Text style={styles.description}>Your submitted reports will appear here.</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -137,6 +194,11 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  errorText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#A63E37',
   },
   eyebrow: {
     fontSize: 9,

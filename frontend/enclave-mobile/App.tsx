@@ -34,14 +34,12 @@ import ActiveJourneyScreen from './src/screens/ActiveJourneyScreen';
 import ReportScreen from './src/screens/ReportScreen';
 
 import NotificationsScreen, {
-  demoNotifications,
   type ResidentNotification,
 } from './src/screens/NotificationsScreen';
 
 import AccountScreen from './src/screens/AccountScreen';
 
 import MyReportsScreen, {
-  demoReports,
   type ResidentReport,
 } from './src/screens/MyReportsScreen';
 
@@ -60,6 +58,8 @@ import FollowedAreasScreen, {
 import HelpScreen from './src/screens/HelpScreen';
 
 import { colors } from './src/theme';
+import { clearAccessToken } from './src/lib/session';
+import { supabase } from './src/lib/supabase';
 
 type Tab =
   | 'Home'
@@ -128,12 +128,7 @@ function ResidentApp({
     useState<AccountFlow>({ page: 'account' });
 
   const [reports, setReports] =
-    useState<ResidentReport[]>(demoReports);
-
-  const [notifications, setNotifications] =
-    useState<ResidentNotification[]>(() =>
-      demoNotifications.map((item) => ({ ...item })),
-    );
+    useState<ResidentReport[]>([]);
 
   const [preferences, setPreferences] =
     useState<NotificationPreferences>(
@@ -169,7 +164,7 @@ function ResidentApp({
     openAccountPage({ page: 'reports' });
   }
 
-  function addDemoReport(report: ResidentReport) {
+  function addReport(report: ResidentReport) {
     setReports((current) => [
       report,
       ...current.filter((item) => item.id !== report.id),
@@ -179,14 +174,6 @@ function ResidentApp({
   function handleNotificationPress(
     notification: ResidentNotification,
   ) {
-    setNotifications((current) =>
-      current.map((item) =>
-        item.id === notification.id
-          ? { ...item, read: true }
-          : item,
-      ),
-    );
-
     const target = notification.target;
 
     if (target.type === 'report') {
@@ -291,7 +278,6 @@ function ResidentApp({
     return (
       <MyReportsScreen
         reports={reports}
-        isDemo
         onBack={() =>
           openAccountPage({ page: 'account' })
         }
@@ -339,7 +325,6 @@ function ResidentApp({
         return (
           <ReportDetailsScreen
             report={report}
-            isDemo
             onBack={openMyReports}
           />
         );
@@ -399,14 +384,13 @@ function ResidentApp({
             onGoHome={() => changeTab('Home')}
             onStepChange={scrollToTop}
             onViewReports={openMyReports}
-            onDemoReportCreated={addDemoReport}
+            onReportCreated={addReport}
           />
         );
 
       case 'Notifications':
         return (
           <NotificationsScreen
-            notifications={notifications}
             onNotificationPress={handleNotificationPress}
           />
         );
@@ -536,7 +520,11 @@ function AppFlow() {
     case 'resident':
       return (
         <ResidentApp
-          onLogOut={() => setScreen('signIn')}
+          onLogOut={async () => {
+            await supabase.auth.signOut();
+            await clearAccessToken();
+            setScreen('signIn');
+          }}
         />
       );
   }

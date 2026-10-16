@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -6,6 +8,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { residencyApi, type ApiError, type ResidencyRecord } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
 type Props = {
@@ -23,6 +27,55 @@ export default function AccountScreen({
   onHelpPress,
   onLogOut,
 }: Props) {
+  const [email, setEmail] = useState<string | null>(null);
+  const [residency, setResidency] = useState<ResidencyRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadAccountRecord() {
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          throw sessionError;
+        }
+
+        const session = sessionData.session;
+        if (!session?.access_token) {
+          throw new Error('Your session has expired. Please sign in again.');
+        }
+
+        const record = await residencyApi.getMyResidency(session.access_token);
+        if (mounted) {
+          setEmail(session.user.email ?? null);
+          setResidency(record);
+        }
+      } catch (loadError) {
+        if (!mounted) return;
+        const message = loadError as ApiError;
+        if (message.status === 404) {
+          setError('Your account is not linked to a resident record yet.');
+        } else if (message.status === 401) {
+          setError('Your session has expired. Please sign in again.');
+        } else {
+          setError(message.message || 'Unable to load your account record.');
+        }
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadAccountRecord();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const menuItems = [
     {
       label: 'My reports',
@@ -53,22 +106,48 @@ export default function AccountScreen({
       </Text>
 
       <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>F</Text>
-        </View>
+        {isLoading ? (
+          <ActivityIndicator size="small" color={colors.navy} />
+        ) : residency ? (
+          <>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {(residency.full_name?.trim().charAt(0) || 'R').toUpperCase()}
+              </Text>
+            </View>
 
-        <View style={styles.profileInfo}>
-          <Text style={styles.name}>Florence</Text>
-
-          <Text style={styles.subtitle}>
-            Resident
-          </Text>
-
-          <Text style={styles.previewText}>
-            Demo profile
-          </Text>
-        </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.name}>{residency.full_name || 'Resident'}</Text>
+              <Text style={styles.subtitle}>{email ?? 'Resident account'}</Text>
+              <Text style={styles.recordText}>Unit {residency.unit_number}</Text>
+              <View style={styles.statusRow}>
+                <View style={[styles.statusDot, residency.status === 'active' && styles.activeDot]} />
+                <Text style={styles.statusText}>{residency.status === 'active' ? 'Active resident' : 'Inactive resident'}</Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.errorText}>{error || 'No resident record found.'}</Text>
+        )}
       </View>
+
+      {!isLoading && residency ? (
+        <View style={styles.detailsCard}>
+          <Text style={styles.detailsTitle}>Resident record</Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Resident ID</Text>
+            <Text style={styles.detailValue}>{residency.resident_id}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Verified</Text>
+            <Text style={styles.detailValue}>{formatVerifiedDate(residency.verified_at)}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      {!isLoading && error && residency === null ? (
+        <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+      ) : null}
 
       <View style={styles.menu}>
         {menuItems.map((item, index) => (
@@ -115,11 +194,15 @@ export default function AccountScreen({
         </Text>
       </Pressable>
 
-      <Text style={styles.previewText}>
-        Demo session · Authentication is not connected yet.
-      </Text>
     </View>
   );
+}
+
+function formatVerifiedDate(value: string | null): string {
+  if (!value) return 'Not verified';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Verified';
+  return date.toLocaleDateString();
 }
 
 const styles = StyleSheet.create({
@@ -186,6 +269,72 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 18,
     color: colors.muted,
+  },
+
+  recordText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.muted,
+  },
+
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#A63E37',
+  },
+
+  activeDot: {
+    backgroundColor: '#4D8A5B',
+  },
+
+  statusText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.muted,
+  },
+
+  detailsCard: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 20,
+    gap: 14,
+  },
+
+  detailsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+
+  detailRow: {
+    gap: 4,
+  },
+
+  detailLabel: {
+    fontSize: 11,
+    lineHeight: 17,
+    color: colors.muted,
+  },
+
+  detailValue: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.navy,
+  },
+
+  errorText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#A63E37',
   },
 
   menu: {

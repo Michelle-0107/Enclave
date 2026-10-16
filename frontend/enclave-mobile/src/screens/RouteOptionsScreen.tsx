@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -22,36 +21,12 @@ type Props = {
   onStartJourney: (route: RouteOption) => void;
 };
 
-// Demo data. Replace with routes returned by the backend.
-const routes: RouteOption[] = [
-  {
-    id: 'A',
-    name: 'Route A',
-    distance: '850 m',
-    minutes: 12,
-    description: 'Avoids the reviewed walkway closure.',
-  },
-  {
-    id: 'B',
-    name: 'Route B',
-    distance: '1.05 km',
-    minutes: 15,
-    description: 'Alternative via the main entrance.',
-  },
-];
-
 export default function RouteOptionsScreen({
   start,
   destination,
   onBack,
   onStartJourney,
 }: Props) {
-  const [selectedId, setSelectedId] =
-    useState<RouteOption['id']>('A');
-
-  const selectedRoute =
-    routes.find((route) => route.id === selectedId) ?? routes[0];
-
   return (
     <View style={styles.container}>
       <Pressable
@@ -71,50 +46,12 @@ export default function RouteOptionsScreen({
       <View style={styles.map}>
         <Text style={styles.mapTitle}>Route map</Text>
 
-        <Text style={styles.mapHint}>
-          {selectedRoute.name} selected
-        </Text>
+        <Text style={styles.mapHint}>Route data is not available.</Text>
       </View>
 
-      <View accessibilityRole="radiogroup" style={styles.options}>
-        {routes.map((route) => {
-          const selected = route.id === selectedId;
-
-          return (
-            <Pressable
-              key={route.id}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              accessibilityLabel={`${route.name}, ${route.distance}, ${route.minutes} minutes`}
-              onPress={() => setSelectedId(route.id)}
-              style={({ pressed }) => [
-                styles.routeCard,
-                selected && styles.selectedCard,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.routeTitle}>
-                {route.name} · {route.distance} · {route.minutes} min
-              </Text>
-
-              <Text style={styles.routeDescription}>
-                {route.description}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => onStartJourney(selectedRoute)}
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.pressed,
-        ]}
-      >
-        <Text style={styles.buttonText}>Start journey</Text>
-      </Pressable>
+      <Text style={styles.subtitle}>
+        Route planning will be available when its backend endpoint is added.
+      </Text>
     </View>
   );
 }

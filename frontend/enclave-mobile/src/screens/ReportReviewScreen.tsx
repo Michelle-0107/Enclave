@@ -134,9 +134,6 @@ export default function ReportReviewScreen({
           the final assessment.
         </Text>
 
-        <Text style={styles.demoText}>
-          Demo suggestions — AI is not connected yet.
-        </Text>
       </View>
 
       <View style={styles.field}>
@@ -379,11 +376,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
 
-  demoText: {
-    fontSize: 11,
-    lineHeight: 18,
-    color: colors.muted,
-  },
 
   field: {
     gap: 8,

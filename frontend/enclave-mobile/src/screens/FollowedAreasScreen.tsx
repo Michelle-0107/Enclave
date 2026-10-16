@@ -75,7 +75,7 @@ export default function FollowedAreasScreen({
 
     Alert.alert(
       'Followed areas saved',
-      'Your choices are saved for this demo session.',
+      'Your followed area preferences have been saved locally.',
     );
   }
 
