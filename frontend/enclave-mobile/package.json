@@ -4,7 +4,6 @@
   "main": "index.ts",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
-    "@maplibre/maplibre-react-native": "^11.5.0",
     "@supabase/supabase-js": "^2.118.0",
     "expo": "~57.0.28",
     "expo-dev-client": "~57.0.20",
