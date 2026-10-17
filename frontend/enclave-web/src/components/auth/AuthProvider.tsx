@@ -24,9 +24,10 @@ import {
 
 type AuthContextValue = {
   user: CurrentUser | null;
+  role: 'management' | 'maintenance' | null;
   ready: boolean;
   error: string;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<'management' | 'maintenance'>;
   signOut: () => void;
 };
 
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [role, setRole] = useState<'management' | 'maintenance' | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
 
@@ -45,13 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = await getValidAccessToken();
         if (token) {
           const current = await getCurrentUser();
-          await getManagementAccess();
+          let currentRole: 'management' | 'maintenance' = 'management';
+          try {
+            await getManagementAccess();
+          } catch (reason) {
+            if (!(reason instanceof ApiError) || reason.status !== 403) throw reason;
+            currentRole = 'maintenance';
+          }
           if (mounted) setUser(current);
+          if (mounted) setRole(currentRole);
         }
       } catch (reason) {
         if (reason instanceof ApiError && (reason.status === 401 || reason.status === 403)) {
           clearAuthSession();
           if (mounted) setUser(null);
+          if (mounted) setRole(null);
           if (mounted && reason.status === 403) {
             setError('This account does not have the management role in Enclave.');
           }
@@ -77,21 +87,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError('');
     await signInWithPassword(email, password);
 
+    let current: CurrentUser;
     try {
-      const current = await getCurrentUser();
-      await getManagementAccess();
-      setUser(current);
-      setReady(true);
+      current = await getCurrentUser();
     } catch (reason) {
       clearAuthSession();
       setUser(null);
+      setRole(null);
+      throw reason;
+    }
 
+    try {
+      await getManagementAccess();
+      setUser(current);
+      setReady(true);
+      setRole('management');
+      return 'management' as const;
+    } catch (reason) {
       if (reason instanceof ApiError && reason.status === 403) {
-        throw new Error(
-          'This account signed in successfully but does not have the management role in Enclave.',
-        );
+        setUser(current);
+        setReady(true);
+        setRole('maintenance');
+        return 'maintenance' as const;
       }
 
+      clearAuthSession();
+      setUser(null);
+      setRole(null);
       throw reason;
     }
   }, []);
@@ -99,12 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(() => {
     clearAuthSession();
     setUser(null);
+    setRole(null);
     setError('');
   }, []);
 
   const value = useMemo(
-    () => ({ user, ready, error, signIn, signOut }),
-    [user, ready, error, signIn, signOut],
+    () => ({ user, role, ready, error, signIn, signOut }),
+    [user, role, ready, error, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMaintenance } from "@/components/maintenance/MaintenanceProvider";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ClipboardList, LogOut, UserRound } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const navigation = [
   { label: "My tasks", href: "/maintenance", icon: ClipboardList },
@@ -21,13 +22,42 @@ export default function MaintenanceLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const { demo, onSignOut } = useMaintenance();
+  const auth = useAuth();
   const [logoutError, setLogoutError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  useEffect(() => {
+    if (auth.ready && !auth.user && !auth.error) router.replace("/sign-in");
+    if (auth.ready && auth.user && auth.role === "management") router.replace("/management");
+  }, [auth.ready, auth.user, auth.role, auth.error, router]);
+
+  if (auth.error) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+        <p role="alert" className="max-w-xl text-sm text-status-red">{auth.error}</p>
+        <button
+          type="button"
+          onClick={() => router.replace("/sign-in")}
+          className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground"
+        >
+          Return to sign in
+        </button>
+      </main>
+    );
+  }
+
+  if (!auth.ready || !auth.user || auth.role !== "maintenance") {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-background px-6 text-sm text-muted-foreground">
+        Checking your Enclave session…
+      </main>
+    );
+  }
+
   async function logout() {
-    if (!onSignOut) return;
     setSigningOut(true);
     try {
-      await onSignOut();
+      if (onSignOut) await onSignOut();
+      else auth.signOut();
       router.replace("/sign-in");
     } catch {
       setLogoutError("Unable to sign out. Please try again.");
@@ -98,7 +128,7 @@ export default function MaintenanceLayout({ children }: Props) {
 
         <button
           type="button"
-          disabled={!onSignOut || signingOut}
+          disabled={signingOut}
           onClick={logout}
           title="Log out will be connected with staff sign-in"
           className="mt-9 flex min-h-[52px] w-full items-center gap-[14px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground opacity-60"

@@ -56,13 +56,14 @@ type Props = {
 export default function PortalLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, ready, error, signOut } = useAuth();
+  const { user, role, ready, error, signOut } = useAuth();
 
   useEffect(() => {
     if (ready && !user && !error) router.replace('/sign-in');
-  }, [ready, user, error, router]);
+    if (ready && user && role === 'maintenance') router.replace('/maintenance');
+  }, [ready, user, role, error, router]);
 
-  if (!ready || (!user && !error)) {
+  if (!ready || (!user && !error) || (user && role !== 'management')) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-background px-6 text-sm text-muted-foreground">
         Checking your Enclave session…

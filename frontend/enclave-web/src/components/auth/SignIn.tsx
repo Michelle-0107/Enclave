@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -12,11 +12,16 @@ import { useAuth } from '@/components/auth/AuthProvider';
 
 export default function SignIn() {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, ready, user, role } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!ready || !user || !role) return;
+    router.replace(role === 'management' ? '/management' : '/maintenance');
+  }, [ready, user, role, router]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -35,8 +40,8 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      await signIn(email.trim(), password);
-      router.replace('/management');
+      const role = await signIn(email.trim(), password);
+      router.replace(role === 'management' ? '/management' : '/maintenance');
     } catch (reason) {
       setError(reason instanceof Error
         ? reason.message
