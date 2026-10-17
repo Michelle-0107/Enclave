@@ -1,5 +1,4 @@
 import ReportsList from '@/components/management/ReportsList';
-import { mockReports } from '@/lib/mock-reports';
 
 type Props = {
   searchParams: Promise<{
@@ -20,7 +19,6 @@ export default async function ReportsPage({
   return (
     <ReportsList
       key={status}
-      reports={mockReports}
       initialStatus={status}
     />
   );

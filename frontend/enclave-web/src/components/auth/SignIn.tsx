@@ -2,32 +2,20 @@
 
 import { useState, type FormEvent } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/components/auth/AuthProvider';
 
-export type StaffSignInInput = {
-  email: string;
-  password: string;
-};
-
-type Props = {
-  /**
-   * Backend team connects authentication here.
-   * After successful login, redirect according to
-   * the user's verified role.
-   */
-  onSignIn?: (input: StaffSignInInput) => Promise<void>;
-};
-
-export default function SignIn({ onSignIn }: Props) {
+export default function SignIn() {
+  const router = useRouter();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -37,31 +25,21 @@ export default function SignIn({ onSignIn }: Props) {
     if (loading) return;
 
     setError('');
-    setNotice('');
 
     if (!email.trim() || !password) {
       setError('Please enter your work email and password.');
       return;
     }
 
-    if (!onSignIn) {
-      setNotice(
-        'Sign in is not connected yet. Please contact the development team for authentication testing.',
-      );
-      return;
-    }
-
     setLoading(true);
 
     try {
-      await onSignIn({
-        email: email.trim(),
-        password,
-      });
-    } catch {
-      setError(
-        'Unable to sign in. Please check your details and try again.',
-      );
+      await signIn(email.trim(), password);
+      router.replace('/management');
+    } catch (reason) {
+      setError(reason instanceof Error
+        ? reason.message
+        : 'Unable to sign in. Please check your details and try again.');
     } finally {
       setLoading(false);
     }
@@ -69,7 +47,6 @@ export default function SignIn({ onSignIn }: Props) {
 
   function clearMessages() {
     setError('');
-    setNotice('');
   }
 
   return (
@@ -181,12 +158,9 @@ export default function SignIn({ onSignIn }: Props) {
               />
             </div>
 
-            <Link
-              href="/forgot-password"
-              className="flex min-h-11 items-center justify-end text-[13px] font-semibold hover:underline"
-            >
-              Forgot password?
-            </Link>
+            <p className="text-right text-[13px] text-muted-foreground">
+              For password resets, contact your workspace administrator.
+            </p>
 
             {error && (
               <p
@@ -205,14 +179,6 @@ export default function SignIn({ onSignIn }: Props) {
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
 
-            {notice && (
-              <p
-                role="status"
-                className="text-sm leading-relaxed text-muted-foreground"
-              >
-                {notice}
-              </p>
-            )}
           </form>
 
           <p className="text-xs text-muted-foreground">

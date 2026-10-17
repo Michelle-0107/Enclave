@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
   ClipboardList,
@@ -11,7 +11,10 @@ import {
   LogOut,
   UserRound,
   UsersRound,
+  Route,
 } from 'lucide-react';
+import { useEffect } from 'react';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 const navigation = [
   {
@@ -23,6 +26,11 @@ const navigation = [
     label: 'Reports',
     href: '/management/reports',
     icon: ClipboardList,
+  },
+  {
+    label: 'Repair what-if',
+    href: '/management/what-if',
+    icon: Route,
   },
   {
     label: 'Notifications',
@@ -47,6 +55,40 @@ type Props = {
 
 export default function PortalLayout({ children }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, ready, error, signOut } = useAuth();
+
+  useEffect(() => {
+    if (ready && !user && !error) router.replace('/sign-in');
+  }, [ready, user, error, router]);
+
+  if (!ready || (!user && !error)) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-background px-6 text-sm text-muted-foreground">
+        Checking your Enclave session…
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+        <p role="alert" className="max-w-xl text-sm text-status-red">{error}</p>
+        <button
+          type="button"
+          onClick={() => router.replace('/sign-in')}
+          className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground"
+        >
+          Return to sign in
+        </button>
+      </main>
+    );
+  }
+
+  function handleSignOut() {
+    signOut();
+    router.replace('/sign-in');
+  }
 
   function isSelected(href: string) {
     if (href === '/management') {
@@ -122,9 +164,8 @@ export default function PortalLayout({ children }: Props) {
 
         <button
           type="button"
-          disabled
-          title="Log out will be connected with staff sign-in"
-          className="mt-9 flex min-h-[52px] w-full items-center gap-[14px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground opacity-60"
+          onClick={handleSignOut}
+          className="mt-9 flex min-h-[52px] w-full items-center gap-[14px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground hover:bg-secondary"
         >
           <LogOut size={24} strokeWidth={1.7} />
           Log out
@@ -134,6 +175,9 @@ export default function PortalLayout({ children }: Props) {
       {/* Workspace */}
       <div className="lg:pl-[248px]">
         <header className="flex min-h-[90px] items-center justify-between px-6 py-5 lg:justify-end lg:px-10 lg:py-6">
+          <p className="mr-auto hidden max-w-[320px] truncate text-xs text-muted-foreground lg:block">
+            {user?.email}
+          </p>
           <Link
             href="/management"
             className="flex items-center gap-2 lg:hidden"
@@ -177,7 +221,7 @@ export default function PortalLayout({ children }: Props) {
         aria-label="Management mobile navigation"
         className="fixed inset-x-0 bottom-0 z-50 border-t bg-card px-3 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-5 gap-2">
+        <div className="mx-auto grid max-w-2xl grid-cols-6 gap-2">
           {navigation.map((item) => {
             const selected = isSelected(item.href);
             const Icon = item.icon;

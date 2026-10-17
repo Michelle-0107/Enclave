@@ -26,6 +26,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 
 import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
+import DemoMapScreen from './src/demo/DemoMapScreen';
 import RouteOptionsScreen, {
   type RouteOption,
 } from './src/screens/RouteOptionsScreen';
@@ -140,6 +141,8 @@ function ResidentApp({
       ...defaultFollowedAreas,
     ]);
 
+  const [showFacilityDemo, setShowFacilityDemo] = useState(true);
+
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
 
@@ -198,9 +201,16 @@ function ResidentApp({
   }
 
   function renderMapScreen() {
+    if (mapFlow.page === 'map' && showFacilityDemo) {
+      return <DemoMapScreen onShowLiveMap={() => setShowFacilityDemo(false)} onReportPress={() => changeTab('Report')} />;
+    }
     switch (mapFlow.page) {
       case 'map':
         return (
+          <View style={{ gap: 12 }}>
+          <Pressable accessibilityRole="button" onPress={() => setShowFacilityDemo(true)} style={{ padding: 12 }}>
+            <Text>Open resident demo</Text>
+          </Pressable>
           <MapScreen
             onReportPress={() => changeTab('Report')}
             onChooseRoute={(start, destination) => {
@@ -212,6 +222,7 @@ function ResidentApp({
               scrollToTop();
             }}
           />
+          </View>
         );
 
       case 'options': {
@@ -281,12 +292,13 @@ function ResidentApp({
         onBack={() =>
           openAccountPage({ page: 'account' })
         }
-        onReportPress={(report) =>
+        onReportPress={(report) => {
+          addReport(report);
           openAccountPage({
             page: 'details',
             reportId: report.id,
-          })
-        }
+          });
+        }}
       />
     );
   }

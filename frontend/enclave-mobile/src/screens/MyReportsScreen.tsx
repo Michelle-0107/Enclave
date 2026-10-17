@@ -115,7 +115,7 @@ export default function MyReportsScreen({
   }, []);
 
   const allReports = useMemo(() => {
-    const combined = [...reports, ...serverReports];
+    const combined = [...serverReports, ...reports];
     return combined.filter(
       (report, index, items) =>
         items.findIndex((item) => item.id === report.id) === index,
