@@ -117,6 +117,7 @@ def create_app(
         application.state.what_if_repository = WhatIfRepository(configured, transport=what_if_transport)
         application.state.what_if = WhatIfService(application.state.what_if_repository, application.state.navigation)
         application.state.media = media_services if media_services is not None else MediaServices(configured)
+        application.state.report_photo_links = MediaServices(configured)
         application.state.registration = registration_service
         if registration_service is None and settings is None:
             try:
@@ -180,6 +181,17 @@ def create_app(
     @application.exception_handler(ReportAccessDenied)
     async def denied_handler(request, error):
         return JSONResponse(status_code=403, content={"detail": "Report access denied by database policy"})
+
+    @application.exception_handler(MediaUnavailable)
+    async def photo_unavailable_handler(request, error):
+        return JSONResponse(status_code=503, content={"detail": "Report photo access unavailable"},
+                            headers={"Cache-Control": "no-store"})
+
+    async def with_report_photo(request, record):
+        # Call only after the owner/management report query has authorized access.
+        image_url = await run_in_threadpool(
+            request.app.state.report_photo_links.signed_image_url, record.image_url)
+        return record.model_copy(update={"image_url": image_url})
 
     @application.exception_handler(NotificationsUnavailable)
     async def notifications_unavailable_handler(request, error):
@@ -300,6 +312,7 @@ def create_app(
         limit: int = Query(10, ge=1, le=100), offset: int = Query(0, ge=0),
     ):
         records = await request.app.state.reports.list_for_owner(user.access_token, user.user_id, limit=limit, offset=offset)
+        records = [await with_report_photo(request, record) for record in records]
         return ReportListResponse(items=records, limit=limit, offset=offset)
 
     @application.get("/api/v1/notifications", response_model=NotificationListResponse,
@@ -345,7 +358,7 @@ def create_app(
         record = await request.app.state.reports.get_for_owner(user.access_token, user.user_id, ticket_id)
         if record is None:
             raise HTTPException(404, "Report not found")
-        return record
+        return await with_report_photo(request, record)
 
     def community_bounds(bbox):
         try: return MapBounds.parse(bbox)
@@ -419,7 +432,9 @@ def create_app(
         limit: int = Query(default=20, ge=1, le=100), offset: int = Query(default=0, ge=0),
     ):
         response.headers["Cache-Control"] = "private, no-store"
-        return await request.app.state.report_workflow.list_reports(user.user_id, status=status, limit=limit, offset=offset)
+        result = await request.app.state.report_workflow.list_reports(user.user_id, status=status, limit=limit, offset=offset)
+        result.items = [await with_report_photo(request, record) for record in result.items]
+        return result
 
     @application.patch("/api/v1/management/reports/{ticket_id}/status", response_model=StatusUpdated,
                        tags=["Management Reports"], responses=workflow_errors,
@@ -430,7 +445,9 @@ def create_app(
         user: AuthenticatedUser = Depends(current_user),
     ):
         response.headers["Cache-Control"] = "private, no-store"
-        return await request.app.state.report_workflow.update(user.user_id, ticket_id, body)
+        result = await request.app.state.report_workflow.update(user.user_id, ticket_id, body)
+        result.report = await with_report_photo(request, result.report)
+        return result
 
     @application.get("/api/v1/reports/{ticket_id}/history", response_model=ReportHistory,
                      response_model_exclude_none=True, tags=["Reports"], responses=workflow_errors,

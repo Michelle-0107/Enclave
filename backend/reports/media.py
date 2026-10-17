@@ -6,6 +6,7 @@ import json
 import logging
 import threading
 from typing import Mapping
+from urllib.parse import unquote, urlsplit
 
 from ..core.config import Settings
 
@@ -67,6 +68,36 @@ class MediaServices:
             return f"https://{bucket}.s3.amazonaws.com/{file_name}"
         except Exception:
             logger.warning("Report photo upload failed.")
+            raise MediaUnavailable() from None
+
+    def signed_image_url(self, image_url: str | None) -> str | None:
+        """Sign only stored links in our bucket, after the report access check.
+
+        The database keeps a stable object URL. Response links last one hour;
+        reloading an authorized report generates a fresh link without changing S3.
+        """
+        bucket = (self.values.get("S3_BUCKET_NAME") or "").strip()
+        if not image_url or not bucket:
+            return image_url
+        region = (self.values.get("AWS_REGION") or "us-east-1").strip()
+        try:
+            parsed = urlsplit(image_url)
+            hosts = {f"{bucket}.s3.amazonaws.com", f"{bucket}.s3.{region}.amazonaws.com"}
+            if (parsed.scheme != "https" or parsed.hostname not in hosts
+                or parsed.username is not None or parsed.password is not None
+                or parsed.port not in (None, 443) or parsed.fragment or not parsed.path.lstrip("/")):
+                return image_url
+            key = unquote(parsed.path.lstrip("/"))
+            with self.lock:
+                if self._s3 is None:
+                    self._s3 = self._client("s3")
+                client = self._s3
+            return client.generate_presigned_url(
+                "get_object", Params={"Bucket": bucket, "Key": key},
+                ExpiresIn=3600, HttpMethod="GET",
+            )
+        except Exception:
+            logger.warning("Report photo access link could not be generated.")
             raise MediaUnavailable() from None
 
     def analyze(self, image_bytes: bytes, description: str) -> dict:
