@@ -16,13 +16,13 @@ export default function Home() {
           <span className="text-[23px] font-bold tracking-[5px]">ENCLAVE</span>
         </div>
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          Management portal
+          Staff portal
         </p>
         <h1 className="max-w-xl text-4xl font-semibold leading-tight sm:text-5xl">
           Your community, connected.
         </h1>
         <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground">
-          Review resident reports, manage invitations, publish community notices, and compare repair plans.
+          Manage and Repair.
         </p>
         <Link
           href="/sign-in"
@@ -31,7 +31,7 @@ export default function Home() {
           Sign in to Enclave
         </Link>
         <p className="mt-5 text-center text-sm text-muted-foreground">
-          Need a management account?{' '}
+          Need a management or maintenance account?{' '}
           <Link href="/sign-up" className="font-semibold text-primary underline-offset-4 hover:underline">
             Request access
           </Link>
