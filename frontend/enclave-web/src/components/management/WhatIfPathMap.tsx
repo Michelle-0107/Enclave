@@ -11,6 +11,7 @@ type Props = {
   destination: Point | null;
   target: PickTarget;
   issues: FacilityIssue[];
+  onTargetChange?: (target: PickTarget) => void;
   onPick: (target: PickTarget, point: Point) => void;
 };
 // Matches backend/navigation/config.py PILOT_BBOX; a development window, not a legal boundary.
@@ -49,7 +50,35 @@ export default function WhatIfPathMap({
   target,
   issues,
   onPick,
+  onTargetChange,
 }: Props) {
+  const panel = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState("");
+  useEffect(() => {
+    const sync = () => {
+      setExpanded(document.fullscreenElement === panel.current);
+    };
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+  async function toggleFullscreen() {
+    setFullscreenError("");
+    try {
+      if (document.fullscreenElement === panel.current)
+        await document.exitFullscreen();
+      else if (panel.current?.requestFullscreen)
+        await panel.current.requestFullscreen();
+      else
+        setFullscreenError(
+          "Fullscreen is not supported here. Use the larger map below.",
+        );
+    } catch {
+      setFullscreenError(
+        "Unable to open fullscreen. The larger map below is still available.",
+      );
+    }
+  }
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre.Map | null>(null);
   const api = useRef<typeof MapLibre | null>(null);
@@ -245,12 +274,62 @@ export default function WhatIfPathMap({
     };
   }, [origin, destination, issues, ready]);
   return (
-    <div className="flex min-w-0 flex-col gap-2">
+    <div
+      ref={panel}
+      className={
+        expanded
+          ? "flex h-dvh w-screen min-w-0 flex-col gap-3 overflow-auto bg-background p-4 sm:p-6"
+          : "flex min-w-0 flex-col gap-3"
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-primary">
+            Choose journey points
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Click to set{" "}
+            {target === "origin" ? "A · Starting point" : "B · Destination"}
+            {expanded ? " · Press Esc to exit fullscreen" : ""}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {expanded &&
+            onTargetChange &&
+            (["origin", "destination"] as const).map((point) => (
+              <button
+                key={point}
+                type="button"
+                aria-pressed={target === point}
+                onClick={() => onTargetChange(point)}
+                className={`min-h-11 rounded-xl border border-border px-3 text-xs font-semibold ${target === point ? "bg-primary text-primary-foreground" : "bg-white text-primary"}`}
+              >
+                {point === "origin" ? "A · Starting point" : "B · Destination"}
+              </button>
+            ))}
+          <button
+            type="button"
+            disabled={!ready}
+            onClick={() => void toggleFullscreen()}
+            aria-label={
+              expanded ? "Exit map fullscreen" : "Open map fullscreen"
+            }
+            className="min-h-11 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            {expanded ? "Exit fullscreen" : "Expand map ⤢"}
+          </button>
+        </div>
+      </div>
+      {fullscreenError && (
+        <p role="status" className="text-xs text-status-orange">
+          {fullscreenError}
+        </p>
+      )}
       <div
         ref={host}
         role="region"
         aria-label={`Journey map. Click to set ${target === "origin" ? "starting point A" : "destination B"}. Coordinate fields are available below.`}
-        className="relative isolate z-0 h-[300px] w-full overflow-hidden rounded-2xl border border-border bg-muted sm:h-[360px]"
+        className={`relative isolate z-0 w-full overflow-hidden rounded-2xl border border-border bg-muted ${expanded ? "min-h-[260px] flex-1" : "h-[420px] sm:h-[520px]"}`}
       />
       {!ready && !error && (
         <p role="status" className="text-xs text-muted-foreground">

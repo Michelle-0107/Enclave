@@ -420,6 +420,9 @@ export default function WhatIfPlanner() {
                   origin={parseMapPoint(path.fromLat, path.fromLng)}
                   destination={parseMapPoint(path.toLat, path.toLng)}
                   target={pickTargets[index] ?? "origin"}
+                  onTargetChange={(target) =>
+                    setPickTargets((items) => ({ ...items, [index]: target }))
+                  }
                   issues={issues}
                   onPick={(target, point) => {
                     patchJourney(
