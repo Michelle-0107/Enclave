@@ -1,2 +1,4 @@
-import { Shell, Heading, ButtonLink } from "../../../../maintenance/src/app/maintenance/_components";
-export default function Account(){return <Shell active="account"><Heading title="My account." subtitle="Your maintenance workspace."/><div className="m-account-band"><strong>Maintenance team</strong><span className="m-muted">Setia Eco Park · Staff account</span></div><div className="m-card"><label className="m-field-label">Work email</label><p>maintenance@enclave.example</p><div className="m-divider"/><label className="m-field-label">Help & support</label><p className="m-muted">Contact management for task assignment or account support.</p></div><ButtonLink href="/maintenance" tone="secondary full">Log out</ButtonLink></Shell>}
+import Account from "@/components/maintenance/Account";
+export default function Page() {
+  return <Account />;
+}
