@@ -95,6 +95,18 @@ class RepairCandidates(BaseModel):
     persistence: Literal['not_saved'] = 'not_saved'
 
 
+class WalkingReference(BaseModel):
+    state: Literal['available'] = 'available'
+    route_mode: Literal['avoid_damage'] = 'avoid_damage'
+    reference_only: Literal[True] = True
+    accessibility_verified: Literal[False] = False
+    warning: str = 'Walking reference only; accessibility has not been verified.'
+    distance_meters: float
+    duration_seconds: float
+    geometry: RouteGeometry | None = None
+    data_source: str
+
+
 class RouteOutcome(BaseModel):
     state: Literal['available', 'no_route', 'not_assessable']
     reason: str | None = None
@@ -103,6 +115,7 @@ class RouteOutcome(BaseModel):
     geometry: RouteGeometry | None = None
     data_source: str | None = None
     field_verified: bool | None = None
+    fallback: WalkingReference | None = None
 
 
 class BaselinePath(BaseModel):

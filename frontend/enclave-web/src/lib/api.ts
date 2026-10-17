@@ -149,11 +149,25 @@ export type WhatIfPlan = {
   }>;
 };
 
-export type RouteOutcome = {
-  state: 'available' | 'no_route' | 'not_assessable';
-  reason?: string | null;
+export type RouteDetails = {
   distance_meters?: number | null;
   duration_seconds?: number | null;
+  geometry?: { type: 'LineString'; coordinates: [number, number][] } | null;
+  data_source?: string | null;
+};
+
+export type WalkingReference = RouteDetails & {
+  state: 'available';
+  route_mode: 'avoid_damage';
+  reference_only: true;
+  accessibility_verified: false;
+  warning: string;
+};
+
+export type RouteOutcome = RouteDetails & {
+  state: 'available' | 'no_route' | 'not_assessable';
+  reason?: string | null;
+  fallback?: WalkingReference | null;
 };
 
 export type WhatIfResult = {
@@ -406,7 +420,7 @@ export function compareRepairPlans(input: {
   plans: WhatIfPlan[];
   route_modes: Array<'avoid_damage' | 'accessible'>;
   budget_myr: string | null;
-  include_geometry: false;
+  include_geometry: boolean;
 }) {
   return apiRequest<WhatIfResult>('/api/v1/management/what-if/compare', {
     method: 'POST',

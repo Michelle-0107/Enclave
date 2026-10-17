@@ -97,6 +97,7 @@ export default function WhatIfPathMap({
       .then((M) => {
         if (disposed || !host.current) return;
         api.current = M;
+        M.setWorkerUrl('/vendor/maplibre-6.14.0/maplibre-gl-worker.mjs');
         instance = new M.Map({
           container: host.current,
           center: [101.7308667, 3.2253785],
