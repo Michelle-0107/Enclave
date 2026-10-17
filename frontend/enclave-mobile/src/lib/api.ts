@@ -1,3 +1,5 @@
+import { uploadMultipart } from './multipartUpload';
+
 /**
  * Enclave mobile backend API client.
  *
@@ -353,15 +355,15 @@ async function request<T>(
       headers['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(
-      `${baseUrl}${path}`,
-      {
-        method: options.method ?? 'GET',
-        headers,
-        body,
-        signal: controller.signal,
-      },
-    );
+    const response = isFormData
+      ? await uploadMultipart(`${baseUrl}${path}`, {
+          method: options.method ?? 'POST', headers,
+          body: options.body as FormData, signal: controller.signal,
+        })
+      : await fetch(`${baseUrl}${path}`, {
+          method: options.method ?? 'GET', headers, body,
+          signal: controller.signal,
+        });
 
     const text = await response.text();
     let data: unknown = null;
