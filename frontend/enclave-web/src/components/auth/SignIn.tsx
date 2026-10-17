@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -182,7 +183,10 @@ export default function SignIn() {
           </form>
 
           <p className="text-xs text-muted-foreground">
-            Need access? Contact your administrator.
+            Need a management account?{' '}
+            <Link href="/sign-up" className="font-semibold text-primary underline-offset-4 hover:underline">
+              Request access
+            </Link>
           </p>
         </div>
       </main>

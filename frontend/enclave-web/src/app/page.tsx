@@ -30,6 +30,12 @@ export default function Home() {
         >
           Sign in to Enclave
         </Link>
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          Need a management account?{' '}
+          <Link href="/sign-up" className="font-semibold text-primary underline-offset-4 hover:underline">
+            Request access
+          </Link>
+        </p>
       </section>
     </main>
   );
