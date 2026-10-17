@@ -139,25 +139,19 @@ def create_app(
                 application.state.registration.close()
 
     application = FastAPI(
-            title="Enclave Backend API",
-            version="0.4.0",
-            lifespan=lifespan,
-        )
-    
+        title="Enclave Backend API", version="0.4.0", lifespan=lifespan,
+        description="Supabase JWT authentication, resident OTP registration, active-resident report access, and S3/AI submission.",
+    )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=[
+            "https://enclavehomes.app",
             "http://localhost:3000",
             "http://127.0.0.1:3000",
         ],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    application = FastAPI(
-        title="Enclave Backend API", version="0.4.0", lifespan=lifespan,
-        description="Supabase JWT authentication, resident OTP registration, active-resident report access, and S3/AI submission.",
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
     )
     application.include_router(registration_router)
 

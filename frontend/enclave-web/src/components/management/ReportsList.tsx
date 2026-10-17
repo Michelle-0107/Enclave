@@ -1,29 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getManagementReports, type ManagementReport } from '@/lib/api';
 
 import {
   reportStatusLabels,
-  type ManagementReport,
   type ManagementReportStatus,
 } from '@/lib/mock-reports';
 
 type Props = {
-  reports: ManagementReport[];
   initialStatus?: string;
 };
 
 const statusOptions: ManagementReportStatus[] = [
   'pending',
   'approved',
-  'in-progress',
-  'awaiting-verification',
+  'rejected',
+  'in_progress',
   'resolved',
-  'needs-information',
 ];
 
 function getStatusColor(status: ManagementReportStatus) {
@@ -31,7 +29,7 @@ function getStatusColor(status: ManagementReportStatus) {
     return 'text-status-green';
   }
 
-  if (status === 'needs-information') {
+  if (status === 'rejected') {
     return 'text-status-red';
   }
 
@@ -39,22 +37,45 @@ function getStatusColor(status: ManagementReportStatus) {
 }
 
 export default function ReportsList({
-  reports,
   initialStatus = 'all',
 }: Props) {
+  const [reports, setReports] = useState<ManagementReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
   const [status, setStatus] = useState(
     statusOptions.includes(
-      initialStatus as ManagementReportStatus,
+      initialStatus.replace('-', '_') as ManagementReportStatus,
     )
-      ? initialStatus
+      ? initialStatus.replace('-', '_')
       : 'all',
   );
 
   const [priority, setPriority] = useState('all');
 
   const query = search.trim().toLowerCase();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setReports(await getManagementReports());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load reports.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getManagementReports()
+      .then((items) => { if (active) setReports(items); })
+      .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load reports.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const filteredReports = reports.filter((report) => {
     const matchesSearch =
@@ -87,7 +108,7 @@ export default function ReportsList({
       </h1>
 
       <p className="text-sm text-muted-foreground">
-        Review, assign and follow each repair.
+        Review reports and manage the backend-supported status workflow.
       </p>
 
       <div className="flex flex-col gap-2">
@@ -162,7 +183,14 @@ export default function ReportsList({
       </div>
 
       <div>
-        {filteredReports.length === 0 ? (
+        {error ? (
+          <div role="alert" className="border-b py-8 text-sm text-status-red">
+            <p>{error}</p>
+            <button type="button" onClick={() => void load()} className="mt-3 font-semibold underline">Try again</button>
+          </div>
+        ) : loading ? (
+          <p role="status" className="border-b py-8 text-sm text-muted-foreground">Loading reports…</p>
+        ) : filteredReports.length === 0 ? (
           <div
             role="status"
             className="border-b py-8"
@@ -198,16 +226,14 @@ export default function ReportsList({
               </div>
 
               <p className="text-xs text-muted-foreground">
-                #{report.id} · {report.location}
+                #{report.id} · {report.location} · {report.category}
               </p>
             </Link>
           ))
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Sample reports for design preview.
-      </p>
+      {!loading && !error && <p className="text-xs text-muted-foreground">Showing {filteredReports.length} of {reports.length} live reports.</p>}
     </div>
   );
 }

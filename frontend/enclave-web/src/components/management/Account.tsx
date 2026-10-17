@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { useRouter } from 'next/navigation';
 
 export default function Account() {
-  const [showNotice, setShowNotice] = useState(false);
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+
+  function handleSignOut() {
+    signOut();
+    router.replace('/sign-in');
+  }
 
   return (
     <div className="flex flex-col gap-7">
@@ -22,11 +28,11 @@ export default function Account() {
         className="flex flex-col gap-3.5 rounded-3xl bg-enclave-lavender p-5"
       >
         <h2 className="text-[22px] font-semibold text-primary">
-          Community Manager
+          Enclave management account
         </h2>
 
         <p className="text-sm text-muted-foreground">
-          KL East · Management
+          Management access is verified by the backend for each protected action.
         </p>
       </section>
 
@@ -36,7 +42,7 @@ export default function Account() {
         </dt>
 
         <dd className="break-words text-sm text-muted-foreground">
-          manager@enclave.example
+          {user?.email ?? 'Email unavailable'}
         </dd>
       </dl>
 
@@ -53,26 +59,12 @@ export default function Account() {
 
       <Button
         type="button"
-        onClick={() => setShowNotice(true)}
+        onClick={handleSignOut}
         className="min-h-[52px] w-full rounded-2xl bg-enclave-lavender px-6 text-sm font-semibold text-primary hover:bg-enclave-lavender hover:opacity-80"
       >
         Log out
       </Button>
 
-      {showNotice && (
-        <p
-          role="status"
-          className="text-sm leading-relaxed text-muted-foreground"
-        >
-          Demo only. Authentication is not connected, so
-          there is no active session to sign out of.
-        </p>
-      )}
-
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        Sample staff profile. Account details will come from
-        the authenticated user after backend integration.
-      </p>
     </div>
   );
 }
