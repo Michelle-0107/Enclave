@@ -1,0 +1,306 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Keyboard, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Camera, GeoJSONSource, Layer, Map, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '../theme';
+import { dataset, initialScenario, insidePilot, isBlocked, labels, meters, searchPlaces, selectLocation,
+  type Coordinate, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
+import { drivingDirectionsUrl } from './driving';
+import { MAX_START_ADJUSTMENT_METERS, planJourney, type AccessPlan } from './access';
+import JourneyGuidance from './JourneyGuidance';
+
+type Field = 'origin' | 'destination';
+type Props = { onShowLiveMap: () => void; onReportPress?: () => void };
+type Choice = { label: string; coordinate: Coordinate; snap?: Selection['snap'] };
+const transports: { id: Transport; name: string; icon: 'car-outline' | 'walk' | 'wheelchair-accessibility' }[] = [
+  { id: 'driving', name: 'Car', icon: 'car-outline' }, { id: 'walking', name: 'Walking', icon: 'walk' }, { id: 'wheelchair', name: 'Wheelchair', icon: 'wheelchair-accessibility' },
+];
+const routeColors: Record<Mode, string> = { shortest: '#8147B4', avoid_damage: '#BD6509', accessible: '#247A80' };
+const symbols: Record<string, string> = { stairs: 'ST', crossing: 'ZX', footbridge: 'FB', ramp: 'RP', path_surface: 'P', step_free_path: 'SF' };
+const state = initialScenario(); // Read-only resident view. No management controls or writes.
+const formatDistance = (m: number) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`;
+
+export default function DemoMapScreen({ onShowLiveMap, onReportPress }: Props) {
+  const [origin, setOrigin] = useState<Choice | null>(null);
+  const [destination, setDestination] = useState<Choice | null>(null);
+  const [startText, setStartText] = useState('');
+  const [endText, setEndText] = useState('');
+  const [field, setField] = useState<Field>('origin');
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<ModeResult[]>([]);
+  const [mode, setMode] = useState<Mode>('shortest');
+  const [selected, setSelected] = useState<{ type: 'facility' | 'place'; id: string } | null>(null);
+  const [error, setError] = useState('');
+  const [mapError, setMapError] = useState(false);
+  const [mapKey, setMapKey] = useState(0);
+  const [alternative, setAlternative] = useState<AccessPlan | null>(null);
+  const [adjustmentVisible, setAdjustmentVisible] = useState(false);
+  const [originalOrigin, setOriginalOrigin] = useState<Choice | null>(null);
+  const [waitForAdjustedStart, setWaitForAdjustedStart] = useState(false);
+  const [routeReady, setRouteReady] = useState(true);
+  const [navigating, setNavigating] = useState(false);
+  const [guidanceTarget, setGuidanceTarget] = useState<Coordinate | null>(null);
+  const [gpsPosition, setGpsPosition] = useState<Coordinate | null>(null);
+  const [transport, setTransport] = useState<Transport>('walking');
+  const approachCameraCentered = useRef(false);
+  const camera = useRef<CameraRef>(null);
+  const suggestions = searching ? searchPlaces(field === 'origin' ? startText : endText) : [];
+  const route = results.find(item => item.mode === mode)?.route;
+  const facility = selected?.type === 'facility' ? dataset.facilities.find(f => f.id === selected.id) : undefined;
+  const place = selected?.type === 'place' ? dataset.landmarks.find(p => p.id === selected.id) : undefined;
+  const feature = facility || place;
+  const facilityData = useMemo(() => ({ type: 'FeatureCollection' as const,
+    features: dataset.facilities.map(f => ({ type: 'Feature' as const, id: f.id,
+      properties: { id: f.id, blocked: isBlocked(f, state), symbol: symbols[f.kind] },
+      geometry: { type: 'Point' as const, coordinates: f.coordinate } })) }), []);
+  const placeData = useMemo(() => ({ type: 'FeatureCollection' as const,
+    features: dataset.landmarks.map(p => ({ type: 'Feature' as const, id: p.id, properties: { id: p.id, name: p.name },
+      geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), []);
+  const bounds: [number, number, number, number] = dataset.bbox;
+
+  function clearRoute() { setResults([]); setSelected(null); setError(''); setAlternative(null); setAdjustmentVisible(false); setWaitForAdjustedStart(false); setRouteReady(true); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); approachCameraCentered.current = false; }
+  function changeTransport(next: Transport) {
+    if (next === transport) return;
+    setTransport(next); clearRoute(); setSearching(false); setMode(next === 'wheelchair' ? 'accessible' : 'shortest');
+    if (next === 'driving') return;
+    // Raw selections stay fixed. Access planning resolves nearby paths explicitly.
+
+  }
+  function fitRoute(value: Route) {
+    const points = [...value.coordinates, ...(origin ? [origin.coordinate] : []), ...(destination ? [destination.coordinate] : [])];
+    camera.current?.fitBounds([Math.min(...points.map(p => p[0])), Math.min(...points.map(p => p[1])),
+      Math.max(...points.map(p => p[0])), Math.max(...points.map(p => p[1]))], { padding: { top: 35, right: 35, bottom: 35, left: 35 }, duration: 400 });
+  }
+  function edit(value: string, which: Field) {
+    setField(which); setSearching(true); clearRoute();
+    if (which === 'origin') { setStartText(value); setOrigin(null); setOriginalOrigin(null); } else { setEndText(value); setDestination(null); }
+  }
+  function choose(coordinate: Coordinate, label: string, which: Field = field) {
+    try {
+      if (!insidePilot(coordinate, dataset)) throw new Error('Select a point inside the KL East pilot area.');
+      let selection: Choice = { label, coordinate };
+      if (transport !== 'driving') { try { selection = selectLocation(label, coordinate); } catch { /* Keep the raw pin for explicit nearby-access planning. */ } }
+      clearRoute(); setSearching(false); Keyboard.dismiss();
+      if (which === 'origin') { setOrigin(selection); setOriginalOrigin(null); setStartText(label); setField('destination'); }
+      else { setDestination(selection); setEndText(label); }
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to select that location.'); }
+  }
+  function showRoutes() {
+    Keyboard.dismiss(); setSearching(false); clearRoute();
+    if (!origin || !destination) { setError('Select both locations using the map or search results.'); return; }
+    try {
+      if (transport === 'driving') throw new Error('Use Open driving navigation for car travel.');
+      const plan = planJourney(transport, origin.coordinate, destination.coordinate);
+      const next = plan.direct; setResults(next);
+      const available = next.find(item => item.route); setMode(available?.mode ?? 'shortest');
+      if (plan.adjustment) {
+        setAlternative(plan.adjustment); setAdjustmentVisible(true);
+        const candidateRoute = plan.adjustment.results.find(item => item.mode === 'shortest')?.route;
+        if (candidateRoute) fitRoute(candidateRoute);
+        setError('A nearby connected starting point is available. Accept or choose another starting point.');
+      } else if (!available) setError(transport === 'wheelchair' ? 'No connected step-free path is recorded for these places. Keep the selected places and choose a known accessible entrance on the map.' : 'No connected mapped walking route was found within 100 m of the selected start. Choose another starting point.');
+      else if (available.route) fitRoute(available.route);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to calculate routes.'); }
+  }
+  function acceptStartAdjustment() {
+    if (!alternative || !origin) return;
+    const previous = origin, candidate = alternative;
+    setOriginalOrigin(previous);
+    setOrigin({ label: 'Nearby connected starting point', coordinate: candidate.from.coordinate, snap: candidate.from });
+    setStartText(`Connected start · ${formatDistance(candidate.startGap)} from selected point`);
+    setResults(candidate.results); setAlternative(null); setAdjustmentVisible(false);
+    setWaitForAdjustedStart(true); setRouteReady(false); setNavigating(false); setMode('shortest'); setError('');
+    approachCameraCentered.current = false;
+    const selectedRoute = candidate.results.find(item => item.mode === 'shortest')?.route;
+    if (selectedRoute) fitRoute(selectedRoute);
+  }
+  function declineStartAdjustment() {
+    setAlternative(null); setAdjustmentVisible(false); setResults([]); setNavigating(false);
+    setWaitForAdjustedStart(false); setRouteReady(true); setGpsPosition(null); setGuidanceTarget(null);
+    setOrigin(null); setOriginalOrigin(null); setStartText(''); setField('origin'); setSearching(false);
+    setError('Choose a different starting point. The destination is unchanged.');
+  }
+  function metersForAccess(i: number, coordinate: Coordinate) { return meters((i === 0 ? origin : destination)!.coordinate, coordinate); }
+  async function openDriving() {
+    setError(''); Keyboard.dismiss(); setSearching(false);
+    if (!origin || !destination) { setError('Select both locations using the map or search results.'); return; }
+    try { await Linking.openURL(drivingDirectionsUrl(origin.coordinate, destination.coordinate)); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to open driving directions.'); }
+  }
+  function handleGuidancePosition(point: Coordinate | null) {
+    setGpsPosition(point);
+    if (!point) approachCameraCentered.current = false;
+  }
+  useEffect(() => {
+    if (!navigating || !waitForAdjustedStart || routeReady || !gpsPosition || !origin || approachCameraCentered.current) return;
+    const points = [gpsPosition, origin.coordinate];
+    camera.current?.fitBounds([Math.min(...points.map(p => p[0])), Math.min(...points.map(p => p[1])),
+      Math.max(...points.map(p => p[0])), Math.max(...points.map(p => p[1]))], { padding: { top: 60, right: 60, bottom: 60, left: 60 }, duration: 350 });
+    approachCameraCentered.current = true;
+  }, [gpsPosition, navigating, waitForAdjustedStart, routeReady, origin]);
+
+  return <View style={styles.container}>
+    <Text style={styles.title}>Around your neighbourhood.</Text>
+    <Text style={styles.subtitle}>Facilities and community-reported issues, at a glance.</Text>
+    <Text style={styles.demoBadge}>Demo facilities · real KL East map</Text>
+    <View style={styles.transportRow} accessibilityRole="tablist">
+      {transports.map(item => <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.name}
+        accessibilityState={{ selected: transport === item.id }} onPress={() => changeTransport(item.id)}
+        style={[styles.transportButton, transport === item.id && styles.selectedCard]}>
+        <MaterialCommunityIcons name={item.icon} size={24} color={colors.navy} />
+        <Text style={styles.transportLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{item.name}</Text>
+      </Pressable>)}
+    </View>
+    {transport === 'driving' ? <Text style={styles.hint}>Car navigation opens Google Maps with your selected locations. Demo facility restrictions are not sent to Google Maps.</Text> :
+      transport === 'wheelchair' ? <Text style={styles.hint}>Wheelchair travel uses step-free paths and avoids reported damage. Demo access conditions are not field verified.</Text> :
+        <Text style={styles.hint}>Walking: shortest, avoid damaged facilities, or verified step-free route. Verification is simulated in this demo.</Text>}
+    <View style={styles.endpoints}>
+      <View style={styles.endpoint}>
+        <Text style={styles.fieldLabel}>Starting point</Text>
+        <TextInput accessibilityLabel="Starting point" value={startText} onChangeText={value => edit(value, 'origin')}
+          onFocus={() => { setField('origin'); setSearching(true); }} placeholder="Choose a starting point"
+          placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
+        {originalOrigin && origin ? <Text style={styles.hint}>Updated {formatDistance(meters(originalOrigin.coordinate, origin.coordinate))} from your original start</Text> : transport !== 'driving' && origin?.snap && <Text style={styles.hint}>Mapped access {Math.round(origin.snap.distance)} m from selection</Text>}
+      </View>
+      <View style={styles.divider} />
+      <View style={styles.endpoint}>
+        <Text style={styles.fieldLabel}>End point</Text>
+        <TextInput accessibilityLabel="End point" value={endText} onChangeText={value => edit(value, 'destination')}
+          onFocus={() => { setField('destination'); setSearching(true); }} placeholder="Choose an end point"
+          placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
+        {transport !== 'driving' && destination?.snap && <Text style={styles.hint}>Road access {Math.round(destination.snap.distance)} m from selection</Text>}
+      </View>
+    </View>
+    {suggestions.map(p => <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={'Choose place: ' + p.name}
+      onPress={() => { choose(p.coordinate, p.name); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} style={styles.suggestion}>
+      <Text style={styles.cardTitle}>{p.name}</Text><Text style={styles.body}>{p.coordinate[1].toFixed(5)}, {p.coordinate[0].toFixed(5)}</Text>
+    </Pressable>)}
+    {searching && !suggestions.length && (field === 'origin' ? startText : endText).trim().length >= 2 &&
+      <Text style={styles.hint}>No matching mapped place. Tap the map or enter latitude, longitude.</Text>}
+    <View style={styles.row}>
+      {(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="button"
+        accessibilityLabel={which === 'origin' ? 'Pick starting point on map' : 'Pick end point on map'}
+        onPress={() => { setField(which); setSearching(false); Keyboard.dismiss(); }} style={[styles.pointButton, field === which && styles.selectedCard]}>
+        <Text style={styles.cardTitle}>{which === 'origin' ? '1. Starting point' : '2. End point'}</Text>
+        <Text style={styles.body}>{field === which ? 'Tap map to choose' : 'Tap to select'}</Text>
+      </Pressable>)}
+    </View>
+    <View style={styles.mapContainer}>
+      <Map key={mapKey} style={styles.map} mapStyle={dataset.styleUrl} androidView="texture" compass attribution
+        onPress={event => { const p = event.nativeEvent.lngLat; choose(p, `Map pin · ${p[1].toFixed(5)}, ${p[0].toFixed(5)}`); }}
+        onDidFailLoadingMap={() => setMapError(true)} onDidFinishLoadingMap={() => setMapError(false)}>
+        <Camera ref={camera} initialViewState={{ bounds, padding: { top: 15, right: 15, bottom: 15, left: 15 } }} />
+        {alternative?.results[0]?.route && <GeoJSONSource id="demo-suggested-route" data={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: alternative.results[0].route.coordinates } }}>
+          <Layer id="demo-suggested-route-line" type="line" paint={{ 'line-color': '#2675D8', 'line-width': 4, 'line-dasharray': [2, 2] }} layout={{ 'line-cap': 'round', 'line-join': 'round' }} />
+        </GeoJSONSource>}
+        {route && (!navigating || routeReady) && <GeoJSONSource id="demo-selected-route" data={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: route.coordinates } }}>
+          <Layer id="demo-route-line" type="line" paint={{ 'line-color': routeColors[mode], 'line-width': 5 }} layout={{ 'line-cap': 'round', 'line-join': 'round' }} />
+        </GeoJSONSource>}
+        {route && ([route.originSnap, route.destinationSnap] as const).map((snap, i) => metersForAccess(i, snap.coordinate) > 3 && <Marker key={'access-' + i} id={'demo-access-' + i} lngLat={snap.coordinate}>
+          <View collapsable={false} style={[styles.marker, styles.accessPin]}><Text style={styles.pinText}>{i === 0 ? 'A' : 'B'}</Text></View>
+        </Marker>)}
+        {originalOrigin && <Marker id="demo-original-start" lngLat={originalOrigin.coordinate}>
+          <View collapsable={false} style={[styles.marker, styles.originalPin]}><Text style={styles.pinText}>O</Text></View>
+        </Marker>}
+        {alternative && <Marker id="demo-suggested-start" lngLat={alternative.from.coordinate}>
+          <View collapsable={false} style={[styles.marker, styles.suggestedPin]}><Text style={styles.pinText}>N</Text></View>
+        </Marker>}
+        {guidanceTarget && <Marker id="demo-guidance-target" lngLat={guidanceTarget}><View collapsable={false} style={[styles.marker, styles.accessPin]}><Text style={styles.pinText}>Next</Text></View></Marker>}
+        {gpsPosition && <Marker id="demo-gps" lngLat={gpsPosition}><View collapsable={false} style={[styles.marker, styles.accessPin]}><Text style={styles.pinText}>Me</Text></View></Marker>}
+        <GeoJSONSource id="demo-places" data={placeData} hitbox={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'place', id }); setSearching(false); Keyboard.dismiss(); } }}>
+          <Layer id="demo-place-points" type="circle" minzoom={15} paint={{ 'circle-radius': 4, 'circle-color': '#175CD3', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 1 }} />
+        </GeoJSONSource>
+        <GeoJSONSource id="demo-facilities" data={facilityData} hitbox={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'facility', id }); setSearching(false); Keyboard.dismiss(); } }}>
+          <Layer id="demo-facility-points" type="circle" paint={{ 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 4, 16, 10],
+            'circle-color': ['case', ['get', 'blocked'], '#A63E37', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
+          <Layer id="demo-facility-labels" type="symbol" minzoom={15.5} layout={{ 'text-field': ['get', 'symbol'], 'text-size': 9, 'text-allow-overlap': true }} paint={{ 'text-color': '#FFFFFF' }} />
+        </GeoJSONSource>
+        {([origin, destination] as const).map((p, i) => p && <Marker key={i} id={'demo-endpoint-' + i} lngLat={p.coordinate}>
+          <View collapsable={false} style={[styles.marker, i === 1 && styles.destinationPin]}><Text style={styles.pinText}>{i === 0 ? 'S' : 'D'}</Text></View>
+        </Marker>)}
+      </Map>
+      {mapError && <View style={styles.mapErrorCard}><Text style={styles.cardTitle}>Could not load map</Text>
+        <Text style={styles.body}>Check your internet connection.</Text>
+        <Pressable accessibilityRole="button" onPress={() => { setMapError(false); setMapKey(n => n + 1); }} style={styles.textButton}><Text style={styles.link}>Retry map</Text></Pressable>
+      </View>}
+    </View>
+    <View style={styles.row}><Text style={styles.count}>{dataset.facilities.length} facilities · {dataset.facilities.filter(f => isBlocked(f, state)).length} reported issues in the pilot area</Text>
+      <Pressable accessibilityRole="button" onPress={() => camera.current?.fitBounds(bounds, { padding: { top: 15, right: 15, bottom: 15, left: 15 }, duration: 400 })} style={styles.textButton}><Text style={styles.link}>Show area</Text></Pressable></View>
+    <Text style={styles.hint}>Red: reported damage · Teal: facilities · Blue: real places. Tap a marker for details, or tap the map to choose {field === 'origin' ? 'your start' : 'your destination'}.</Text>
+    {feature && <View style={styles.selectedPanel}>
+      <Text style={styles.cardTitle}>{feature.name}</Text>
+      <Text style={styles.body}>{facility ? `${facility.kind.replaceAll('_', ' ')} · ${isBlocked(facility, state) ? `${facility.reporters} residents reported` : 'No confirmed damage'}` : 'Real mapped landmark'}</Text>
+      <Text style={styles.hint}>{facility ? 'Fictional facility data for this resident demo.' : place?.positionBasis}</Text>
+      <View style={styles.row}>{(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="button"
+        onPress={() => choose(feature.coordinate, feature.name, which)} style={styles.textButton}><Text style={styles.link}>{which === 'origin' ? 'Use as start' : 'Use as end'}</Text></Pressable>)}
+        <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={styles.textButton}><Text style={styles.link}>Close</Text></Pressable></View>
+    </View>}
+    {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+    {(transport === 'driving' || results.length === 0) && <Pressable accessibilityRole="button" onPress={transport === 'driving' ? () => void openDriving() : showRoutes} style={styles.chooseButton}>
+      <Text style={styles.chooseButtonText}>{transport === 'driving' ? 'Open driving navigation' : 'Choose route'}</Text></Pressable>}
+    {originalOrigin && <View style={styles.selectedPanel}><Text style={styles.cardTitle}>Starting point updated</Text><Text style={styles.body}>Original point O stays on the map as a reference. The route now starts from S, the connected point you accepted.</Text><Text style={styles.hint}>The transfer between O and S is not a mapped or verified path.</Text></View>}
+    {route && origin && destination && <>
+      <Pressable accessibilityRole="button" onPress={() => { if (navigating) { setNavigating(false); setRouteReady(!waitForAdjustedStart); setGpsPosition(null); setGuidanceTarget(null); } else { setNavigating(true); setRouteReady(!waitForAdjustedStart); } }} style={styles.chooseButton}><Text style={styles.chooseButtonText}>{navigating ? 'Close route guidance' : waitForAdjustedStart ? 'Go to adjusted starting point' : 'Start Enclave guidance'}</Text></Pressable>
+      {navigating && <JourneyGuidance key={transport + mode + route.originSnap.edgeId + route.destinationSnap.edgeId} route={route} origin={origin.coordinate} destination={destination.coordinate} waitForStart={waitForAdjustedStart} onRouteReady={setRouteReady} onPosition={handleGuidancePosition} onTarget={setGuidanceTarget} />}
+    </>}
+    {navigating && guidanceTarget && <Pressable accessibilityRole="button" onPress={() => camera.current?.easeTo({ center: guidanceTarget, zoom: 18, duration: 400 })} style={styles.textButton}><Text style={styles.link}>Focus next point</Text></Pressable>}
+    {results.length > 0 && <>
+      <Text style={styles.title}>Choose your route.</Text>
+      {results.map(result => <Pressable key={result.mode} accessibilityRole="radio" accessibilityState={{ checked: result.mode === mode, disabled: !result.route }} disabled={!result.route}
+        onPress={() => { setMode(result.mode); setSelected(null); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); if (result.route) fitRoute(result.route); }} style={[styles.routeCard, result.mode === mode && styles.selectedCard]}>
+        <Text style={styles.cardTitle}>{labels[result.mode]} · {result.route ? formatDistance(result.route.distance) : 'Unavailable'}</Text>
+        <Text style={styles.body}>{result.mode === 'shortest' ? 'Minimum mapped distance; may pass stairs or reported damage.' : result.mode === 'avoid_damage' ? 'Avoids confirmed damage; may use stairs.' : 'Avoids stairs and damage. Demo verification only; not field verified.'}</Text>
+        {result.route ? <Text style={styles.body}>{Math.ceil(result.route.seconds / 60)} min estimate · {result.route.facilities.filter(f => isBlocked(f, state)).length} reported issues on route · {result.route.facilities.length} facilities</Text> :
+          <Text style={styles.body}>No eligible connected path for these selected road access points.</Text>}
+      </Pressable>)}
+      {route && <View style={styles.selectedPanel}>
+        <Text style={styles.cardTitle}>Facilities on this route</Text>
+        {route.facilities.length ? route.facilities.map(f => <Text key={f.id} style={isBlocked(f, state) ? styles.error : styles.body}>
+          {f.name} · {isBlocked(f, state) ? 'Reported damage' : f.kind === 'stairs' ? 'Stairs' : 'No confirmed damage'}</Text>) : <Text style={styles.body}>No demo facilities intersect this path.</Text>}
+        <Text style={styles.hint}>The destination stays fixed. If you accepted a nearby connected start, O marks your original point and S marks the updated point. Mapped access points are shown separately; unrecorded connections are not drawn as roads. Routes can be identical when no relevant restrictions affect this journey.</Text>
+      </View>}
+    </>}
+    <Modal visible={adjustmentVisible && Boolean(alternative)} transparent animationType="fade" onRequestClose={declineStartAdjustment}>
+      <View style={styles.modalOverlay}><View style={styles.modalCard}>
+        <Text style={styles.modalEyebrow}>STARTING POINT SUGGESTION</Text>
+        <Text style={styles.cardTitle}>Move your starting point to a nearby connected place?</Text>
+        <Text style={styles.body}>A mapped walking route reaches your destination from this point. It is {formatDistance(alternative?.startGap ?? 0)} from your selected start and within the {MAX_START_ADJUSTMENT_METERS} m demo limit.</Text>
+        <Text style={styles.body}>Accepting updates this trip's starting point. The map marks the original point O and suggested point N. After you accept, navigation first waits for you to reach the new start.</Text>
+        <Pressable accessibilityRole="button" onPress={acceptStartAdjustment} style={styles.chooseButton}><Text style={styles.chooseButtonText}>Accept and update start</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={declineStartAdjustment} style={styles.textButton}><Text style={styles.link}>No, let me choose another start</Text></Pressable>
+      </View></View>
+    </Modal>
+    {onReportPress && <Pressable accessibilityRole="button" onPress={onReportPress} style={styles.textButton}><Text style={styles.link}>Report an issue</Text></Pressable>}
+    <Text style={styles.hint}>Only facility and access conditions are fictional. Roads and landmarks: OpenStreetMap contributors (ODbL). Basemap: OpenFreeMap. Step-free conditions are not field verified.</Text>
+    <Pressable accessibilityRole="button" onPress={onShowLiveMap} style={styles.textButton}><Text style={styles.link}>Open live community map</Text></Pressable>
+  </View>;
+}
+
+const styles = StyleSheet.create({
+  container: { gap: 10 }, title: { fontSize: 24, lineHeight: 34, fontWeight: '700', color: colors.navy },
+  subtitle: { fontSize: 14, lineHeight: 20, color: colors.muted }, demoBadge: { fontSize: 11, color: colors.navy, alignSelf: 'flex-start', backgroundColor: colors.lavender, padding: 6, borderRadius: 6 },
+  endpoints: { backgroundColor: colors.white, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, gap: 12 }, endpoint: { gap: 4 },
+  fieldLabel: { fontSize: 11, lineHeight: 16, color: colors.muted }, locationInput: { padding: 0, margin: 0, fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.navy, includeFontPadding: false },
+  divider: { height: 1, backgroundColor: colors.border }, suggestion: { padding: 12, gap: 3, backgroundColor: colors.white, borderRadius: 12 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }, pointButton: { flex: 1, padding: 10, gap: 4, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+  transportRow: { flexDirection: 'row', gap: 8 },
+  transportButton: { flex: 1, minWidth: 0, height: 78, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 4, backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.border },
+  transportLabel: { color: colors.navy, fontSize: 12, fontWeight: '600' },
+  mapContainer: { width: '100%', height: 320, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.lavender }, map: { flex: 1 },
+  marker: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.navy, borderWidth: 2, borderColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  accessPin: { backgroundColor: '#BD6509' }, originalPin: { backgroundColor: '#8790A0' }, suggestedPin: { backgroundColor: '#2675D8' }, destinationPin: { backgroundColor: '#247A80' }, pinText: { color: colors.white, fontSize: 13, fontWeight: '700' },
+  mapErrorCard: { position: 'absolute', top: 16, right: 16, left: 16, padding: 14, borderRadius: 14, backgroundColor: colors.white, gap: 6 },
+  count: { flex: 1, color: colors.muted, fontSize: 12 }, hint: { fontSize: 11, lineHeight: 17, color: colors.muted },
+  body: { fontSize: 12, lineHeight: 18, color: colors.muted }, cardTitle: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.navy },
+  selectedPanel: { backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 6 },
+  textButton: { minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' }, link: { fontSize: 13, lineHeight: 19, fontWeight: '600', color: colors.navy },
+  chooseButton: { minHeight: 50, padding: 14, borderRadius: 16, backgroundColor: colors.navy, alignItems: 'center', justifyContent: 'center' },
+  chooseButtonText: { fontSize: 15, lineHeight: 20, fontWeight: '600', color: colors.white },
+  routeCard: { backgroundColor: colors.white, padding: 14, gap: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border }, selectedCard: { borderColor: colors.navy, backgroundColor: '#E8F1F4' },
+  modalOverlay: { flex: 1, justifyContent: 'center', padding: 22, backgroundColor: '#15203788' },
+  modalCard: { borderRadius: 18, padding: 18, gap: 10, backgroundColor: colors.white },
+  modalEyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: '#247A80' },
+  error: { color: '#A63E37', fontSize: 12, lineHeight: 18 },
+});
