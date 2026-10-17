@@ -1,0 +1,71 @@
+{
+  "source": "fictional_facilities_on_mapped_osm_roads",
+  "field_verified": false,
+  "attribution": "OpenStreetMap contributors / ODbL 1.0; source geometry from the bundled KL East demo dataset.",
+  "facilities": [
+    {
+      "id": "77797624-5b04-59e8-b3f5-9a50187d545f",
+      "name": "[DEMO] KL East 01 - Mall west crossing",
+      "facility_type": "crossing",
+      "latitude": 3.22540015,
+      "longitude": 101.72925195,
+      "source_edge_id": "osm-1252137889-11639045741-11639045742"
+    },
+    {
+      "id": "3d0bd3d3-c9b2-5670-b398-17455c7d5e35",
+      "name": "[DEMO] KL East 02 - Mall west access ramp",
+      "facility_type": "ramp",
+      "latitude": 3.22462435,
+      "longitude": 101.7292278,
+      "source_edge_id": "osm-610119062-12157314812-2359897323"
+    },
+    {
+      "id": "018643f6-ea14-5c39-a9a7-9dcbc2960aff",
+      "name": "[DEMO] KL East 03 - Mall east stairs",
+      "facility_type": "stairs",
+      "latitude": 3.2248221,
+      "longitude": 101.7311686,
+      "source_edge_id": "osm-886824490-10882819229-10882819230"
+    },
+    {
+      "id": "9272512f-4ee5-5d0b-b0ed-5cbb30ec7af7",
+      "name": "[DEMO] KL East 04 - Mall north pavement",
+      "facility_type": "path_surface",
+      "latitude": 3.22608585,
+      "longitude": 101.73009065,
+      "source_edge_id": "osm-1373124130-12714080067-12714080069"
+    },
+    {
+      "id": "29cb2441-6e91-5de3-bc2e-e2a0320fc996",
+      "name": "[DEMO] KL East 05 - Park north crossing",
+      "facility_type": "crossing",
+      "latitude": 3.22865045,
+      "longitude": 101.7346401,
+      "source_edge_id": "osm-1554507371-11135499170-11135499171"
+    },
+    {
+      "id": "6795ab7b-f220-5884-b4d1-d1db53c1cf6a",
+      "name": "[DEMO] KL East 06 - Park north ramp",
+      "facility_type": "ramp",
+      "latitude": 3.22887655,
+      "longitude": 101.7341629,
+      "source_edge_id": "osm-1201000344-11135499186-11135499187"
+    },
+    {
+      "id": "bcd8dfaf-e52c-550e-984f-94a1e864ed11",
+      "name": "[DEMO] KL East 07 - Park east streetlight",
+      "facility_type": "streetlight",
+      "latitude": 3.22762225,
+      "longitude": 101.73503055,
+      "source_edge_id": "osm-1554507349-11135519619-11135519620"
+    },
+    {
+      "id": "adc64a0e-08af-5aa9-8f5a-b1967f8383a7",
+      "name": "[DEMO] KL East 08 - Mall south drainage",
+      "facility_type": "drainage",
+      "latitude": 3.2239375,
+      "longitude": 101.73101295,
+      "source_edge_id": "osm-871914524-11726462736-8121234342"
+    }
+  ]
+}
