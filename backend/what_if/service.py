@@ -13,7 +13,7 @@ from ..navigation.service import NavigationService
 from ..navigation.zones import zone_bounds, zone_ring, route_intersects_zone
 from ..reports.issues import CommunityObstacle, CommunityObstacleSnapshot
 from .contracts import (BaselinePath, CompareResponse, FacilityImpact, ModeSummary,
-                        PathImpact, PlanResult, RepairCandidates, RouteOutcome)
+                        PathImpact, PlanResult, RepairCandidates, RouteOutcome, WalkingReference)
 from .repository import WhatIfRejected, WhatIfUnavailable
 
 
@@ -98,11 +98,52 @@ class WhatIfService:
                 return path, mode, unknown, unknown, {p.id: unknown for p in body.plans}
             before = await calculate(path, mode, before_snapshot)
             after = {p.id: await calculate(path, mode, plan_snapshots[p.id]) for p in body.plans}
+            # Every candidate was validated by NavigationService for this exact
+            # origin/destination pair, mode, and frozen network. Revalidate its
+            # whole geometry against each target's remaining damage zones.
+            # A shared feasible pool makes relaxed restrictions monotonic without
+            # clamping numbers or inventing a shorter geometry.
+            pool = [item.route for item in [reference, before, *after.values()] if item.route is not None]
+            def best_for(original, target_snapshot):
+                bounds = [zone_bounds_from_ring(i.exclusion_ring) for i in target_snapshot.items]
+                feasible = []
+                for route in pool:
+                    coordinates = [(path.origin.longitude, path.origin.latitude),
+                                   *route.geometry.coordinates,
+                                   (path.destination.longitude, path.destination.latitude)]
+                    if not any(route_intersects_zone(coordinates, box) for box in bounds):
+                        feasible.append(route)
+                if not feasible:
+                    return original
+                route = min(feasible, key=lambda item: (item.distance_meters, item.duration_seconds))
+                route = route.model_copy(update={
+                    'obstacle_count': len(target_snapshot.items),
+                    'obstacle_snapshot_at': target_snapshot.checked_at,
+                    'community_issue_avoidance': 'applied' if target_snapshot.items else 'no_active_obstacles',
+                })
+                return CalculatedRoute(route, 'available')
+            reference = best_for(reference, reference_snapshot)
+            before = best_for(before, before_snapshot)
+            after = {p.id: best_for(after[p.id], plan_snapshots[p.id]) for p in body.plans}
             return path, mode, reference, before, after
+
+        def zone_bounds_from_ring(ring):
+            return ring[0][0], ring[0][1], ring[2][0], ring[2][1]
 
         workers = [asyncio.create_task(compare_path(path, mode)) for path in body.paths for mode in body.route_modes]
         try:
             comparisons = await asyncio.gather(*workers)
+            # Compute a walking reference even for accessible-only requests, but
+            # only when an accessible before/after route is unavailable.
+            fallback_workers = []
+            if 'accessible' in body.route_modes and 'avoid_damage' not in body.route_modes:
+                for path, mode, _, before, after in comparisons:
+                    if mode == 'accessible' and (before.route is None or any(i.route is None for i in after.values())):
+                        fallback_workers.append(asyncio.create_task(compare_path(path, 'avoid_damage')))
+            workers.extend(fallback_workers)
+            hidden = await asyncio.gather(*fallback_workers)
+            walking = {path.id: (reference, before, after)
+                       for path, mode, reference, before, after in [*comparisons, *hidden] if mode == 'avoid_damage'}
         finally:
             # A timeout/provider failure cannot leave detached work running in the background.
             pending = [task for task in [*workers, *tasks.values()] if not task.done()]
@@ -112,22 +153,33 @@ class WhatIfService:
                 await asyncio.gather(*pending, return_exceptions=True)
 
         points_used = 0
-        def project(calculated):
+        def route_geometry(route):
             nonlocal points_used
-            if calculated.route is None:
-                return RouteOutcome(state=calculated.state, reason=calculated.reason)
-            route = calculated.route
             geometry = route.geometry if body.include_geometry else None
             if geometry is not None:
                 points_used += len(geometry.coordinates)
                 if points_used > 50_000:
                     raise WhatIfRejected(422, 'Comparison geometry exceeds the supported limit; retry with include_geometry=false')
+            return geometry
+
+        def project(calculated, walking_reference=None):
+            if calculated.route is None:
+                fallback = None
+                if walking_reference is not None and walking_reference.route is not None:
+                    route = walking_reference.route
+                    fallback = WalkingReference(distance_meters=route.distance_meters,
+                        duration_seconds=route.duration_seconds, geometry=route_geometry(route),
+                        data_source=route.data_source)
+                return RouteOutcome(state=calculated.state, reason=calculated.reason, fallback=fallback)
+            route = calculated.route
+            geometry = route_geometry(route)
             return RouteOutcome(state='available', distance_meters=route.distance_meters,
                                 duration_seconds=route.duration_seconds, geometry=geometry,
                                 data_source=route.data_source, field_verified=route.field_verified)
 
         baseline = [BaselinePath(path_id=path.id, path_name=path.name, route_mode=mode,
-                                 current=project(before), reference_without_damage=project(reference))
+                                 current=project(before, walking[path.id][1] if mode == 'accessible' and path.id in walking else None),
+                                 reference_without_damage=project(reference))
                     for path, mode, reference, before, _ in comparisons]
         results = []
         for plan in body.plans:
@@ -163,7 +215,7 @@ class WhatIfService:
                 else:
                     effect = 'unchanged'
                 impacts.append(PathImpact(path_id=path.id, path_name=path.name, route_mode=mode,
-                    after=project(after), effect=effect,
+                    after=project(after, walking[path.id][2][plan.id] if mode == 'accessible' and path.id in walking else None), effect=effect,
                     distance_saved_meters=round(saved, 3) if saved is not None else None,
                     duration_saved_seconds=round(time_saved, 3) if time_saved is not None else None,
                     reference_intersects_selected_repairs=bool(hits) if reference.route is not None else None,
@@ -206,6 +258,8 @@ class WhatIfService:
                 'Simulation only: no reports, incidents, repair states, or saved scenarios were changed. Do not use hypothetical routes for live navigation.',
                 'Major paths are management-defined origin/destination pairs, not measured user journeys or a count of physical road segments.',
                 'Affected counts intersect selected facility zones with a reference route ignoring all incident damage; improved counts compare current versus this repair plan only.',
+                'Each comparison rechecks all validated route candidates against remaining restrictions; a still-valid shorter route is retained when repairs only remove obstacles.',
+                'Accessible fallback routes are unverified avoid-damage walking references only; they are excluded from accessible availability and improvement counts.',
                 'Route modes are summarized separately. Overall path counts deduplicate the same path ID across modes; no resident population or traffic volume is inferred.',
                 'Costs are management-entered estimates in MYR, not provider quotations. Missing costs remain unknown; amounts are serialized as decimal strings.',
                 'Unknown, unassessed, or inaccessible links never become accessible merely because a damaged facility is repaired. Missing accessible reference routes are not assessable.',

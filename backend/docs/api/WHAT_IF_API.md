@@ -218,3 +218,46 @@ Frontend scenario forms/charts, saving management path templates/scenarios, surv
 accessible coverage, quote/catalog management and future consent-based aggregate
 user-journey weighting are separate follow-ups. Current comparisons already work
 with management-supplied paths and optional cost estimates without those additions.
+
+## Repair-plan route maps and walking references
+
+Request `include_geometry: true` to render before/after maps. Match each plan path
+with `baseline` by both `path_id` and `route_mode`. Before geometry and distance
+come from `baseline[].current`; after values come from `plans[].paths[].after`.
+Each plan map supports selecting a path/mode. Orange dashed lines mean before
+repairs; teal solid lines mean after repairs. Distance labels use the corresponding
+route distance returned by the API. Missing geometry must not be replaced with a
+straight origin-to-destination line.
+
+The comparison reuses validated candidate routes for the same journey and mode,
+after checking their complete geometry against every remaining obstacle. Removing
+restrictions therefore does not discard a shorter route that is still feasible.
+The selected route retains its real geometry, distance and duration; distances are
+not clamped to hide a longer engine result.
+
+When an accessible before/after outcome is unavailable, it may contain `fallback`:
+
+```json
+{
+  "state": "not_assessable",
+  "fallback": {
+    "state": "available",
+    "route_mode": "avoid_damage",
+    "reference_only": true,
+    "accessibility_verified": false,
+    "warning": "Walking reference only; accessibility has not been verified.",
+    "distance_meters": 192,
+    "duration_seconds": 145,
+    "geometry": null,
+    "data_source": "routing engine"
+  }
+}
+```
+
+`geometry` above is illustrative; it contains the actual LineString when requested
+and available. The walking reference may include stairs. Display it as an
+unverified Avoid damage reference, never as an accessible route. The accessible
+state, effect, available/restored/shortened counts and savings remain based on the
+actual accessible result. Accessible-only requests can also receive this reference
+without adding walking rows to their summaries. If walking is unavailable too,
+`fallback` is null.
