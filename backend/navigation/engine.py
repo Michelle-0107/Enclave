@@ -21,7 +21,8 @@ class EngineLocation(BaseModel):
     lat: float=Field(ge=-90,le=90,allow_inf_nan=False)
     lon: float=Field(ge=-180,le=180,allow_inf_nan=False)
     type: Literal['break']='break'
-    radius: Literal[50]=50
+    radius: Literal[0,50]=50
+    node_snap_tolerance: Literal[0] | None=None
     search_cutoff: Literal[100]=100
 
 
@@ -90,7 +91,7 @@ def health():
 def route(body: EngineRequest):
     try:
         with app.state.lock:
-            return app.state.actor.route(body.model_dump())
+            return app.state.actor.route(body.model_dump(exclude_none=True))
     except app.state.error_type as error:
         return JSONResponse(status_code=400 if error.http_code in (400,404) else 503,
             content={'error_code':error.code,'error':'Walking route unavailable'})

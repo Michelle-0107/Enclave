@@ -115,3 +115,49 @@ test('same-origin worker assets match the installed MapLibre version', () => {
       .includes("setWorkerUrl('/vendor/maplibre-6.14.0/maplibre-gl-worker.mjs')"));
   }
 });
+
+test('restriction legend and unchanged explanation are visible instead of an unexplained result', () => {
+  const Component = load('src/components/management/RepairPlanRoutes.tsx', {
+    '@/lib/repairRouteView': view, 'maplibre-gl/dist/maplibre-gl.css': {},
+  }).default;
+  const React = fromWeb('react');
+  const {renderToStaticMarkup} = fromWeb('react-dom/server');
+  const html = renderToStaticMarkup(React.createElement(Component, {
+    baseline: [{...baseline[0],comparison_origin:{latitude:3.2254,longitude:101.7304}}],
+    plan:{id:'p',name:'Repair plan',paths:[{...paths[0],explanation:'Selected repairs do not intersect the fixed reference route.'}]},
+    restrictions:[{issue_id:'i',facility_id:'f',facility_name:'Unknown walkway',latitude:3.2254,longitude:101.7306,binding_source:'point_only',affected_segment:null,exclusion_rings:[]}],
+  }));
+  for (const label of ['Red areas','Green areas','Purple','without a confirmed affected road segment',
+    'same matched start and destination','Selected repairs do not intersect']) {
+    assert.ok(html.includes(label),label);
+  }
+});
+
+test('selected repairs remain visible with an older backend and duplicate incidents deduplicate by facility', () => {
+  const plan={id:'p',name:'Repair plan',paths,facility_impacts:[{facility_id:'f',facility_name:'North pavement'},{facility_id:'bench',facility_name:'Selected bench'}]};
+  const candidate={facility_id:'f',facility_name:'North pavement',longitude:101.73,latitude:3.226};
+  const facilities=view.repairMapFacilities(plan,[candidate,{...candidate,id:'second-issue'},{facility_id:'bench',facility_name:'Selected bench',longitude:101.738,latitude:3.233,affects_routes:false}],[]);
+  assert.equal(facilities.length,2);
+  assert.equal(facilities[0].label,'R1');assert.equal(facilities[1].label,'R2');
+  assert.ok(facilities.every(f=>f.selected && !f.hasRestrictionGeometry));
+  const bounds=view.repairMapBoundsPoints(points,[],facilities);
+  assert.ok(bounds.some(p=>p[0]===101.738 && p[1]===3.233),'off-route selected facility must be in initial viewport');
+});
+
+test('result geometry coordinates take precedence and missing repair locations are never invented', () => {
+  const plan={id:'p',name:'Repair',paths,facility_impacts:[{facility_id:'known',facility_name:'Known'},{facility_id:'missing',facility_name:'Missing'}]};
+  const facilities=view.repairMapFacilities(plan,[{facility_id:'known',facility_name:'Known',longitude:101.74,latitude:3.23}],
+    [{facility_id:'known',facility_name:'Known',longitude:101.73,latitude:3.22,exclusion_rings:[points]}]);
+  assert.equal(facilities[0].coordinate[0],101.73);
+  assert.equal(facilities[0].hasRestrictionGeometry,true);
+  assert.equal(facilities[1].coordinate,null);
+});
+
+test('selected facility names and map controls render even without restriction geometry', () => {
+  const Component=load('src/components/management/RepairPlanRoutes.tsx',{'@/lib/repairRouteView':view,'maplibre-gl/dist/maplibre-gl.css':{}}).default;
+  const React=fromWeb('react');const {renderToStaticMarkup}=fromWeb('react-dom/server');
+  const html=renderToStaticMarkup(React.createElement(Component,{baseline,
+    plan:{id:'p',name:'Repair',paths,facility_impacts:[{facility_id:'f',facility_name:'North pavement'}]},
+    candidates:[{facility_id:'f',facility_name:'North pavement',longitude:101.73,latitude:3.226}]}));
+  for (const label of ['Selected repairs','R1','North pavement','Show route and selected repairs','locations only'])assert.ok(html.includes(label),label);
+});

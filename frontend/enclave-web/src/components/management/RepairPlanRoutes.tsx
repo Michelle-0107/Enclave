@@ -3,18 +3,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type * as MapLibre from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import type { WhatIfResult } from '@/lib/api';
+import type { WhatIfResult, RoutingRestriction, FacilityIssue } from '@/lib/api';
 import {
-  lineMidpoint, repairPathViews, routeChange, routeCoordinates, routeDistance,
+  lineMidpoint, repairPathViews, routeChange, routeCoordinates, routeDistance, repairMapFacilities, repairMapBoundsPoints,
   type RepairPlanResult,
 } from '@/lib/repairRouteView';
 
 const BEFORE = '#b65c16';
 const AFTER = '#137b79';
+const EMPTY_RESTRICTIONS: RoutingRestriction[] = [];
+const EMPTY_CANDIDATES: FacilityIssue[] = [];
 
-export default function RepairPlanRoutes({ baseline, plan }: {
-  baseline: WhatIfResult['baseline']; plan: RepairPlanResult;
+export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_RESTRICTIONS, candidates = EMPTY_CANDIDATES }: {
+  baseline: WhatIfResult['baseline']; plan: RepairPlanResult; restrictions?: RoutingRestriction[]; candidates?: FacilityIssue[];
 }) {
+  const repaired = useMemo(() => new Set(plan.facility_impacts?.map(item => item.facility_id) ?? []), [plan.facility_impacts]);
+  const facilities = useMemo(()=>repairMapFacilities(plan,candidates,restrictions),[plan,candidates,restrictions]);
+  const facilityMarkers = useRef(new Map<string,MapLibre.Marker>());
   const views = useMemo(() => repairPathViews(baseline, plan.paths), [baseline, plan.paths]);
   const [selected, setSelected] = useState(views[0]?.key ?? '');
   const active = views.find(view => view.key === selected) ?? views[0];
@@ -58,6 +63,7 @@ export default function RepairPlanRoutes({ baseline, plan }: {
     const instance = map.current;
     if (!M || !instance || !loaded) return;
     const markers: MapLibre.Marker[] = [];
+    const markerIndex = facilityMarkers.current;
     const layers: string[] = [];
     const sources: string[] = [];
     function draw(id: string, points: [number, number][], color: string, label: string, offset: [number, number]) {
@@ -83,15 +89,48 @@ export default function RepairPlanRoutes({ baseline, plan }: {
         markers.push(new M.Marker({ element: el, offset }).setLngLat(midpoint).addTo(instance));
       }
     }
+    if (restrictions.length) {
+      const features = restrictions.flatMap(item => item.exclusion_rings.map(ring => ({
+        type: 'Feature' as const, properties: { repaired: repaired.has(item.facility_id) },
+        geometry: { type: 'Polygon' as const, coordinates: [ring] },
+      })));
+      instance.addSource('facility-zones', {type: 'geojson', data: {type: 'FeatureCollection', features}});
+      sources.push('facility-zones');
+      instance.addLayer({id: 'facility-zone-fill',source:'facility-zones',type:'fill',paint:{
+        'fill-color':['case',['get','repaired'],'#199366','#d42b35'],'fill-opacity':0.25}});
+      instance.addLayer({id:'facility-zone-outline',source:'facility-zones',type:'line',paint:{
+        'line-color':['case',['get','repaired'],'#199366','#d42b35'],'line-width':2}});
+      layers.push('facility-zone-fill','facility-zone-outline');
+      const segmentFeatures = restrictions.filter(item=>item.affected_segment).map(item=>({
+        type:'Feature' as const,properties:{},geometry:item.affected_segment!,
+      }));
+      if (segmentFeatures.length) {
+        instance.addSource('facility-segments',{type:'geojson',data:{type:'FeatureCollection',features:segmentFeatures}});
+        sources.push('facility-segments');
+        instance.addLayer({id:'facility-segment-line',source:'facility-segments',type:'line',paint:{'line-color':'#913ad1','line-width':7,'line-opacity':0.8}});
+        layers.push('facility-segment-line');
+      }
+    }
+    for (const item of facilities) {
+      if (!item.coordinate) continue;
+      const el=document.createElement('button');
+      el.type='button'; el.textContent=item.label;
+      const label=`${item.label} · ${item.name}: ${item.selected?'selected for this simulated repair plan':'not selected for repair'}${item.hasRestrictionGeometry?'':'; facility location only, affected road area unavailable'}`;
+      el.title=label; el.setAttribute('aria-label',label);
+      Object.assign(el.style,{background:item.selected?'#199366':'#d42b35',color:'#fff',border:'3px solid white',borderRadius:'50%',width:'32px',height:'32px',fontWeight:'700',fontSize:'12px',boxShadow:'0 1px 5px #0005'});
+      const marker=new M.Marker({element:el}).setLngLat(item.coordinate)
+        .setPopup(new M.Popup({offset:18}).setText(label)).addTo(instance);
+      markerIndex.set(item.id,marker); markers.push(marker);
+    }
     draw('repair-before', beforePoints, BEFORE, beforeLabel, [-35, -24]);
     draw('repair-after', afterPoints, AFTER, afterLabel, [35, 24]);
-    const points = [...beforePoints, ...afterPoints];
+    const points = repairMapBoundsPoints(beforePoints,afterPoints,facilities);
     if (points.length) {
       const bounds = new M.LngLatBounds();
       points.forEach(point => bounds.extend(point));
       instance.fitBounds(bounds, { padding: 80, maxZoom: 18, duration: 0 });
       const route = afterPoints.length ? afterPoints : beforePoints;
-      for (const [label, point] of [['A', route[0]], ['B', route[route.length - 1]]] as const) {
+      if (route.length) for (const [label, point] of [['A', route[0]], ['B', route[route.length - 1]]] as const) {
         const el = document.createElement('div');
         el.textContent = label;
         Object.assign(el.style, { color: '#fff', background: '#202c46', border: '2px solid #fff',
@@ -101,11 +140,12 @@ export default function RepairPlanRoutes({ baseline, plan }: {
     }
     return () => {
       markers.forEach(marker => marker.remove());
+      markerIndex.clear();
       if (map.current !== instance) return;
       for (const id of layers.reverse()) if (instance.getLayer(id)) instance.removeLayer(id);
       for (const id of sources) if (instance.getSource(id)) instance.removeSource(id);
     };
-  }, [beforePoints, afterPoints, beforeLabel, afterLabel, loaded]);
+  }, [beforePoints, afterPoints, beforeLabel, afterLabel, loaded, restrictions, repaired, facilities]);
 
   return <section className="flex flex-col gap-3" aria-label={`${plan.name} route comparison`}>
     <h4 className="font-semibold text-primary">Before and after routes</h4>
@@ -122,6 +162,28 @@ export default function RepairPlanRoutes({ baseline, plan }: {
     {(active?.before.reference || active?.after.reference) && <p role="note" className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
       No verified accessible route is available for one or both cases. The map shows an Avoid damage walking reference instead. It may include stairs and is not verified for wheelchair use. Accessible availability counts are unchanged.
     </p>}
+    {restrictions.length>0 && <div className="text-xs text-muted-foreground">
+      <p>Red areas: restrictions remaining after repairs. Green areas: cleared in this simulation. Purple: authored facility road segment. R: simulated repair; !: remaining restriction.</p>
+      {restrictions.some(item=>item.binding_source==='point_only') && <p className="mt-1 text-amber-800">Some facilities have only point locations, without a confirmed affected road segment. Their zones are approximations; nearby roads are not automatically blocked.</p>}
+    </div>}
+    {baseline.some(row=>row.comparison_origin) && <p className="text-xs text-muted-foreground">Before and after use the same matched start and destination. An endpoint change beyond 1 m is treated as not assessable, not as an improvement.</p>}
+    <div className="rounded-xl border border-border p-3 text-sm" aria-label="Selected repairs on this map">
+      <p className="font-semibold text-primary">Selected repairs · {facilities.filter(item=>item.selected).length}</p>
+      <p className="mt-1 text-xs text-muted-foreground">Green R1, R2… markers identify this plan&apos;s repairs. Red ! markers identify other candidate facilities. All repairs here are hypothetical.</p>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {facilities.filter(item=>item.selected).map(item=><li key={item.id}>
+          <button type="button" disabled={!item.coordinate} className="min-h-10 rounded-lg border border-emerald-700 px-3 text-emerald-800 disabled:opacity-60"
+            onClick={()=>{if(item.coordinate){map.current?.flyTo({center:item.coordinate,zoom:18});const marker=facilityMarkers.current.get(item.id);if(marker && !marker.getPopup()?.isOpen())marker.togglePopup();}}}>
+            {item.label} · {item.name}{!item.coordinate?' · Location unavailable':''}
+          </button>
+        </li>)}
+      </ul>
+      <button type="button" className="mt-2 min-h-9 underline text-primary" onClick={()=>{
+        const M=api.current;const instance=map.current;const points=repairMapBoundsPoints(beforePoints,afterPoints,facilities);
+        if(M && instance && points.length){const bounds=new M.LngLatBounds();points.forEach(point=>bounds.extend(point));instance.fitBounds(bounds,{padding:80,maxZoom:18,duration:0});}
+      }}>Show route and selected repairs</button>
+      {facilities.some(item=>item.selected && !item.hasRestrictionGeometry) && <p className="mt-1 text-xs text-amber-800">Affected road areas are unavailable for some selected facilities in this comparison. Those markers show facility locations only.</p>}
+    </div>
     <div ref={host} className="h-[420px] min-h-[300px] w-full overflow-hidden rounded-2xl border border-border" aria-label="Map showing before and after repair routes" />
     {error && <p role="status" className="text-sm text-status-red">{error}</p>}
     {!beforePoints.length && !afterPoints.length && <p className="text-sm text-muted-foreground">No mapped route geometry is available for this selection.</p>}
@@ -132,6 +194,7 @@ export default function RepairPlanRoutes({ baseline, plan }: {
           <span>{view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}</span>
           <span>{routeChange(view)}</span>
         </div>
+        {view.explanation && <p className="mt-1 text-xs text-muted-foreground">{view.explanation}</p>}
         <p className="mt-1" style={{ color: BEFORE }}>Before repairs: {routeDistance(view.before.route)}{view.before.reference ? ' · Avoid damage reference, accessibility unverified' : ''}</p>
         <p className="mt-1" style={{ color: AFTER }}>After repairs: {routeDistance(view.after.route)}{view.after.reference ? ' · Avoid damage reference, accessibility unverified' : ''}</p>
       </li>)}

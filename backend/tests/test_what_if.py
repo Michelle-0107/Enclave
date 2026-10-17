@@ -362,6 +362,37 @@ class WhatIfTests(unittest.TestCase):
         self.assertEqual(plan['summaries'][0]['after_available_path_count'],0)
         self.assertEqual(plan['improved_major_path_count'],0)
 
+    def test_fixed_reference_endpoints_are_used_for_every_comparison(self):
+        data = self.compare(self.client(), body()).json()
+        baseline = data['baseline'][0]
+        self.assertEqual(baseline['comparison_origin'], {'longitude': A[0], 'latitude': A[1]})
+        self.assertEqual(baseline['comparison_destination'], {'longitude': D[0], 'latitude': D[1]})
+        for request in self.engine_requests:
+            locations = json.loads(request.content)['locations']
+            self.assertTrue(all(i['radius'] == 0 and i['node_snap_tolerance'] == 0 for i in locations))
+            self.assertEqual([(i['lon'],i['lat']) for i in locations], [A,D])
+
+    def test_endpoint_drift_is_not_claimed_as_a_restored_route(self):
+        shifted = (D[0]+0.00004,D[1])
+        self.engine_override = lambda data: httpx.Response(200,json=directions(
+            [A,B,C,shifted] if data.get('exclude_polygons') else [A,D]))
+        result = self.compare(self.client(),body()).json()
+        self.assertEqual(result['baseline'][0]['current']['state'], 'not_assessable')
+        self.assertEqual(result['baseline'][0]['current']['reason'], 'comparison_endpoint_changed')
+        self.assertEqual(result['plans'][0]['paths'][0]['effect'], 'not_assessable')
+        self.assertEqual(result['plans'][0]['summaries'][0]['restored_path_count'], 0)
+
+    def test_unchanged_has_an_explanation_and_exact_displayed_restrictions(self):
+        self.issues[0]['latitude'] = 3.2251
+        data = self.compare(self.client(),body()).json()
+        restriction = data['routing_restrictions'][0]
+        self.assertEqual(restriction['binding_source'], 'point_only')
+        self.assertEqual(restriction['facility_id'], F1)
+        self.assertEqual(len(restriction['exclusion_rings']), 1)
+        row = data['plans'][0]['paths'][0]
+        self.assertEqual(row['effect'], 'unchanged')
+        self.assertIn('do not intersect', row['explanation'])
+
     def test_demo_exposes_only_safe_synthetic_endpoints_and_complete_swagger_example(self):
         demo = create_demo_app(navigation_transport=httpx.MockTransport(lambda r: httpx.Response(200, json=directions([A, D]))))
         schema = demo.openapi()

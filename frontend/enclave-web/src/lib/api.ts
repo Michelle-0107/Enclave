@@ -170,6 +170,14 @@ export type RouteOutcome = RouteDetails & {
   fallback?: WalkingReference | null;
 };
 
+export type RoutingRestriction = {
+  issue_id: string; facility_id: string; facility_name: string;
+  latitude: number; longitude: number;
+  binding_source: 'mapped_demo_segment' | 'point_only';
+  affected_segment: RouteDetails['geometry'];
+  exclusion_rings: [number, number][][];
+};
+
 export type WhatIfResult = {
   simulation_id: string;
   generated_at: string;
@@ -178,10 +186,13 @@ export type WhatIfResult = {
   currency: 'MYR';
   budget_myr: string | null;
   baseline_road_obstacle_count: number;
+  routing_restrictions?: RoutingRestriction[];
   baseline: Array<{
     path_id: string;
     path_name: string;
     route_mode: 'avoid_damage' | 'accessible';
+    comparison_origin?: Location | null;
+    comparison_destination?: Location | null;
     current: RouteOutcome;
     reference_without_damage: RouteOutcome;
   }>;
@@ -191,6 +202,7 @@ export type WhatIfResult = {
     total_estimated_cost_myr: string | null;
     budget_status: 'within_budget' | 'over_budget' | 'unknown_cost' | 'not_set';
     repaired_issue_count: number;
+    facility_impacts?: Array<{facility_id: string; facility_name: string}>;
     remaining_road_obstacle_count: number;
     affected_major_path_count: number;
     improved_major_path_count: number;
@@ -210,6 +222,7 @@ export type WhatIfResult = {
       route_mode: 'avoid_damage' | 'accessible';
       after: RouteOutcome;
       effect: string;
+      explanation?: string | null;
       distance_saved_meters: number | null;
       duration_saved_seconds: number | null;
     }>;

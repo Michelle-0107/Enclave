@@ -58,12 +58,15 @@ class ValhallaProvider:
     async def close(self):
         await self.client.aclose()
 
-    async def route(self,body,*,exclude_polygons=None):
+    async def route(self,body,*,exclude_polygons=None,fixed_snap=False):
         payload={'locations':[{'lat':p.latitude,'lon':p.longitude,'type':'break','radius':50,'search_cutoff':100}
                               for p in (body.origin,body.destination)],
                  'costing':'pedestrian','directions_options':{'units':'kilometers','language':'en-US'},
                  'costing_options':{'pedestrian':{'shortest':True}},
                  'directions_type':'instructions'}
+        if fixed_snap:
+            for location in payload['locations']:
+                location.update(radius=0,node_snap_tolerance=0)
         if exclude_polygons:
             payload['exclude_polygons']=exclude_polygons
         try:

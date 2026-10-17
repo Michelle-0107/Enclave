@@ -1,10 +1,10 @@
-import type { RouteOutcome, RouteDetails, WhatIfResult } from './api';
+import type { RouteOutcome, RouteDetails, WhatIfResult, FacilityIssue, RoutingRestriction } from './api';
 
 export type RepairPlanResult = WhatIfResult['plans'][number];
 export type RouteDisplay = { route: RouteDetails | null; reference: boolean; state: string };
 export type RepairPathView = {
   key: string; name: string; mode: 'avoid_damage' | 'accessible';
-  before: RouteDisplay; after: RouteDisplay; effect: string;
+  before: RouteDisplay; after: RouteDisplay; effect: string; explanation?: string | null;
 };
 
 function display(outcome: RouteOutcome | undefined, walking: RouteOutcome | undefined): RouteDisplay {
@@ -25,7 +25,7 @@ export function repairPathViews(baseline: WhatIfResult['baseline'], paths: Repai
       key: `${path.path_id}:${path.route_mode}`, name: path.path_name, mode: path.route_mode,
       before: display(original?.current, path.route_mode === 'accessible' ? walkingBefore?.current : undefined),
       after: display(path.after, path.route_mode === 'accessible' ? walkingAfter?.after : undefined),
-      effect: path.effect,
+      effect: path.effect, explanation: path.explanation,
     };
   });
 }
@@ -66,4 +66,28 @@ export function lineMidpoint(points: [number, number][]): [number, number] | nul
     remaining -= lengths[i];
   }
   return points[points.length - 1];
+}
+
+
+export type RepairMapFacility = {
+  id: string; name: string; coordinate: [number,number] | null;
+  selected: boolean; label: string; hasRestrictionGeometry: boolean;
+};
+
+export function repairMapFacilities(plan: RepairPlanResult, candidates: FacilityIssue[], restrictions: RoutingRestriction[]): RepairMapFacility[] {
+  const selected = new Map((plan.facility_impacts ?? []).map((item,index)=>[item.facility_id,{name:item.facility_name,label:`R${index+1}`} ]));
+  const records = new Map<string,{name:string;longitude:number;latitude:number;hasRestrictionGeometry:boolean}>();
+  for (const item of candidates) records.set(item.facility_id,{name:item.facility_name,longitude:item.longitude,latitude:item.latitude,hasRestrictionGeometry:false});
+  for (const item of restrictions) records.set(item.facility_id,{name:item.facility_name,longitude:item.longitude,latitude:item.latitude,hasRestrictionGeometry:!!item.exclusion_rings.length});
+  const ids = [...new Set([...selected.keys(),...records.keys()])];
+  return ids.map(id=>{
+    const item=records.get(id); const repair=selected.get(id);
+    const valid=item && Number.isFinite(item.longitude) && Number.isFinite(item.latitude) && Math.abs(item.longitude)<=180 && Math.abs(item.latitude)<=90;
+    return {id,name:repair?.name ?? item?.name ?? id,selected:!!repair,label:repair?.label ?? '!',
+      coordinate:valid?[item.longitude,item.latitude]:null,hasRestrictionGeometry:!!item?.hasRestrictionGeometry};
+  });
+}
+
+export function repairMapBoundsPoints(before:[number,number][],after:[number,number][],facilities:RepairMapFacility[]):[number,number][] {
+  return [...before,...after,...facilities.filter(item=>item.selected && item.coordinate).map(item=>item.coordinate!)];
 }
