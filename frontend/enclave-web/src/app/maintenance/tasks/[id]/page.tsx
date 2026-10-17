@@ -2,7 +2,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { Shell, Heading, Pill, ButtonLink } from "../../_components";
+import { Shell, Heading, Pill, ButtonLink } from "../../../../../maintenance/src/app/maintenance/_components";
 
 type EvidenceRecord = {
   photoName: string;

@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Shell, Heading } from "../../../_components";
+import { Shell, Heading } from "../../../../../../maintenance/src/app/maintenance/_components";
 
 export default function CompletionEvidence() {
   const params = useParams<{ id: string }>();

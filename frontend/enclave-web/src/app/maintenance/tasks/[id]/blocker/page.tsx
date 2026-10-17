@@ -1,7 +1,7 @@
  "use client";
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Shell, Heading } from "../../../_components";
+import { Shell, Heading } from "../../../../../../maintenance/src/app/maintenance/_components";
 
 export default function ReportBlocker() {
  const {id}=useParams<{id:string}>(); const router=useRouter(); const [type,setType]=useState("Waiting for replacement parts"); const [details,setDetails]=useState("");

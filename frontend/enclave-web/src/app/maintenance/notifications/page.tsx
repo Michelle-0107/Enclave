@@ -1,4 +1,4 @@
-import { Shell, Heading } from "../_components";
+import { Shell, Heading } from "../../../../maintenance/src/app/maintenance/_components";
 const items=[
  {icon:"▣",title:"New task assigned",body:"Streetlight repair at Park Entrance.",time:"15 min ago"},
  {icon:"↻",title:"Changes requested",body:"Management added a review note to #1025.",time:"1 hour ago"},

@@ -1,4 +1,4 @@
-import { Shell, Heading, ButtonLink } from "../../../_components";
+import { Shell, Heading, ButtonLink } from "../../../../../../maintenance/src/app/maintenance/_components";
 
 export default async function Submitted({ params }: { params: Promise<{ id: string }> }) {
  const { id } = await params;
