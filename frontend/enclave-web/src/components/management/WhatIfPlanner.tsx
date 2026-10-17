@@ -743,7 +743,7 @@ export default function WhatIfPlanner() {
                   </div>
                 ))}
               </div>
-              <RepairPlanRoutes key={`${result.simulation_id}-${plan.id}`} baseline={result.baseline} plan={plan} />
+              <RepairPlanRoutes key={`${result.simulation_id}-${plan.id}`} baseline={result.baseline} plan={plan} restrictions={result.routing_restrictions} candidates={issues} />
             </article>
           ))}
         </section>

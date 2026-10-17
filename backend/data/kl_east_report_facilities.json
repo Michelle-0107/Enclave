@@ -9,7 +9,20 @@
       "facility_type": "crossing",
       "latitude": 3.22540015,
       "longitude": 101.72925195,
-      "source_edge_id": "osm-1252137889-11639045741-11639045742"
+      "source_edge_id": "osm-1252137889-11639045741-11639045742",
+      "affected_segment": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            101.7291665,
+            3.2254589
+          ],
+          [
+            101.7293374,
+            3.2253414
+          ]
+        ]
+      }
     },
     {
       "id": "3d0bd3d3-c9b2-5670-b398-17455c7d5e35",
@@ -17,7 +30,20 @@
       "facility_type": "ramp",
       "latitude": 3.22462435,
       "longitude": 101.7292278,
-      "source_edge_id": "osm-610119062-12157314812-2359897323"
+      "source_edge_id": "osm-610119062-12157314812-2359897323",
+      "affected_segment": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            101.7291393,
+            3.2245027
+          ],
+          [
+            101.7293163,
+            3.224746
+          ]
+        ]
+      }
     },
     {
       "id": "018643f6-ea14-5c39-a9a7-9dcbc2960aff",
@@ -25,7 +51,20 @@
       "facility_type": "stairs",
       "latitude": 3.2248221,
       "longitude": 101.7311686,
-      "source_edge_id": "osm-886824490-10882819229-10882819230"
+      "source_edge_id": "osm-886824490-10882819229-10882819230",
+      "affected_segment": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            101.7311918,
+            3.2248492
+          ],
+          [
+            101.7311454,
+            3.224795
+          ]
+        ]
+      }
     },
     {
       "id": "9272512f-4ee5-5d0b-b0ed-5cbb30ec7af7",
@@ -33,7 +72,20 @@
       "facility_type": "path_surface",
       "latitude": 3.22608585,
       "longitude": 101.73009065,
-      "source_edge_id": "osm-1373124130-12714080067-12714080069"
+      "source_edge_id": "osm-1373124130-12714080067-12714080069",
+      "affected_segment": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            101.7301076,
+            3.2260688
+          ],
+          [
+            101.7300737,
+            3.2261029
+          ]
+        ]
+      }
     },
     {
       "id": "29cb2441-6e91-5de3-bc2e-e2a0320fc996",
@@ -41,7 +93,20 @@
       "facility_type": "crossing",
       "latitude": 3.22865045,
       "longitude": 101.7346401,
-      "source_edge_id": "osm-1554507371-11135499170-11135499171"
+      "source_edge_id": "osm-1554507371-11135499170-11135499171",
+      "affected_segment": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            101.7346332,
+            3.2286041
+          ],
+          [
+            101.734647,
+            3.2286968
+          ]
+        ]
+      }
     },
     {
       "id": "6795ab7b-f220-5884-b4d1-d1db53c1cf6a",
@@ -49,7 +114,20 @@
       "facility_type": "ramp",
       "latitude": 3.22887655,
       "longitude": 101.7341629,
-      "source_edge_id": "osm-1201000344-11135499186-11135499187"
+      "source_edge_id": "osm-1201000344-11135499186-11135499187",
+      "affected_segment": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            101.7342179,
+            3.2289338
+          ],
+          [
+            101.7341079,
+            3.2288193
+          ]
+        ]
+      }
     },
     {
       "id": "bcd8dfaf-e52c-550e-984f-94a1e864ed11",
@@ -57,7 +135,20 @@
       "facility_type": "streetlight",
       "latitude": 3.22762225,
       "longitude": 101.73503055,
-      "source_edge_id": "osm-1554507349-11135519619-11135519620"
+      "source_edge_id": "osm-1554507349-11135519619-11135519620",
+      "affected_segment": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            101.7351003,
+            3.2276457
+          ],
+          [
+            101.7349608,
+            3.2275988
+          ]
+        ]
+      }
     },
     {
       "id": "adc64a0e-08af-5aa9-8f5a-b1967f8383a7",
@@ -65,7 +156,20 @@
       "facility_type": "drainage",
       "latitude": 3.2239375,
       "longitude": 101.73101295,
-      "source_edge_id": "osm-871914524-11726462736-8121234342"
+      "source_edge_id": "osm-871914524-11726462736-8121234342",
+      "affected_segment": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            101.7310788,
+            3.2238754
+          ],
+          [
+            101.7309471,
+            3.2239996
+          ]
+        ]
+      }
     }
   ]
 }

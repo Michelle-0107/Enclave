@@ -9,7 +9,8 @@ from pydantic import BaseModel,ConfigDict,Field,ValidationError,model_validator
 
 from .map import MapBounds,MapPagination,MapPoint
 from ..navigation.contracts import Location
-from ..navigation.zones import zone_bounds,zone_ring,MAX_OBSTACLES
+from ..navigation.zones import MAX_OBSTACLES
+from ..navigation.facility_segments import restriction_for
 
 FacilityType=Literal['path_surface','ramp','stairs','kerb','crossing','elevator','streetlight','drainage','bench','other']
 FaultKind=Literal['damage','obstruction']
@@ -210,7 +211,9 @@ class CommunityIssues:
             if not isinstance(data['items'],list) or len(data['items'])>MAX_OBSTACLES: raise ValueError()
             rows=[CommunityIssue.model_validate(row) for row in data['items']]
             if len({row.id for row in rows})!=len(rows) or any(row.status!='open' or row.reporter_count<2 or not row.affects_routes for row in rows): raise ValueError()
-            return CommunityObstacleSnapshot(checked_at=checked,items=[CommunityObstacle(issue_id=row.id,
-                facility_id=row.facility_id,reporter_count=row.reporter_count,
-                exclusion_ring=zone_ring(zone_bounds(row.latitude,row.longitude,5))) for row in rows])
+            restrictions = [restriction_for(row) for row in rows]
+            items = [CommunityObstacle(issue_id=row.id,facility_id=row.facility_id,reporter_count=row.reporter_count,
+                exclusion_ring=ring) for row,restriction in zip(rows,restrictions) for ring in restriction['exclusion_rings']]
+            if len(items)>MAX_OBSTACLES: raise ValueError()
+            return CommunityObstacleSnapshot(checked_at=checked,items=items)
         except (ValueError,KeyError,TypeError,AttributeError): raise IssueUnavailable() from None
