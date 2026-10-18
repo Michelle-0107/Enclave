@@ -178,11 +178,14 @@ export default function ReportDetails({ report: initialReport }: Props) {
         </section>
         )}
 
+        {['approved', 'in_progress', 'resolved'].includes(report.status) && (
+          <div className="min-w-0">
+            <MaintenanceTaskPanel key={report.id} report={report} onChange={maintenanceChanged} />
+            {report.status === 'resolved' && <p className="mt-4 rounded-2xl bg-status-green-bg p-4 text-sm text-status-green">This report is resolved and has been marked as checked by management.</p>}
+          </div>
+        )}
         {report.status === 'rejected' && <p className="self-start rounded-2xl bg-status-red-bg p-4 text-sm text-status-red">This report is rejected. The backend does not allow further status changes.</p>}
-        {report.status === 'resolved' && <p className="self-start rounded-2xl bg-status-green-bg p-4 text-sm text-status-green">This report is resolved and has been marked as checked by management.</p>}
       </div>
-
-      {['approved', 'in_progress', 'resolved'].includes(report.status) && <MaintenanceTaskPanel key={report.id} report={report} onChange={maintenanceChanged} />}
 
       <section aria-labelledby="history-heading" className="flex flex-col gap-3">
         <h2 id="history-heading" className="text-lg font-semibold text-primary">Status history</h2>
