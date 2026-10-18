@@ -129,12 +129,16 @@ distances or default destinations are stored in the app.
 
 The real road map does not certify safe pedestrian access, crossing availability,
 opening hours, slopes or wheelchair suitability. All facility/access conditions
-remain labelled demo assumptions. Start Enclave guidance starts foreground GPS,
-displays the next turn or road-crossing instruction, updates remaining mapped
+remain labelled demo assumptions. Start Enclave guidance opens a dedicated full-screen
+map, starts foreground GPS, displays the next turn or road-crossing instruction, updates remaining mapped
 distance/time, and advances automatically along the route. GPS fixes worse than
 25 m accuracy, stale fixes, and out-of-order fixes do not advance navigation.
 Matching uses local progress and plausible movement so a nearby return leg does
-not skip intervening turns. Progress does not regress with GPS jitter.
+not skip intervening turns. Progress does not regress with GPS jitter. Two fixes
+at least two seconds apart, each within 10 m of a turn with accuracy at or better
+than 15 m, advance the turn without requiring the resident to walk past it.
+Crossings remain active until passed. The watcher requests one-second updates
+with no minimum movement, so a resident waiting at a junction can still advance.
 
 An adjusted start still requires consent before changing S. The approach stage
 shows only distance/bearing, not an invented connector. Destination guidance
@@ -142,8 +146,20 @@ starts when both GPS distance to S and reported accuracy are within 20 m, or
 after explicit manual arrival confirmation. Arrival at the destination also
 requires proximity, sufficient route progress, and accurate GPS. Without location
 permission, instructions remain manually reviewable. The watcher is removed on
-pause, close, profile change, completion, or unmount. Background tracking and
-voice instructions are not enabled.
+pause, close, profile change, completion, or unmount. Background tracking is not enabled.
+
+The navigation map has a current-action banner, next-action strip, live location
+arrow, destination, remaining distance/time, route overview, recenter, voice
+mute/repeat, and Exit controls. Android Back returns to planning. Camera following
+pauses while the resident touches the map; recenter resumes following.
+English text-to-speech announces upcoming turns, near-turn and now prompts,
+rerouting and arrival. Prompts are deduplicated by route step and distance phase;
+muting, route replacement and exit cancel queued speech.
+
+`expo-speech` is a native dependency. Existing APKs built without it keep visual
+navigation and show an explanation, rather than crashing. Enabling voice requires
+one new development APK containing that module; Metro or EAS Update alone cannot
+add native code. This change does not automatically submit any cloud build.
 
 When three or more accurate fixes remain farther than max(30 m, twice reported
 accuracy) from the local route for at least eight seconds, navigation requests
@@ -174,6 +190,7 @@ node src/demo/__tests__/driving.test.cjs
 node src/demo/__tests__/access.test.cjs
 node src/demo/__tests__/guidance.test.cjs
 node src/demo/__tests__/navigation-progress.test.cjs
+node src/demo/__tests__/navigation-voice.test.cjs
 python src/demo/tools/test_walking_direction.py
 npx tsc --noEmit
 ```

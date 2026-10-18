@@ -10,17 +10,19 @@ const coords=[p(0,0),p(100,0),p(100,100),p(200,100)];
 const baseRoute={id:'initial',coordinates:coords,distance:300,seconds:250,originSnap:{coordinate:coords[0]},destinationSnap:{coordinate:coords.at(-1)},maneuvers:[
  {instruction:'Turn left onto Garden Road.',coordinate:coords[1],distanceFromStart:100,type:15},
  {instruction:'Turn right onto Park Road.',coordinate:coords[2],distanceFromStart:200,type:10}]};
-let hooks,cursor,pending,dirty,mounted,treeValue,props,callback,permission,requests,watches,removed,positions,ready,targets,reroutes,resolveWatch,rerouteImpl,lateUpdates,completions;
+let hooks,cursor,pending,dirty,mounted,treeValue,props,callback,permission,requests,watches,removed,positions,ready,targets,reroutes,resolveWatch,rerouteImpl,lateUpdates,completions,spoken,stops,hasVoice;
 const same=(a,b)=>a&&a.length===b.length&&a.every((v,i)=>Object.is(v,b[i]));
 function memo(fn,deps){const i=cursor++;if(!hooks[i]||!same(hooks[i].deps,deps))hooks[i]={deps,value:fn()};return hooks[i].value;}
 const react={useState(initial){const i=cursor++;if(!hooks[i]){const h={value:typeof initial==='function'?initial():initial};h.set=next=>{if(!mounted){lateUpdates++;return;}const value=typeof next==='function'?next(h.value):next;if(!Object.is(value,h.value)){h.value=value;dirty=true;}};hooks[i]=h;}return[hooks[i].value,hooks[i].set];},
  useRef(initial){const i=cursor++;if(!hooks[i])hooks[i]={current:initial};return hooks[i];},useMemo:memo,useCallback:(fn,deps)=>memo(()=>fn,deps),
  useEffect(fn,deps){const i=cursor++;if(!hooks[i]||!same(hooks[i].deps,deps)){const old=hooks[i];hooks[i]={deps};pending.push(()=>{old?.cleanup?.();hooks[i].cleanup=fn();});}}};
-const location={Accuracy:{High:4},requestForegroundPermissionsAsync:async()=>{requests++;return{status:permission};},watchPositionAsync:async(options,fn)=>{assert.equal(options.distanceInterval,5);assert.equal(options.timeInterval,2000);watches++;callback=fn;const subscription={remove:()=>removed++};if(resolveWatch)return new Promise(resolve=>resolveWatch.resolve=()=>resolve(subscription));return subscription;}};
+const location={Accuracy:{High:4},requestForegroundPermissionsAsync:async()=>{requests++;return{status:permission};},watchPositionAsync:async(options,fn)=>{assert.equal(options.distanceInterval,0);assert.equal(options.timeInterval,1000);watches++;callback=fn;const subscription={remove:()=>removed++};if(resolveWatch)return new Promise(resolve=>resolveWatch.resolve=()=>resolve(subscription));return subscription;}};
 const Component=compile('JourneyGuidance.tsx',name=>{
  if(name==='react')return react;if(name==='react/jsx-runtime')return{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
  if(name==='react-native')return{Pressable:'Pressable',Text:'Text',View:'View',StyleSheet:{create:x=>x}};
  if(name==='expo-location')return location;if(name==='../theme')return{colors:{navy:'#000',muted:'#666',white:'#fff'}};
+ if(name==='./NavigationView')return{__esModule:true,default:'NavigationView'};
+ if(name==='./navigationVoice')return{voiceAvailable:()=>hasVoice,turnAnnouncement:(text,distance)=>({phase:distance<=10?'now':distance<=25?'near':distance<=60?'approach':'ahead',text:distance<=10?`Now. ${text}`:`In ${Math.round(distance)} meters. ${text}`}),createNavigationVoice:()=>{let last='';return{stop:()=>{last='';stops++;},say:async(key,text)=>{if(last!==key){spoken.push(text);last=key;}}};}};
  if(name==='./network')return network;if(name==='./access')return access;if(name==='./navigationProgress')return nav;throw Error(name);
 }).default;
 function render(next){if(next)props={...props,...next};if(!mounted)return treeValue;let loops=0;do{assert.ok(loops++<30,'Repeated render/effect loop');dirty=false;cursor=0;treeValue=Component(props);while(pending.length)pending.shift()();}while(dirty);return treeValue;}
@@ -30,7 +32,7 @@ function text(t=treeValue){if(t==null)return'';if(typeof t!=='object')return Str
 function press(label){const b=all(treeValue).find(n=>n.type==='Pressable'&&text(n)===label);assert.ok(b,'Missing button: '+label);assert.ok(!b.props.disabled,'Button is disabled: '+label);b.props.onPress();return render();}
 function emit(point,accuracy=8,advance=4000,timestamp){now+=advance;callback({coords:{longitude:point[0],latitude:point[1],accuracy},timestamp:timestamp??now});return render();}
 function unmount(){if(!mounted)return;mounted=false;for(const h of hooks)h?.cleanup?.();}
-function reset(){hooks=[];cursor=0;pending=[];dirty=false;mounted=true;treeValue=null;now=1000000;permission='granted';requests=0;watches=0;removed=0;positions=[];ready=[];targets=[];reroutes=[];resolveWatch=null;rerouteImpl=async()=>true;lateUpdates=0;completions=0;
+function reset(){hooks=[];cursor=0;pending=[];dirty=false;mounted=true;treeValue=null;now=1000000;permission='granted';requests=0;watches=0;removed=0;positions=[];ready=[];targets=[];reroutes=[];resolveWatch=null;rerouteImpl=async()=>true;lateUpdates=0;completions=0;spoken=[];stops=0;hasVoice=true;
  props={route:baseRoute,origin:coords[0],destination:coords.at(-1),onPosition:x=>positions.push(x),onRouteReady:x=>ready.push(x),onTarget:x=>targets.push(x),onComplete:()=>completions++,onReroute:async point=>{reroutes.push(point);return rerouteImpl(point);}};}
 const cases=[];async function test(name,fn){reset();try{await fn();cases.push({name,passed:true});}catch(e){cases.push({name,passed:false,error:e.stack});}finally{unmount();await tick();}}
 (async()=>{
@@ -43,6 +45,27 @@ const cases=[];async function test(name,fn){reset();try{await fn();cases.push({n
   const route={...baseRoute,coordinates:[p(0,0),p(100,0),p(100,4),p(0,4)],maneuvers:undefined,destinationSnap:{coordinate:p(0,4)}};
   render({route,destination:p(0,4)});await settle();emit(p(45,0));const remaining=text().match(/(\d+) m remaining/)[1];
   emit(p(42,3));assert.equal(text().match(/(\d+) m remaining/)[1],remaining);assert.ok(!text().includes('Route completed'));
+ });
+ await test('Standing at the actual turn advances after two precise fixes, without walking beyond it',async()=>{
+  render();await settle();emit(p(50,0));emit(p(92,0),8,20000);assert.ok(text().includes('Turn left onto Garden Road.'));
+  emit(p(100,0),8,3000);assert.ok(text().includes('Turn right onto Park Road.'));
+  assert.ok(spoken.some(x=>x.includes('Now. Turn left')));assert.ok(spoken.at(-1).includes('Turn right'));
+ });
+ await test('A single near-turn GPS reading and inaccurate near-turn fixes cannot skip instructions',async()=>{
+  render();await settle();emit(p(50,0));emit(p(100,0),8,20000);assert.ok(text().includes('Turn left'));
+  emit(p(100,0),22);emit(p(100,0),22);assert.ok(text().includes('Turn left'));
+ });
+ await test('Fullscreen presentation receives live instructions and mute/repeat controls without duplicate GPS watchers',async()=>{
+  const presentation={styleUrl:'https://map.example/style.json',onClose:()=>{}};
+  render({presentation});await settle();assert.equal(treeValue.type,'NavigationView');assert.equal(treeValue.props.tracking,true);
+  emit(p(40,0));emit(p(80,0));assert.equal(treeValue.props.turnDistance.toFixed(0),'20');assert.ok(treeValue.props.instruction.text.includes('Turn left'));
+  const before=spoken.length;treeValue.props.onToggleVoice();render();emit(p(100,0),8,12000);emit(p(100,0));assert.equal(spoken.length,before);
+  assert.ok(treeValue.props.instruction.text.includes('Turn right'));treeValue.props.onToggleVoice();render();assert.ok(spoken.at(-1).includes('Turn right'));
+  treeValue.props.onRepeat();assert.ok(spoken.at(-1).includes('Turn right'));assert.equal(watches,1);unmount();assert.ok(stops>0);assert.equal(removed,1);
+ });
+ await test('Old APK without the native speech module keeps visual GPS navigation and explains the required update',async()=>{
+  hasVoice=false;render({presentation:{styleUrl:'fixture',onClose:()=>{}}});await settle();emit(p(40,0));
+  assert.equal(treeValue.props.voiceEnabled,false);assert.ok(treeValue.props.voiceStatus.includes('updated development APK'));assert.equal(spoken.length,0);assert.ok(treeValue.props.remaining<300);
  });
  await test('Poor and stale GPS pause automatic progress and never trigger replanning',async()=>{
   render();await settle();for(let i=0;i<4;i++)emit(p(20,-80),90);assert.ok(text().includes('progress is paused'));assert.equal(reroutes.length,0);assert.ok(text().includes('300 m remaining'));
