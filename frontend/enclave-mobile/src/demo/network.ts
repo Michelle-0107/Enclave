@@ -29,6 +29,8 @@ export type Segment = {
   facilityId: string | null; hasSteps: boolean; stepFree: boolean; roadName: string; direction: Edge['direction'];
 };
 export type Route = {
+  id?: string;
+  maneuvers?: { instruction: string; coordinate: Coordinate; distanceFromStart: number; type?: number }[];
   profile: TravelProfile;
   mode: Mode; distance: number; seconds: number; coordinates: Coordinate[]; segments: Segment[];
   facilities: Facility[]; originSnap: Snap; destinationSnap: Snap;
