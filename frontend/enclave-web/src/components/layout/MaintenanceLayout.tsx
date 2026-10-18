@@ -22,7 +22,7 @@ type Props = {
 export default function MaintenanceLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const { demo, onSignOut } = useMaintenance();
+  const { onSignOut } = useMaintenance();
   const auth = useAuth();
   const [logoutError, setLogoutError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
@@ -132,8 +132,8 @@ export default function MaintenanceLayout({ children }: Props) {
           type="button"
           disabled={signingOut}
           onClick={() => setConfirmSignOut(true)}
-          title="Log out will be connected with staff sign-in"
-          className="mt-9 flex min-h-[52px] w-full items-center gap-[14px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground opacity-60"
+          title="Log out"
+          className="mt-9 flex min-h-[52px] w-full items-center gap-[14px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground hover:bg-secondary"
         >
           <LogOut size={24} strokeWidth={1.7} />
           Log out
@@ -183,12 +183,6 @@ export default function MaintenanceLayout({ children }: Props) {
 
         <main className="min-w-0 px-6 pt-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-10 lg:pb-10">
           {children}
-          {demo && (
-            <p className="mt-8 text-xs leading-relaxed text-muted-foreground">
-              UI preview · Sample tasks and notifications. Changes last until
-              refresh; no backend updates or emails are sent.
-            </p>
-          )}
         </main>
       </div>
 

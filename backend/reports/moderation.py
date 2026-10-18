@@ -59,7 +59,7 @@ class StatusEvent(BaseModel):
     note: str = Field(min_length=1, max_length=1000)
     repair_verified: bool = Field(strict=True)
     created_at: datetime
-    actor_role: Literal["management"] = "management"
+    actor_role: Literal["management", "maintenance"] = "management"
     # Names/emails are never returned. Only managers receive the actor UUID.
     changed_by: UUID | None = None
 

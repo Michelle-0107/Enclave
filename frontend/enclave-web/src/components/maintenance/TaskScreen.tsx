@@ -16,6 +16,7 @@ import {
   control,
 } from "./Common";
 import { statusLabels } from "@/lib/maintenance/types";
+import TaskHistory from './TaskHistory';
 export type TaskView =
   "details" | "update" | "evidence" | "blocker" | "rework" | "submitted";
 export default function TaskScreen({
@@ -25,18 +26,17 @@ export default function TaskScreen({
   id: string;
   view?: TaskView;
 }) {
-  const { tasks, loading, error: loadError, gateway, demo } = useMaintenance();
+  const { tasks, loading, error: loadError, gateway } = useMaintenance();
   const task = tasks.find((t) => t.id === id);
   const router = useRouter();
-  const [notes, setNotes] = useState(
-    view === "update" ? task?.workNotes || "" : task?.completionNotes || "",
-  );
+  const [draftNotes, setNotes] = useState<string | null>(null);
+  const notes = draftNotes ?? (view === "update" ? task?.workNotes || "" : task?.completionNotes || "");
   const [checked, setChecked] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const previewUrl = useRef("");
-  const [type, setType] = useState("Waiting for replacement parts");
+  const [type, setType] = useState("parts");
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,7 +48,7 @@ export default function TaskScreen({
     [],
   );
   if (loading) return <p role="status">Loading task…</p>;
-  if (loadError) return <p role="alert">{loadError}</p>;
+  if (loadError) return <p role="alert">{loadError} <Link className="underline" href="/maintenance">Back to my tasks</Link></p>;
   if (!task)
     return (
       <section className="flex flex-col gap-7">
@@ -62,7 +62,7 @@ export default function TaskScreen({
       </section>
     );
   const base = `/maintenance/tasks/${task.id}`;
-  const canEdit = ["assigned", "in-progress", "changes-requested"].includes(
+  const canEdit = ["in-progress", "changes-requested"].includes(
     task.status,
   );
   async function run(
@@ -78,8 +78,8 @@ export default function TaskScreen({
       await fn();
       if (success) setNotice(success);
       if (next) router.push(next);
-    } catch {
-      setError("Unable to save. Please try again.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to save. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -144,6 +144,11 @@ export default function TaskScreen({
       </Button>
     </>
   );
+  if (task.status === "assigned" && !["details", "submitted"].includes(view)) {
+    return <section className="flex flex-col gap-5"><Heading title="Start work first." subtitle={task.title} />
+      <p>Open the task details and choose Start work before adding updates or evidence.</p>
+      <Link href={base} className={primaryLink}>Task details</Link></section>;
+  }
   const messages = (
     <>
       {error && (
@@ -167,7 +172,7 @@ export default function TaskScreen({
               ? "Repair submitted."
               : "No submitted repair yet."
           }
-          subtitle={`#${id} · ${task.title}`}
+          subtitle={`#${task.ticketId ?? id} · ${task.title}`}
           back={base}
           backLabel="Task details"
         />
@@ -178,9 +183,7 @@ export default function TaskScreen({
                 Awaiting verification
               </h2>
               <p className="text-sm">
-                {demo
-                  ? "Demo submission saved in this browser session."
-                  : "Management will review your repair evidence."}
+                Management will review your repair evidence.
               </p>
               <p className="text-sm text-muted-foreground">
                 If changes are requested, your task returns for further work.
@@ -206,7 +209,7 @@ export default function TaskScreen({
       <section className="flex flex-col gap-7">
         <Heading
           title={task.title}
-          subtitle={`#${id} · Assigned ${task.assignedAt}`}
+          subtitle={`#${task.ticketId ?? id} · Assigned ${task.assignedAt}`}
         />
         <Status status={task.status}>
           {statusLabels[task.status]} · {task.priority}
@@ -278,6 +281,7 @@ export default function TaskScreen({
           )}
         </div>
         {messages}
+        <TaskHistory id={task.id} updatedAt={task.updatedAt} />
       </section>
     );
   if (view === "blocker")
@@ -301,9 +305,7 @@ export default function TaskScreen({
               }
               void run(
                 () => gateway.reportBlocker(id, type, details.trim()),
-                demo
-                  ? "Blocker saved locally. No notification was sent."
-                  : "Blocker update sent.",
+                "Blocker update sent.",
               );
             }}
             className="flex flex-col gap-7"
@@ -317,12 +319,12 @@ export default function TaskScreen({
                 onChange={(e) => setType(e.target.value)}
               >
                 {[
-                  "Waiting for replacement parts",
-                  "Access unavailable",
-                  "Safety concern",
-                  "Other",
-                ].map((t) => (
-                  <option key={t}>{t}</option>
+                  ["parts", "Waiting for replacement parts"],
+                  ["access", "Access unavailable"],
+                  ["safety", "Safety concern"],
+                  ["other", "Other"],
+                ].map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             </div>
@@ -331,6 +333,7 @@ export default function TaskScreen({
               <Textarea
                 required
                 id="blocker-details"
+                maxLength={2000}
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
                 placeholder="Explain the blocker and what assistance you need."
@@ -373,7 +376,7 @@ export default function TaskScreen({
               }
               void run(
                 () => gateway.saveUpdate(id, notes.trim()),
-                demo ? "Update saved for this session." : "Update saved.",
+                "Update saved.",
               );
             }}
             className="flex flex-col gap-7"
@@ -383,6 +386,7 @@ export default function TaskScreen({
               <Textarea
                 required
                 id="work-notes"
+                maxLength={2000}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Describe work completed so far."
@@ -441,7 +445,7 @@ export default function TaskScreen({
             <p className="text-sm text-muted-foreground">{task.reviewNote}</p>
           </div>
           <p className="text-sm text-muted-foreground">
-            The task returns to In progress. Add new notes and evidence before
+            Add new notes and evidence before
             resubmitting.
           </p>
         </>
@@ -489,6 +493,7 @@ export default function TaskScreen({
             <Textarea
               id="completion-notes"
               required
+              maxLength={2000}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={

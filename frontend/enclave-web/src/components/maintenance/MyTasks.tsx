@@ -8,7 +8,7 @@ import { useMaintenance } from "./MaintenanceProvider";
 import { Heading, control } from "./Common";
 import { statusLabels } from "@/lib/maintenance/types";
 export default function MyTasks() {
-  const { tasks, loading, error } = useMaintenance();
+  const { tasks, loading, error, refresh } = useMaintenance();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
@@ -16,7 +16,7 @@ export default function MyTasks() {
     (t) =>
       (!status || t.status === status) &&
       (!priority || t.priority === priority) &&
-      `${t.id} ${t.title} ${t.location}`
+      `${t.id} ${t.ticketId ?? ''} ${t.title} ${t.location}`
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
@@ -105,6 +105,7 @@ export default function MyTasks() {
         </div>
       </div>
       {loading && <p role="status">Loading tasks…</p>}
+      <button type="button" disabled={loading} onClick={() => void refresh()} className="w-fit text-sm font-semibold underline">Refresh tasks</button>
       {error && (
         <p role="alert" className="text-status-red">
           {error}
@@ -126,7 +127,7 @@ export default function MyTasks() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              #{task.id} · {task.location}
+              #{task.ticketId ?? task.id} · {task.location}
             </p>
           </Link>
         ))}

@@ -16,6 +16,8 @@ import {
 } from '@/lib/api';
 import { reportStatusLabels } from '@/lib/mock-reports';
 import ReportLocationMap from '@/components/management/ReportLocationMap';
+import MaintenanceTaskPanel from '@/components/management/MaintenanceTaskPanel';
+import type { BackendTask } from '@/lib/maintenance/api';
 
 type Props = { report: ManagementReport };
 
@@ -23,7 +25,6 @@ export default function ReportDetails({ report: initialReport }: Props) {
   const [report, setReport] = useState(initialReport);
   const [history, setHistory] = useState<StatusEvent[]>([]);
   const [note, setNote] = useState('');
-  const [repairVerified, setRepairVerified] = useState(false);
   const [saving, setSaving] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,6 +51,11 @@ export default function ReportDetails({ report: initialReport }: Props) {
     }
   }, [report.id]);
 
+  const maintenanceChanged = useCallback((task: BackendTask) => {
+    setReport(current => ({ ...current, status: task.report_status as ApiReportStatus }));
+    void loadHistory();
+  }, [loadHistory]);
+
   useEffect(() => {
     let active = true;
     getReportHistory(report.id)
@@ -65,10 +71,6 @@ export default function ReportDetails({ report: initialReport }: Props) {
       setError('Add a resident-visible note before changing the report status.');
       return;
     }
-    if (status === 'resolved' && !repairVerified) {
-      setError('Confirm the repair was checked on site before marking it resolved.');
-      return;
-    }
 
     setSaving(true);
     setError('');
@@ -81,7 +83,6 @@ export default function ReportDetails({ report: initialReport }: Props) {
       });
       setReport(result.report);
       setNote('');
-      setRepairVerified(false);
       setHistory((items) => [...items, result.event]);
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 409) {
@@ -136,7 +137,7 @@ export default function ReportDetails({ report: initialReport }: Props) {
             </div>
           </dl>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            These fields are read from the report API. The current backend has no endpoint for editing category or priority, and no task-assignment endpoint.
+            These fields are read from the report API. Task assignment and repair verification are managed below.
           </p>
         </section>
       </div>
@@ -147,10 +148,10 @@ export default function ReportDetails({ report: initialReport }: Props) {
           <ReportLocationMap latitude={report.latitude} longitude={report.longitude} />
         </section>
 
-        {['pending', 'approved', 'in_progress'].includes(report.status) && (
+        {report.status === 'pending' && (
         <section aria-labelledby="status-action-heading" className="flex min-w-0 flex-col gap-4 rounded-3xl border border-border bg-white p-5">
           <h2 id="status-action-heading" className="text-lg font-semibold text-primary">
-            {report.status === 'pending' ? 'Review report' : report.status === 'approved' ? 'Start repair work' : 'Verify repair'}
+            Review report
           </h2>
           <p className="text-xs leading-relaxed text-muted-foreground">
             The note is visible to the resident. Keep private staff details out of it.
@@ -162,12 +163,6 @@ export default function ReportDetails({ report: initialReport }: Props) {
             placeholder="Write a short status note for the resident"
             className="min-h-[100px] rounded-2xl bg-white p-4 text-sm leading-relaxed shadow-none"
           />
-          {report.status === 'in_progress' && (
-            <label className="flex items-start gap-3 text-sm leading-relaxed text-primary">
-              <input type="checkbox" checked={repairVerified} onChange={(event) => setRepairVerified(event.target.checked)} className="mt-1 size-4 accent-primary" />
-              I confirm the repair has been checked on site.
-            </label>
-          )}
           <div className="flex flex-col gap-3 sm:flex-row">
             {report.status === 'pending' && (
               <>
@@ -175,16 +170,10 @@ export default function ReportDetails({ report: initialReport }: Props) {
                 <Button type="button" disabled={saving} onClick={() => void transition('rejected')} className="min-h-[50px] rounded-2xl bg-status-red-bg px-5 text-status-red hover:bg-status-red-bg">Reject report</Button>
               </>
             )}
-            {report.status === 'approved' && (
-              <Button type="button" disabled={saving} onClick={() => void transition('in_progress')} className="min-h-[50px] rounded-2xl bg-primary px-5 text-primary-foreground">{saving ? 'Saving…' : 'Mark work in progress'}</Button>
-            )}
-            {report.status === 'in_progress' && (
-              <Button type="button" disabled={saving} onClick={() => void transition('resolved')} className="min-h-[50px] rounded-2xl bg-primary px-5 text-primary-foreground">{saving ? 'Saving…' : 'Mark resolved'}</Button>
-            )}
           </div>
           {error && <p role="alert" className="text-sm text-status-red">{error}</p>}
           {report.status === 'pending' && (
-            <p className="text-xs leading-relaxed text-muted-foreground">Approval changes the report status. The backend does not currently create or assign a maintenance task.</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">Approve the report first, then assign a maintenance task.</p>
           )}
         </section>
         )}
@@ -192,6 +181,8 @@ export default function ReportDetails({ report: initialReport }: Props) {
         {report.status === 'rejected' && <p className="self-start rounded-2xl bg-status-red-bg p-4 text-sm text-status-red">This report is rejected. The backend does not allow further status changes.</p>}
         {report.status === 'resolved' && <p className="self-start rounded-2xl bg-status-green-bg p-4 text-sm text-status-green">This report is resolved and has been marked as checked by management.</p>}
       </div>
+
+      {['approved', 'in_progress', 'resolved'].includes(report.status) && <MaintenanceTaskPanel key={report.id} report={report} onChange={maintenanceChanged} />}
 
       <section aria-labelledby="history-heading" className="flex flex-col gap-3">
         <h2 id="history-heading" className="text-lg font-semibold text-primary">Status history</h2>

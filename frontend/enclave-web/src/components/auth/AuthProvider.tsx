@@ -18,7 +18,7 @@ import {
 import {
   ApiError,
   getCurrentUser,
-  getManagementAccess,
+  getStaffAccess,
   type CurrentUser,
 } from '@/lib/api';
 
@@ -47,15 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = await getValidAccessToken();
         if (token) {
           const current = await getCurrentUser();
-          let currentRole: 'management' | 'maintenance' = 'management';
-          try {
-            await getManagementAccess();
-          } catch (reason) {
-            if (!(reason instanceof ApiError) || reason.status !== 403) throw reason;
-            currentRole = 'maintenance';
-          }
+          const access = await getStaffAccess();
+          if (access.user_id !== current.user_id) throw new ApiError('Unable to verify the staff session.', 401);
           if (mounted) setUser(current);
-          if (mounted) setRole(currentRole);
+          if (mounted) setRole(access.role);
         }
       } catch (reason) {
         if (reason instanceof ApiError && (reason.status === 401 || reason.status === 403)) {
@@ -63,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (mounted) setUser(null);
           if (mounted) setRole(null);
           if (mounted && reason.status === 403) {
-            setError('This account does not have the management role in Enclave.');
+            setError('An active management or maintenance staff account is required.');
           }
         } else if (mounted) {
           setError(
@@ -87,30 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError('');
     await signInWithPassword(email, password);
 
-    let current: CurrentUser;
     try {
-      current = await getCurrentUser();
-    } catch (reason) {
-      clearAuthSession();
-      setUser(null);
-      setRole(null);
-      throw reason;
-    }
-
-    try {
-      await getManagementAccess();
+      const current = await getCurrentUser();
+      const access = await getStaffAccess();
+      if (access.user_id !== current.user_id) throw new ApiError('Unable to verify the staff session.', 401);
       setUser(current);
       setReady(true);
-      setRole('management');
-      return 'management' as const;
+      setRole(access.role);
+      return access.role;
     } catch (reason) {
-      if (reason instanceof ApiError && reason.status === 403) {
-        setUser(current);
-        setReady(true);
-        setRole('maintenance');
-        return 'maintenance' as const;
-      }
-
       clearAuthSession();
       setUser(null);
       setRole(null);

@@ -4,20 +4,16 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useMaintenance } from "./MaintenanceProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { action, Heading } from "./Common";
 export default function Account() {
-  const { onSignOut, demo } = useMaintenance();
+  const { onSignOut, displayName } = useMaintenance();
+  const { user } = useAuth();
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const router = useRouter();
   async function logout() {
-    if (!onSignOut) {
-      setNotice(
-        "Sign out is not connected yet. Ask the backend team to connect staff authentication.",
-      );
-      return;
-    }
     setBusy(true);
     try {
       await onSignOut();
@@ -36,14 +32,12 @@ export default function Account() {
         back={null}
       />
       <div className="flex flex-col gap-[14px] rounded-3xl bg-secondary p-5">
-        <h2 className="text-[22px] font-semibold">Maintenance team</h2>
-        <p className="text-sm text-muted-foreground">KL East · Staff account</p>
+        <h2 className="text-[22px] font-semibold">{displayName}</h2>
+        <p className="text-sm text-muted-foreground">Maintenance staff account</p>
       </div>
       <h2 className="text-sm font-semibold">Work email</h2>
       <p className="text-sm text-muted-foreground">
-        {demo
-          ? "maintenance@enclave.example"
-          : "Connect the authenticated staff profile here."}
+        {user?.email ?? "Email unavailable"}
       </p>
       <hr />
       <h2 className="font-semibold">Help &amp; support</h2>
