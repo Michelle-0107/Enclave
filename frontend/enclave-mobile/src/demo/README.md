@@ -152,6 +152,10 @@ The navigation map has a current-action banner, next-action strip, live location
 arrow, destination, remaining distance/time, route overview, recenter, voice
 mute/repeat, and Exit controls. Android Back returns to planning. Camera following
 pauses while the resident touches the map; recenter resumes following.
+The arrow uses GPS direction of travel while moving, with accurate position
+displacement as a fallback. Its screen rotation subtracts the actual map bearing,
+including camera animation and manual map rotation. Before a travel direction is
+known, the map shows a location dot instead of guessing from the planned route.
 English text-to-speech announces upcoming turns, near-turn and now prompts,
 rerouting and arrival. Prompts are deduplicated by route step and distance phase;
 muting, route replacement and exit cancel queued speech.
@@ -161,13 +165,15 @@ navigation and show an explanation, rather than crashing. Enabling voice require
 one new development APK containing that module; Metro or EAS Update alone cannot
 add native code. This change does not automatically submit any cloud build.
 
-When three or more accurate fixes remain farther than max(30 m, twice reported
-accuracy) from the local route for at least eight seconds, navigation requests
+When three or more accurate fixes remain farther than max(12 m, 1.5 times reported
+accuracy) from the local route for at least four seconds, navigation automatically requests
 a new backend route from GPS. Only one replan can run at a time; automatic retries
-have a 30-second cooldown. Replans preserve the destination and selected route
+have a 15-second cooldown. Replans preserve the destination and selected route
 mode/profile, pass no start-adjustment candidates, and never downgrade an
-accessible route to ordinary walking. Errors retain the previous route and offer
-an explicit retry. Closing navigation, changing endpoints/mode, or arrival
+accessible route to ordinary walking. Errors retain the previous route, continue
+automatic retries, and also offer Retry now. Normal navigation has no Recalculate
+button. While deviation is being confirmed, stale turn instructions are hidden.
+Closing navigation, changing endpoints/mode, or arrival
 invalidates a pending response. The map follows accurate GPS until the resident
 touches the map; Follow my location resumes camera following.
 Production report/What-if data are not integrated into this independent dataset.
@@ -191,6 +197,8 @@ node src/demo/__tests__/access.test.cjs
 node src/demo/__tests__/guidance.test.cjs
 node src/demo/__tests__/navigation-progress.test.cjs
 node src/demo/__tests__/navigation-voice.test.cjs
+node src/demo/__tests__/navigation-heading.test.cjs
+node src/demo/__tests__/navigation-view.test.cjs
 python src/demo/tools/test_walking_direction.py
 npx tsc --noEmit
 ```

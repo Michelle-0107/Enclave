@@ -213,6 +213,9 @@ class RoadsideGraph:
         self.edges=[e for e in self.edges if e.kind!='road_fallback' or not parallel_path(e)]
         used = {n for e in self.edges for n in (e.a,e.b)}
         roads=defaultdict(list,{key:[arm for arm in arms if arm[2] is None or arm[2] in used] for key,arms in roads.items()})
+        road_ports={port:(other,distance(*edge.points)) for edge in self.edges
+                    if edge.kind in {'sidewalk','road_fallback'}
+                    for port,other in ((edge.a,edge.b),(edge.b,edge.a))}
         road_nodes={nid for (nid,_),arms in roads.items() if arms}
         # A mapped bridge/underpass can meet its mapped ground-level approach
         # where no road uses that node; no geometric proximity join is allowed.
@@ -257,6 +260,8 @@ class RoadsideGraph:
                     continue
                 left = [port for angle,side,port,_,_ in arms if angle==start and side==1]
                 right = [port for angle,side,port,_,_ in arms if angle==end and side==-1]
+                if len(left)==len(right)==1:
+                    self.join_corner(left[0],right[0],road_ports,grade)
                 members = left+right
                 for port, other, _ in pedestrians:
                     angle = math.atan2(other[1]-points[nid][1],(other[0]-points[nid][0])*math.cos(math.radians(points[nid][1])))
@@ -273,6 +278,33 @@ class RoadsideGraph:
         self.edges = [Edge(e.a,e.b,(self.nodes[e.a],self.nodes[e.b]),e.name,e.kind,e.way_id,e.direction,e.grade) for e in self.edges]
         self.edges = [e for e in self.edges if all(self.inside(p) for p in e.points) and (e.kind != 'connection' or not any(e.grade==g and proper_intersection(*e.points,c,d) for c,d,g in self.nearby(*e.points)))]
         self.add_local_crossings(local_segments)
+
+    def join_corner(self,a,b,ports,grade):
+        """Meet offset road sides at their intersection, rather than a backtrack.
+
+        Connecting the untrimmed offsets with a diagonal creates two right
+        turns for a left turn at an inside corner. Bounded mitres trim inside
+        corners and extend outside corners without changing crossing policy.
+        """
+        if a not in ports or b not in ports: return
+        other_a,length_a=ports[a]; other_b,length_b=ports[b]
+        pa,pb,qa,qb=map(xy,(self.nodes[a],self.nodes[b],self.nodes[other_a],self.nodes[other_b]))
+        def unit(p,q):
+            length=math.hypot(q[0]-p[0],q[1]-p[1])
+            return ((q[0]-p[0])/length,(q[1]-p[1])/length) if length>0.01 else (0,0)
+        v,w=unit(pa,qa),unit(pb,qb)
+        determinant=v[0]*w[1]-v[1]*w[0]
+        if abs(determinant)<1e-5: return
+        delta=(pb[0]-pa[0],pb[1]-pa[1])
+        t=(delta[0]*w[1]-delta[1]*w[0])/determinant
+        u=(delta[0]*v[1]-delta[1]*v[0])/determinant
+        if abs(t)>OFFSET*4 or abs(u)>OFFSET*4 or t>length_a*.45 or u>length_b*.45: return
+        corner=coordinate((pa[0]+t*v[0],pa[1]+t*v[1]))
+        if not self.inside(corner): return
+        for other in (other_a,other_b):
+            if any(grade==g and proper_intersection(corner,self.nodes[other],c,d)
+                   for c,d,g in self.nearby(corner,self.nodes[other])): return
+        self.nodes[a]=self.nodes[b]=corner
 
     def add_local_crossings(self, segments):
         # Split paired sides of the SAME private road segment. There are no
@@ -413,10 +445,12 @@ class RoadsideGraph:
             if edge.kind=='crossing': crossing_ids.add(edge.way_id)
             if edge.kind=='unmarked_crossing': unmarked_ids.add((edge.a,edge.b))
             begin=len(geometry)-1; geometry.append(pb)
+            travel=f' for {length:.0f} meters' if length>=1 else ''
             text=(f'Use the mapped pedestrian crossing at {edge.name}.' if edge.kind=='crossing' else
                   f'Cross the private local road at {edge.name} when traffic is clear; this is an unmarked crossing.' if edge.kind=='unmarked_crossing' else
-                  f'Walk along the road side of {edge.name} for {length:.0f} meters; a sidewalk is not recorded.' if edge.kind=='road_fallback' else
-                  f'Continue along {edge.name} for {length:.0f} meters.')
+                  f'Walk along the road side of {edge.name}{travel}; a sidewalk is not recorded.' if edge.kind=='road_fallback' else
+                  'Continue along the path.' if edge.kind=='connection' else
+                  f'Continue along {edge.name}{travel}.')
             maneuver_type=1 if not maneuvers else 8
             if len(geometry)>2 and edge.kind not in {'crossing','unmarked_crossing'}:
                 a,b,c=map(xy,geometry[-3:]); v=(b[0]-a[0],b[1]-a[1]); w=(c[0]-b[0],c[1]-b[1])

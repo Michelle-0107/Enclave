@@ -2,7 +2,7 @@ import { meters, type Coordinate, type Route } from './network';
 
 export const MAX_GUIDANCE_ACCURACY_METERS = 25;
 export const ARRIVAL_RADIUS_METERS = 20;
-export const REROUTE_COOLDOWN_MS = 30000;
+export const REROUTE_COOLDOWN_MS = 15000;
 export type InstructionKind = 'left' | 'right' | 'uturn' | 'crossing' | 'arrive' | 'continue';
 export type Instruction = { text: string; coordinate: Coordinate; at: number; kind: InstructionKind };
 export type NavigationModel = { coordinates: Coordinate[]; cumulative: number[]; total: number; instructions: Instruction[] };
@@ -105,13 +105,13 @@ export function advanceInstruction(model: NavigationModel, index: number, progre
 export type OffRouteEvidence = { hits: number; since: number; lastAttempt: number | null };
 export function offRouteEvidence(previous: OffRouteEvidence, deviation: number, accuracy: number | null, time: number) {
   const reliable = accuracy !== null && Number.isFinite(accuracy) && accuracy >= 0 && accuracy <= MAX_GUIDANCE_ACCURACY_METERS;
-  const offRoute = reliable && deviation > Math.max(30, accuracy * 2);
+  const offRoute = reliable && deviation > Math.max(12, accuracy * 1.5);
   const evidence: OffRouteEvidence = {
     hits: offRoute ? previous.hits + 1 : 0,
     since: offRoute ? previous.hits ? previous.since : time : 0,
     lastAttempt: previous.lastAttempt,
   };
-  const shouldReroute = offRoute && evidence.hits >= 3 && time - evidence.since >= 8000
+  const shouldReroute = offRoute && evidence.hits >= 3 && time - evidence.since >= 4000
     && (evidence.lastAttempt === null || time - evidence.lastAttempt >= REROUTE_COOLDOWN_MS);
   return { evidence, offRoute, shouldReroute };
 }

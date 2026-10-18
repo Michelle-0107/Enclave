@@ -5,30 +5,27 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Camera, GeoJSONSource, Layer, Map, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
 import { meters, type Coordinate, type Route } from './network';
 import type { Instruction } from './navigationProgress';
+import { markerRotation, movementHeading, type HeadingState, type MotionFix } from './navigationHeading';
 
 type Props = {
   styleUrl: string; route: Route; destination: Coordinate; stage: 'entry' | 'mapped' | 'exit' | 'complete';
   position: Coordinate | null; instruction: Instruction; next?: Instruction; turnDistance: number; remaining: number; total: number;
-  status: string; error: string; tracking: boolean; rerouting: boolean; voiceEnabled: boolean; voiceStatus: string;
+  motion?: MotionFix; status: string; error: string; tracking: boolean; rerouting: boolean; deviating: boolean; voiceEnabled: boolean; voiceStatus: string;
   onToggleVoice: () => void; onRepeat: () => void; onToggleTracking: () => void; onManualNext: () => void; onClose: () => void; onRetry?: () => void;
 };
 const icons = { left: 'arrow-left-top', right: 'arrow-right-top', uturn: 'arrow-u-left-top', crossing: 'walk', arrive: 'flag-checkered', continue: 'arrow-up' } as const;
 const distance = (m: number) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
-function bearing(a: Coordinate, b: Coordinate) {
-  return (Math.atan2((b[0] - a[0]) * Math.cos(a[1] * Math.PI / 180), b[1] - a[1]) * 180 / Math.PI + 360) % 360;
-}
-
 export default function NavigationView(p: Props) {
   const insets = useSafeAreaInsets();
-  const camera = useRef<CameraRef>(null), lastPosition = useRef<Coordinate | null>(null);
+  const camera = useRef<CameraRef>(null);
+  const headingState = useRef<HeadingState>({ anchor: null, heading: null, timestamp: 0 });
   const [following, setFollowing] = useState(true), [loaded, setLoaded] = useState(false), [mapError, setMapError] = useState(false), [mapKey, setMapKey] = useState(0);
-  const [heading, setHeading] = useState(() => bearing(p.route.coordinates[0], p.route.coordinates[1] ?? p.route.coordinates[0]));
+  const [heading, setHeading] = useState<number | null>(null), [mapBearing, setMapBearing] = useState(0);
   useEffect(() => {
-    if (!p.position) return;
-    if (lastPosition.current && meters(lastPosition.current, p.position) >= 4) {
-      setHeading(bearing(lastPosition.current, p.position)); lastPosition.current = p.position;
-    } else if (!lastPosition.current) lastPosition.current = p.position;
-  }, [p.position]);
+    if (!p.motion) return;
+    headingState.current = movementHeading(headingState.current, p.motion);
+    setHeading(headingState.current.heading);
+  }, [p.motion]);
   useEffect(() => {
     if (!following || !loaded || !p.position) return;
     if (p.stage === 'entry' && p.position) {
@@ -36,13 +33,13 @@ export default function NavigationView(p: Props) {
       camera.current?.fitBounds([Math.min(...points.map(x => x[0])), Math.min(...points.map(x => x[1])),
         Math.max(...points.map(x => x[0])), Math.max(...points.map(x => x[1]))],
       { padding: { top: 220, bottom: 260, left: 60, right: 60 }, duration: 700 });
-    } else camera.current?.easeTo({ center: p.position ?? p.route.originSnap.coordinate, zoom: 18, pitch: 45, bearing: heading,
+    } else camera.current?.easeTo({ center: p.position, zoom: 18, pitch: 45, bearing: heading ?? 0,
       padding: { top: 180, bottom: 220, left: 20, right: 20 }, duration: 700 });
   }, [p.position, p.stage, p.route, following, loaded, heading]);
   const minutes = Math.max(1, Math.ceil(p.route.seconds * p.remaining / Math.max(1, p.total) / 60));
   const time = new Date(Date.now() + minutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const transfer = p.stage === 'entry' || p.stage === 'exit';
-  const title = p.rerouting ? 'Recalculating route…' : p.stage === 'entry' ? 'Go to the starting point'
+  const title = p.rerouting ? 'Updating your route automatically…' : p.deviating ? 'Checking GPS for automatic rerouting…' : p.stage === 'entry' ? 'Go to the starting point'
     : p.stage === 'exit' ? 'Find the destination entrance' : p.stage === 'complete' ? 'You have arrived' : p.instruction.text;
   const toAccess = p.stage === 'entry' ? p.route.originSnap.coordinate : p.destination;
   function overview() {
@@ -55,6 +52,8 @@ export default function NavigationView(p: Props) {
   return <View style={s.screen}>
     <View style={s.map} onTouchStart={() => setFollowing(false)}>
       <Map key={mapKey} style={s.map} mapStyle={p.styleUrl} androidView="texture" attribution dragPan touchZoom doubleTapZoom
+        onRegionIsChanging={event => setMapBearing(event.nativeEvent.bearing)}
+        onRegionDidChange={event => setMapBearing(event.nativeEvent.bearing)}
         onDidFinishLoadingMap={() => { setLoaded(true); setMapError(false); }} onDidFailLoadingMap={() => setMapError(true)}>
         <Camera ref={camera} initialViewState={{ center: p.position ?? p.route.originSnap.coordinate, zoom: 17, pitch: 40 }} />
         {p.stage !== 'entry' && <GeoJSONSource id="guidance-route" data={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: p.route.coordinates } }}>
@@ -66,19 +65,21 @@ export default function NavigationView(p: Props) {
         </Marker>)}
         {p.stage === 'entry' && <Marker id="guidance-start" lngLat={p.route.originSnap.coordinate}><View collapsable={false} style={s.pin}><Text style={s.pinText}>S</Text></View></Marker>}
         <Marker id="guidance-destination" lngLat={p.destination}><View collapsable={false} style={s.pin}><MaterialCommunityIcons name="flag-checkered" size={22} color="#FFFFFF" /></View></Marker>
-        {p.position && <Marker id="guidance-user" lngLat={p.position}><View collapsable={false} style={s.user}><MaterialCommunityIcons name="navigation" size={36} color="#2466EA" style={{ transform: [{ rotate: `${following ? 0 : heading}deg` }] }} /></View></Marker>}
+        {p.position && <Marker id="guidance-user" lngLat={p.position}><View collapsable={false} style={s.user}>
+          {heading === null ? <View style={s.positionDot} /> : <MaterialCommunityIcons name="navigation" size={36} color="#2466EA" style={{ transform: [{ rotate: `${markerRotation(heading, mapBearing)}deg` }] }} />}
+        </View></Marker>}
       </Map>
     </View>
     <View pointerEvents="box-none" style={[s.top, { top: insets.top + 10 }]}>
       <Pressable accessibilityRole="button" accessibilityLabel="Repeat navigation instruction" onPress={p.onRepeat} style={s.banner}>
         <MaterialCommunityIcons name={transfer ? 'map-marker-path' : p.stage === 'complete' ? 'flag-checkered' : icons[p.instruction.kind]} size={42} color="#FFFFFF" />
         <View style={s.bannerText}>
-          <Text style={s.distance}>{p.rerouting ? 'Please wait' : transfer ? p.position ? `${distance(meters(p.position, toAccess))} to access` : 'Waiting for GPS'
+          <Text style={s.distance}>{p.rerouting || p.deviating ? 'Automatic rerouting' : transfer ? p.position ? `${distance(meters(p.position, toAccess))} to access` : 'Waiting for GPS'
             : p.stage === 'complete' ? 'Destination reached' : p.turnDistance <= 10 ? 'Now' : `In ${distance(p.turnDistance)}`}</Text>
           <Text accessibilityLiveRegion="polite" style={s.instruction}>{title}</Text>
         </View>
       </Pressable>
-      {p.stage === 'mapped' && p.next && <View style={s.then}><Text style={s.thenLabel}>Then</Text><MaterialCommunityIcons name={icons[p.next.kind]} size={22} color="#FFFFFF" /><Text numberOfLines={2} style={s.thenText}>{p.next.text}</Text></View>}
+      {p.stage === 'mapped' && !p.deviating && !p.rerouting && p.next && <View style={s.then}><Text style={s.thenLabel}>Then</Text><MaterialCommunityIcons name={icons[p.next.kind]} size={22} color="#FFFFFF" /><Text numberOfLines={2} style={s.thenText}>{p.next.text}</Text></View>}
       {mapError && <Pressable style={s.warning} accessibilityRole="button" onPress={() => { setLoaded(false); setMapKey(x => x + 1); }}><Text>Map could not load. Tap to retry.</Text></Pressable>}
     </View>
     <View style={[s.controls, { bottom: Math.max(265, insets.bottom + 255) }]}>
@@ -100,7 +101,7 @@ export default function NavigationView(p: Props) {
       <View style={s.actions}>
         {p.stage !== 'complete' && <Pressable accessibilityRole="button" onPress={p.onToggleTracking} style={s.action}><Text style={s.actionText}>{p.tracking ? 'Pause GPS' : 'Resume GPS'}</Text></Pressable>}
         {p.stage !== 'complete' && (transfer || !p.tracking) && <Pressable accessibilityRole="button" onPress={p.onManualNext} style={s.action}><Text style={s.actionText}>{p.stage === 'entry' ? 'I am at S' : p.stage === 'exit' ? 'I have arrived' : 'Next instruction'}</Text></Pressable>}
-        {p.onRetry && <Pressable accessibilityRole="button" disabled={p.rerouting} onPress={p.onRetry} style={s.action}><Text style={s.actionText}>{p.rerouting ? 'Recalculating…' : 'Recalculate'}</Text></Pressable>}
+        {p.onRetry && <Pressable accessibilityRole="button" disabled={p.rerouting} onPress={p.onRetry} style={s.action}><Text style={s.actionText}>{p.rerouting ? 'Recalculating…' : 'Retry now'}</Text></Pressable>}
       </View>
     </View>
   </View>;
@@ -118,5 +119,6 @@ const s = StyleSheet.create({
   action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 5 }, actionText: { fontSize: 13, fontWeight: '600', color: '#056364' },
   pin: { backgroundColor: '#056364', width: 34, height: 34, borderRadius: 17, borderColor: '#FFFFFF', borderWidth: 3, alignItems: 'center', justifyContent: 'center' }, pinText: { color: '#FFFFFF', fontWeight: '700' },
   user: { backgroundColor: '#FFFFFF', borderRadius: 28, height: 52, width: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#B5CFFF' },
+  positionDot: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#2466EA' },
   facility: { padding: 4, borderRadius: 12, backgroundColor: '#FFF0D8', borderWidth: 1, borderColor: '#FFFFFF' }, warning: { backgroundColor: '#FFF0D8', padding: 12, borderRadius: 12 },
 });

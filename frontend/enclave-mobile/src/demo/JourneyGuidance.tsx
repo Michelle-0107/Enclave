@@ -13,7 +13,7 @@ type Props = { route: Route; origin: Coordinate; destination: Coordinate; waitFo
   onRouteReady?: (ready: boolean) => void; onPosition: (point: Coordinate | null) => void;
   onTarget?: (point: Coordinate | null) => void; onReroute?: (point: Coordinate) => Promise<boolean>; onComplete?: () => void;
   presentation?: { styleUrl: string; onClose: () => void } };
-type Fix = { point: Coordinate; accuracy: number | null; timestamp: number; receivedAt: number };
+type Fix = { point: Coordinate; accuracy: number | null; timestamp: number; receivedAt: number; course: number | null; speed: number | null };
 type Stage = 'entry' | 'mapped' | 'exit' | 'complete';
 const symbols = { left: '↰', right: '↱', uturn: '↶', crossing: '↔', arrive: '⚑', continue: '↑' };
 
@@ -25,6 +25,7 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Starting GPS…');
   const [rerouting, setRerouting] = useState(false);
+  const [deviating, setDeviating] = useState(false);
   const [rerouteError, setRerouteError] = useState('');
   const [instructionIndex, setInstructionIndex] = useState(0);
   const instructionRef = useRef(0), turnArrival = useRef<TurnArrival>({ index: 0, hits: 0, since: 0 });
@@ -46,7 +47,7 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
     voice.stop();
     evidence.current = { hits: 0, since: 0, lastAttempt: evidence.current.lastAttempt };
     const entry = waitForStart || meters(origin, route.originSnap.coordinate) > 3;
-    setProgress(0); setStage(entry ? 'entry' : 'mapped'); setRerouteError(''); onRouteReady?.(!entry);
+    setProgress(0); setDeviating(false); setStage(entry ? 'entry' : 'mapped'); setRerouteError(''); onRouteReady?.(!entry);
     if (previousRoute.current !== route) setStatus('Route updated. Continuing with your selected route type.');
     previousRoute.current = route;
   }, [route, origin, waitForStart, onRouteReady, voice]);
@@ -64,7 +65,8 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
           const point: Coordinate = [value.coords.longitude, value.coords.latitude];
           if (!point.every(Number.isFinite)) return;
           const receivedAt = Date.now();
-          setFix({ point, accuracy: value.coords.accuracy, timestamp: value.timestamp ?? receivedAt, receivedAt });
+          setFix({ point, accuracy: value.coords.accuracy, timestamp: value.timestamp ?? receivedAt, receivedAt,
+            course: value.coords.heading ?? null, speed: value.coords.speed ?? null });
         }, () => { if (!disposed) { setStatus('GPS unavailable. Retry location or review the route manually.'); setTracking(false); } });
         if (disposed) watcher.remove(); else subscription = watcher;
       } catch { if (!disposed) { setStatus('Could not start GPS. Retry location or review the route manually.'); setTracking(false); } }
@@ -80,7 +82,7 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
       const updated = await onReroute(point);
       if (alive.current && updated) setStatus('Route updated. Your destination and route type are unchanged.');
     } catch (failure) {
-      if (alive.current) setRerouteError(failure instanceof Error ? failure.message : 'Unable to recalculate. Check your connection and retry.');
+      if (alive.current) setRerouteError(`${failure instanceof Error ? failure.message : 'Unable to update the route.'} Automatic retry is enabled.`);
     } finally {
       busy.current = false;
       evidence.current = { hits: 0, since: 0, lastAttempt: Date.now() };
@@ -119,10 +121,12 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
     const check = offRouteEvidence(evidence.current, match.deviation, fix.accuracy, fix.receivedAt);
     evidence.current = check.evidence;
     if (check.offRoute) {
-      setStatus('You appear to be off route. Checking your position…');
+      setDeviating(true);
+      setStatus(busy.current ? 'Off route. Updating your route automatically…' : 'Off route. Automatic rerouting is checking your GPS position…');
       if (check.shouldReroute && !busy.current) void recalculate(fix.point, fix.receivedAt);
       return;
     }
+    setDeviating(false);
     progressRef.current = Math.max(progressRef.current, match.along);
     lastMatchTime.current = fix.receivedAt;
     setProgress(progressRef.current);
@@ -150,11 +154,12 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
   const announcement = turnAnnouncement(instruction.text, turnDistance);
   const voiceText = !tracking && stage !== 'complete' ? 'GPS is paused. Resume location to continue guidance.'
     : rerouting ? 'Off route. Recalculating your route.'
+    : deviating ? 'Checking your position for automatic rerouting.'
     : stage === 'complete' ? 'You have reached your destination.'
     : stage === 'entry' ? 'Go to the marked starting point. Navigation begins when you arrive.'
     : stage === 'exit' ? 'Mapped route completed. Find the destination entrance.'
     : !reliableFix ? 'Waiting for an accurate GPS location.' : announcement.text;
-  const voiceKey = `${stage}:${rerouting}:${tracking}:${reliableFix}:${instructionIndex}:${reliableFix ? announcement.phase : 'waiting'}`;
+  const voiceKey = `${stage}:${rerouting}:${deviating}:${tracking}:${reliableFix}:${instructionIndex}:${reliableFix ? announcement.phase : 'waiting'}`;
   useEffect(() => {
     if (!available || !voiceEnabled) { voice.stop(); return; }
     void voice.say(voiceKey, voiceText, () => { if (alive.current) setVoiceError('Voice could not play. Check your phone volume and text-to-speech settings.'); });
@@ -174,11 +179,12 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
   }
   if (presentation) return <NavigationView styleUrl={presentation.styleUrl} route={route} destination={destination}
     stage={stage} position={reliableFix ? fix.point : null} instruction={instruction} next={model.instructions[instructionIndex + 1]}
+    motion={reliableFix ? { coordinate: fix.point, accuracy: fix.accuracy!, timestamp: fix.timestamp, course: fix.course, speed: fix.speed } : undefined}
     turnDistance={turnDistance} remaining={remaining} total={model.total} status={status} error={rerouteError}
-    tracking={tracking} rerouting={rerouting} voiceEnabled={voiceEnabled && available} voiceStatus={voiceStatus}
+    tracking={tracking} rerouting={rerouting} deviating={deviating} voiceEnabled={voiceEnabled && available} voiceStatus={voiceStatus}
     onToggleVoice={toggleVoice} onRepeat={() => { voice.stop(); if (available && voiceEnabled) void voice.say('repeat', voiceText, () => setVoiceError('Voice could not play.')); }}
     onToggleTracking={toggleTracking} onManualNext={nextManually} onClose={presentation.onClose}
-    onRetry={reliableFix && onReroute && stage === 'mapped' ? () => void recalculate(fix.point, Date.now()) : undefined} />;
+    onRetry={rerouteError && reliableFix && onReroute && stage === 'mapped' ? () => void recalculate(fix.point, Date.now()) : undefined} />;
   return <View style={styles.card}>
     <Text style={styles.title}>{stage === 'entry' ? waitForStart ? 'Go to your adjusted starting point' : 'Go to the route starting point' : stage === 'mapped' ? 'Enclave navigation' : stage === 'exit' ? 'Find the destination entrance' : 'Route completed'}</Text>
     {stage === 'mapped' && <View style={styles.turnCard}>
@@ -198,7 +204,7 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
     {stage === 'mapped' && !tracking && <Pressable accessibilityRole="button" onPress={nextManually} style={styles.button}><Text style={styles.action}>{instruction.kind === 'arrive' ? 'Reached end of mapped path' : 'Next instruction'}</Text></Pressable>}
     <Text style={styles.body}>{status}</Text>
     {rerouteError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{rerouteError}</Text> : null}
-    {stage === 'mapped' && reliableFix && onReroute && <Pressable accessibilityRole="button" disabled={rerouting} onPress={() => void recalculate(fix.point, Date.now())} style={styles.button}><Text style={styles.action}>{rerouting ? 'Recalculating…' : 'Recalculate from my location'}</Text></Pressable>}
+    {rerouteError && stage === 'mapped' && reliableFix && onReroute && <Pressable accessibilityRole="button" disabled={rerouting} onPress={() => void recalculate(fix.point, Date.now())} style={styles.button}><Text style={styles.action}>{rerouting ? 'Recalculating…' : 'Recalculate from my location'}</Text></Pressable>}
     {stage !== 'complete' && <Pressable accessibilityRole="button" onPress={toggleTracking} style={styles.button}>
       <Text style={styles.action}>{tracking ? 'Pause GPS' : 'Resume GPS'}</Text>
     </Pressable>}
