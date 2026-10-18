@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   transportLabel: { color: colors.navy, fontSize: 12, fontWeight: '600' },
   mapContainer: { width: '100%', height: 320, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.lavender }, map: { flex: 1 },
   marker: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.navy, borderWidth: 2, borderColor: colors.white, alignItems: 'center', justifyContent: 'center' },
-  selectionFrame: { width: 40, height: 40, borderRadius: 8, borderWidth: 3, borderColor: '#D99A13', backgroundColor: '#F7BD2922' },
+  selectionFrame: { width: 46, height: 46, borderRadius: 23, borderWidth: 3, borderColor: '#D99A13', backgroundColor: '#F7BD2922', shadowColor: '#1B2633', shadowOffset: { width: 4, height: 4 }, shadowOpacity: 0.38, shadowRadius: 5, elevation: 8, zIndex: 2 },
   endpointFrame: { padding: 3, borderRadius: 9, borderWidth: 3, borderColor: 'transparent' },
   activeEndpointFrame: { borderColor: '#D99A13', backgroundColor: '#FFF3D0' },
   accessPin: { backgroundColor: '#BD6509' }, originalPin: { backgroundColor: '#8790A0' }, suggestedPin: { backgroundColor: '#2675D8' }, destinationPin: { backgroundColor: '#247A80' }, pinText: { color: colors.white, fontSize: 13, fontWeight: '700' },
