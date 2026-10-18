@@ -53,7 +53,7 @@ def write(repo: Path, output: Path):
     sql += "INSERT INTO public.map_places (id,area_id,name,address,longitude,latitude,position_basis,source)\n"
     sql += "SELECT id,area_id,name,address,longitude,latitude,position_basis,source FROM jsonb_to_recordset('\n" + payload + "\n'::jsonb) AS r(id uuid,area_id text,name text,address text,longitude double precision,latitude double precision,position_basis text,source text)\n"
     sql += "ON CONFLICT (id) DO UPDATE SET name=excluded.name,address=excluded.address,longitude=excluded.longitude,latitude=excluded.latitude,position_basis=excluded.position_basis;\nCOMMIT;\n"
-    target = output / 'backend/sql/014_map_places_seed.sql'
+    target = output / 'backend/sql/016_map_places_seed.sql'
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(sql, encoding='utf-8')
     print(f'Built {len(rows)} named/address locations across {len({r["area_id"] for r in rows})} areas.')

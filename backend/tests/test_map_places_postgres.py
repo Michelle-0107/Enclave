@@ -21,8 +21,8 @@ class MapPlacesTests(unittest.TestCase):
         cls.db = psycopg2.connect(DSN)
         cls.db.autocommit = True
         folder = Path(__file__).resolve().parents[1] / 'sql'
-        cls.migration = (folder / '013_map_places.sql').read_text(encoding='utf-8')
-        cls.seed = (folder / '014_map_places_seed.sql').read_text(encoding='utf-8')
+        cls.migration = (folder / '015_map_places.sql').read_text(encoding='utf-8')
+        cls.seed = (folder / '016_map_places_seed.sql').read_text(encoding='utf-8')
         with cls.db.cursor() as c:
             c.execute('''CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
                 CREATE SCHEMA auth;

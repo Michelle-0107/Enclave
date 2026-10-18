@@ -16,9 +16,9 @@ Users can choose the exact entrance with Pick on map.
 
 In the existing Enclave Supabase project's SQL Editor, run in this order:
 
-1. `backend/sql/013_map_places.sql` creates the shared `public.map_places` table,
+1. `backend/sql/015_map_places.sql` creates the shared `public.map_places` table,
    resident-only read policy, and `search_map_places` RPC.
-2. `backend/sql/014_map_places_seed.sql` imports the 1,252 places with deterministic
+2. `backend/sql/016_map_places_seed.sql` imports the 1,252 places with deterministic
    IDs. Re-running it updates matching rows without duplicating them.
 3. Deploy the backend for `GET /api/v1/navigation/areas/{area_id}/places?q=...`.
 
