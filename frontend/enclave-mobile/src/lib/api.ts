@@ -749,6 +749,7 @@ export type NavigationRouteResponse = {
   obstacle_count: number;
   obstacle_snapshot_at: string | null;
   obstacle_source: 'community_reports' | null;
+  demo_facility_ids?: string[];
   confirmation_threshold: 2;
   data_source: 'openstreetmap_unverified' | 'synthetic_demo' | 'verified_accessibility_network';
   field_verified: boolean;
@@ -785,11 +786,38 @@ export type ResidentServiceArea = {
   enabled: boolean; routing_supported: boolean; resident_demo_supported: boolean;
 };
 
+export type DemoRouteRequest = {
+  origin: NavigationPoint;
+  destination: NavigationPoint;
+  profile: 'walking' | 'wheelchair';
+  start_candidates: NavigationPoint[];
+};
+
+export type DemoRouteOption = {
+  mode: RouteMode;
+  route: NavigationRouteResponse | null;
+  unavailable_reason: string | null;
+};
+
+export type DemoRouteResponse = {
+  area_id: string;
+  requested_origin: NavigationPoint;
+  selected_origin: NavigationPoint;
+  start_adjustment_meters: number;
+  adjusted_start: boolean;
+  options: DemoRouteOption[];
+};
+
 export const demoAreasApi = {
   getAll(accessToken: string): Promise<{ default_area_id: string; items: ResidentServiceArea[] }> {
     return request('/api/v1/navigation/areas', { accessToken, timeoutMs: 15000 });
   },
   getDataset(accessToken: string, areaId: string): Promise<{ area_id: string; dataset: unknown }> {
     return request(`/api/v1/navigation/areas/${encodeURIComponent(areaId)}/demo`, { accessToken, timeoutMs: 15000 });
+  },
+  getRoutes(accessToken: string, areaId: string, payload: DemoRouteRequest): Promise<DemoRouteResponse> {
+    return request(`/api/v1/navigation/areas/${encodeURIComponent(areaId)}/demo-routes`, {
+      method: 'POST', accessToken, body: payload, timeoutMs: 30000,
+    });
   },
 };

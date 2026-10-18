@@ -34,7 +34,7 @@ export type Route = {
   facilities: Facility[]; originSnap: Snap; destinationSnap: Snap;
   dataSource: Dataset['source']; fieldVerified: false;
 };
-export type ModeResult = { mode: Mode; route: Route | null };
+export type ModeResult = { mode: Mode; route: Route | null; unavailableReason?: string };
 export const modes: Mode[] = ['shortest', 'avoid_damage', 'accessible'];
 export const labels: Record<Mode, string> = {
   shortest: 'Shortest route', avoid_damage: 'Avoid damaged facilities', accessible: 'Verified step-free route',

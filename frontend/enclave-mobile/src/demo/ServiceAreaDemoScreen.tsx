@@ -102,7 +102,7 @@ export default function ServiceAreaDemoScreen(props: Props) {
       <Pressable accessibilityRole="button" disabled={loading} onPress={retryAreas} style={styles.retry}><Text style={styles.name}>Retry service areas</Text></Pressable>
     </View> : null}
     {loading ? <View style={styles.loading}><ActivityIndicator color={colors.navy} /><Text style={styles.hint}>Loading service-area map…</Text></View>
-      : current && <DemoMapScreen key={current.id} {...props} data={current.dataset} />}
+      : current && <DemoMapScreen key={current.id} {...props} areaId={current.id} data={current.dataset} />}
   </View>;
 }
 

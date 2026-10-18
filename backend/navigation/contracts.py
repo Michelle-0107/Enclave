@@ -89,6 +89,7 @@ class RouteResponse(BaseModel):
     obstacle_snapshot_at: datetime | None = None
     obstacle_count: int = Field(default=0,ge=0,le=100)
     obstacle_source: Literal['community_reports'] | None = None
+    demo_facility_ids: list[str] = Field(default_factory=list, max_length=200)
     confirmation_threshold: Literal[2] = 2
     warnings: list[str]
     attribution: str = 'OpenStreetMap contributors'
