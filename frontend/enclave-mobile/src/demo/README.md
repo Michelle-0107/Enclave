@@ -73,7 +73,7 @@ universal HTTPS link can open in the browser. No new dependency or env key is us
 ## Geometry and routing
 
 S / D begin at the original user-selected coordinates. Direct comparisons use the
-nearest eligible mapped road/footway within 40 m; all modes share those anchors.
+nearest eligible mapped road/footway within the backend's 50 m limit; all modes share those anchors.
 An off-network pin is retained rather than rejected at selection time.
 
 For Walking, access planning searches mapped points within 100 m of the selected
@@ -86,7 +86,7 @@ points are nearby positions on mapped ways, not surveyed entrances, and the
 100 m threshold is a demo product setting.
 
 After acceptance, tapping Go to adjusted starting point starts a separate approach
-stage. Optional foreground GPS marks Me and S, then starts the destination route
+stage. Foreground GPS marks Me and S, then starts the destination route
 when GPS reports both a position and accuracy within 20 m of S. A resident can
 confirm arrival manually if GPS is unavailable or inaccurate. The O-to-S transfer
 is not mapped or verified: distance and compass bearing are references only. The
@@ -96,7 +96,9 @@ time and facility totals and is never certified step-free. The destination stays
 fixed. Wheelchair does not use this ordinary-walking access fallback.
 Vehicle one-way tags do not constrain pedestrians, even on a cycleway or footway;
 explicit oneway:foot and directional foot restrictions do. Gates tagged access=no,
-locked gates, private access and foot=no remain excluded.
+locked gates and foot=no remain excluded. Active verified residents are treated
+as residents of enabled service areas; private local-road access and qualifying
+unmarked crossings follow the shared backend resident policy.
 
 The routing graph is split at the two selected positions and each facility's
 3 m restriction radius along its source segment. This supports endpoints in the
@@ -106,11 +108,16 @@ the original polyline. Only shared OSM junction IDs connect different ways.
 Mapped pedestrian direction is respected; a vehicle one-way restriction alone
 does not prohibit walking in the opposite direction.
 
-A binary-heap Dijkstra calculates routes on-device:
+For server-provided service areas, routes are calculated by
+`POST /api/v1/navigation/areas/{area_id}/demo-routes` on the same server-owned
+roadside graph used by live walking. Backend maneuver text, geometry indexes,
+and distances are retained for navigation. The on-device graph remains useful
+for fixture tests and nearby-access suggestions; it is not the routing authority
+for these service areas.
 
 | Choice | Eligibility |
 |---|---|
-| Shortest | Ignore damage and use the minimum distance in the bundled graph |
+| Shortest | Ignore damage and use the minimum distance in the server graph |
 | Avoid damaged facilities | Exclude confirmed fictional damage; stairs allowed |
 | Verified step-free route | Also exclude mapped/simulated stairs and non-step-free assumptions; verification remains a demo assumption |
 
@@ -122,15 +129,31 @@ distances or default destinations are stored in the app.
 
 The real road map does not certify safe pedestrian access, crossing availability,
 opening hours, slopes or wheelchair suitability. All facility/access conditions
-remain labelled demo assumptions. This resident demo compares routes and provides in-app foreground guidance.
-Start Enclave guidance first shows an unmapped access stage when required, with
-geographic bearing and proximity only. It explicitly asks the resident to confirm
-a safe public passage and arrival before continuing onto the mapped path. It does
-not present a compass bearing as a walkable line. Optional foreground GPS updates
-the Me marker and target distance. The watcher starts only after Use my location,
-handles denied permission, and stops on close/profile change/completion. It requests
-no background tracking. Mapped guidance advances manually through polyline points;
-it is not automatic turn-by-turn, voice navigation, or off-route rerouting.
+remain labelled demo assumptions. Start Enclave guidance starts foreground GPS,
+displays the next turn or road-crossing instruction, updates remaining mapped
+distance/time, and advances automatically along the route. GPS fixes worse than
+25 m accuracy, stale fixes, and out-of-order fixes do not advance navigation.
+Matching uses local progress and plausible movement so a nearby return leg does
+not skip intervening turns. Progress does not regress with GPS jitter.
+
+An adjusted start still requires consent before changing S. The approach stage
+shows only distance/bearing, not an invented connector. Destination guidance
+starts when both GPS distance to S and reported accuracy are within 20 m, or
+after explicit manual arrival confirmation. Arrival at the destination also
+requires proximity, sufficient route progress, and accurate GPS. Without location
+permission, instructions remain manually reviewable. The watcher is removed on
+pause, close, profile change, completion, or unmount. Background tracking and
+voice instructions are not enabled.
+
+When three or more accurate fixes remain farther than max(30 m, twice reported
+accuracy) from the local route for at least eight seconds, navigation requests
+a new backend route from GPS. Only one replan can run at a time; automatic retries
+have a 30-second cooldown. Replans preserve the destination and selected route
+mode/profile, pass no start-adjustment candidates, and never downgrade an
+accessible route to ordinary walking. Errors retain the previous route and offer
+an explicit retry. Closing navigation, changing endpoints/mode, or arrival
+invalidates a pending response. The map follows accurate GPS until the resident
+touches the map; Follow my location resumes camera following.
 Production report/What-if data are not integrated into this independent dataset.
 The internal route comparison performs no live API/database writes and needs no
 additional key or SQL. Car travel only opens its provider after the resident presses
@@ -150,6 +173,7 @@ node src/demo/__tests__/profiles.test.cjs
 node src/demo/__tests__/driving.test.cjs
 node src/demo/__tests__/access.test.cjs
 node src/demo/__tests__/guidance.test.cjs
+node src/demo/__tests__/navigation-progress.test.cjs
 python src/demo/tools/test_walking_direction.py
 npx tsc --noEmit
 ```
@@ -158,7 +182,7 @@ The source verifier checks coverage of every eligible source segment across the
 whole bbox, exact geometry, direction, OSM IDs, landmark names and positions.
 17 routing checks include same-edge endpoints, partial facility intersections,
 snapping, directional/disconnected cases, changed destinations and comparison
-with an independent Bellman-Ford oracle on actual source graph pairs. 17 UI
+with an independent Bellman-Ford oracle on actual source graph pairs. UI
 checks cover empty initial state, the absence of management controls, selection,
 search, stale-route invalidation, marker events, existing app callbacks and travel
 profile selection. Six profile tests check walking/wheelchair eligibility and
@@ -168,8 +192,12 @@ Run lint and an Android release bundle check too. These checks do not replace
 phone testing of native map taps, source events, gestures and keyboard layout.
 
 Six access regressions include the reported gate detour, an explicitly disconnected
-nearest stub, fixed stair destinations and no fabricated connector. Four guidance
-checks cover staged confirmation, denied GPS, foreground updates and subscription
-cleanup, including an in-flight start after unmount. Three Python checks distinguish
+nearest stub, fixed stair destinations and no fabricated connector. GPS-injected
+guidance checks cover automatic progress, turn prompts, noisy/stale fixes,
+adjusted-start arrival, completion, replan debounce/cooldown/failure, route updates,
+and subscription cleanup, including in-flight operations after unmount. Map
+integration checks cover retained instructions, fixed destinations/profiles,
+accessible-route failures, cancellation, arrival races, and camera gestures.
+Three Python checks distinguish
 vehicle one-way from pedestrian direction. Native GPS/map behavior still needs a
 phone test; no field survey is claimed.

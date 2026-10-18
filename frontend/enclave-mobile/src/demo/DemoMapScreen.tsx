@@ -12,6 +12,7 @@ import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, la
 import { drivingDirectionsUrl } from './driving';
 import { MAX_START_ADJUSTMENT_METERS, type AccessPlan } from './access';
 import JourneyGuidance from './JourneyGuidance';
+import { geometryDistances } from './navigationProgress';
 
 type Field = 'origin' | 'destination';
 type Props = { areaId?: string; data?: Dataset; onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
@@ -54,7 +55,9 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const locationRequest = useRef(0);
   const locationBusy = useRef(false);
   const routeRequest = useRef(0);
-  useEffect(() => () => { locationRequest.current += 1; routeRequest.current += 1; onMapTouchChange?.(false); }, [onMapTouchChange]);
+  const guidanceActive = useRef(false);
+  const followCamera = useRef(true);
+  useEffect(() => () => { locationRequest.current += 1; routeRequest.current += 1; guidanceActive.current = false; onMapTouchChange?.(false); }, [onMapTouchChange]);
   const approachCameraCentered = useRef(false);
   const camera = useRef<CameraRef>(null);
   const suggestions = searching ? searchPlaces(field === 'origin' ? startText : endText, dataset) : [];
@@ -71,7 +74,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), [dataset]);
   const bounds: [number, number, number, number] = dataset.bbox;
 
-  function clearRoute() { routeRequest.current += 1; setCalculating(false); setResults([]); setSelected(null); setError(''); setAlternative(null); setAdjustmentVisible(false); setWaitForAdjustedStart(false); setRouteReady(true); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); approachCameraCentered.current = false; }
+  function clearRoute() { routeRequest.current += 1; guidanceActive.current = false; followCamera.current = true; setCalculating(false); setResults([]); setSelected(null); setError(''); setAlternative(null); setAdjustmentVisible(false); setWaitForAdjustedStart(false); setRouteReady(true); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); approachCameraCentered.current = false; }
   function changeTransport(next: Transport) {
     if (next === transport) return;
     setTransport(next); clearRoute(); setSearching(false); setMode(next === 'wheelchair' ? 'accessible' : 'shortest');
@@ -98,14 +101,20 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       else { setDestination(selection); setEndText(label); }
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to select that location.'); }
   }
-  function routeResults(response: DemoRouteResponse): ModeResult[] {
+  const routeResults = useCallback((response: DemoRouteResponse): ModeResult[] => {
     return response.options.map(option => {
       const source = option.route;
       if (!source) return { mode: option.mode, route: null, unavailableReason: option.unavailable_reason ?? undefined };
       const coordinates = source.geometry.coordinates.map(point => [point[0], point[1]] as Coordinate);
+      const cumulative = geometryDistances(coordinates);
       const facilityIds = new Set(source.demo_facility_ids ?? []);
       const snap = (coordinate: Coordinate, distance: number, id: string) => ({ edgeId: id, coordinate, distance, offset: 0 });
       const route: Route = {
+        id: source.route_id,
+        maneuvers: source.maneuvers.map(step => ({ instruction: step.instruction, coordinate: step.coordinate,
+          type: step.type, distanceFromStart: step.begin_shape_index === undefined
+            ? step.distance_from_start_meters * (cumulative.at(-1)! / source.distance_meters)
+            : cumulative[step.begin_shape_index] ?? step.distance_from_start_meters })),
         profile: transport === 'wheelchair' ? 'wheelchair' : 'walking', mode: option.mode,
         distance: source.distance_meters, seconds: source.duration_seconds, coordinates, segments: [],
         facilities: dataset.facilities.filter(item => facilityIds.has(item.id)),
@@ -115,6 +124,36 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       };
       return { mode: option.mode, route };
     });
+  }, [dataset, transport]);
+
+  const rerouteFromPosition = useCallback(async (point: Coordinate): Promise<boolean> => {
+    if (!guidanceActive.current || !destination || transport === 'driving') return false;
+    if (!insidePilot(point, dataset)) throw new Error('You are outside the selected service area. Return to coverage or choose another area.');
+    const requestId = ++routeRequest.current;
+    const { data: session, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.session?.access_token) throw new Error('Sign in again to recalculate your route.');
+    if (!guidanceActive.current || requestId !== routeRequest.current) return false;
+    const response = await demoAreasApi.getRoutes(session.session.access_token, areaId, {
+      origin: { longitude: point[0], latitude: point[1] },
+      destination: { longitude: destination.coordinate[0], latitude: destination.coordinate[1] },
+      profile: transport, start_candidates: [],
+    });
+    if (!guidanceActive.current || requestId !== routeRequest.current) return false;
+    const next = routeResults(response);
+    const selectedRoute = next.find(item => item.mode === mode);
+    if (response.adjusted_start || !selectedRoute?.route) throw new Error(selectedRoute?.unavailableReason ?? 'No route is available for your selected route type. The destination and route type have been kept.');
+    setResults(next);
+    setOrigin({ coordinate: point, label: 'Current location · updated route' });
+    setStartText('Current location · updated route'); setOriginalOrigin(null);
+    setWaitForAdjustedStart(false); setRouteReady(true); setError('');
+    return true;
+  }, [areaId, dataset, destination, mode, routeResults, transport]);
+
+  function toggleGuidance() {
+    guidanceActive.current = !navigating;
+    followCamera.current = true;
+    if (navigating) { routeRequest.current += 1; setGpsPosition(null); setGuidanceTarget(null); }
+    setNavigating(!navigating); setRouteReady(!waitForAdjustedStart);
   }
 
   async function showRoutes() {
@@ -190,7 +229,9 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const handleGuidancePosition = useCallback((point: Coordinate | null) => {
     setGpsPosition(point);
     if (!point) approachCameraCentered.current = false;
+    else if (guidanceActive.current && followCamera.current) camera.current?.easeTo({ center: point, zoom: 17, duration: 500 });
   }, []);
+  const handleGuidanceComplete = useCallback(() => { guidanceActive.current = false; routeRequest.current += 1; }, []);
   useEffect(() => {
     if (!navigating || !waitForAdjustedStart || routeReady || !gpsPosition || !origin || approachCameraCentered.current) return;
     const points = [gpsPosition, origin.coordinate];
@@ -293,7 +334,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <Pressable accessibilityRole="button" disabled={locating} onPress={recentre} style={styles.textButton}><Text style={styles.link}>Recentre</Text></Pressable>
     </View>
     {locationStatus ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{locationStatus}</Text> : null}
-    <View style={styles.mapContainer} onTouchStart={() => onMapTouchChange?.(true)}
+    <View style={styles.mapContainer} onTouchStart={() => { followCamera.current = false; onMapTouchChange?.(true); }}
       onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
       onTouchCancel={() => onMapTouchChange?.(false)}>
       <Map key={mapKey} style={styles.map} mapStyle={dataset.styleUrl} androidView="texture" compass attribution dragPan touchZoom doubleTapZoom
@@ -353,14 +394,15 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <Text style={styles.chooseButtonText}>{transport === 'driving' ? 'Open driving navigation' : calculating ? 'Calculating routes…' : 'Choose route'}</Text></Pressable>}
     {originalOrigin && <View style={styles.selectedPanel}><Text style={styles.cardTitle}>Starting point updated</Text><Text style={styles.body}>Original point O stays on the map as a reference. The route now starts from S, the connected point you accepted.</Text><Text style={styles.hint}>The transfer between O and S is not a mapped or verified path.</Text></View>}
     {route && origin && destination && <>
-      <Pressable accessibilityRole="button" onPress={() => { if (navigating) { setNavigating(false); setRouteReady(!waitForAdjustedStart); setGpsPosition(null); setGuidanceTarget(null); } else { setNavigating(true); setRouteReady(!waitForAdjustedStart); } }} style={styles.chooseButton}><Text style={styles.chooseButtonText}>{navigating ? 'Close route guidance' : waitForAdjustedStart ? 'Go to adjusted starting point' : 'Start Enclave guidance'}</Text></Pressable>
-      {navigating && <JourneyGuidance key={transport + mode + route.originSnap.edgeId + route.destinationSnap.edgeId} route={route} origin={origin.coordinate} destination={destination.coordinate} waitForStart={waitForAdjustedStart} onRouteReady={setRouteReady} onPosition={handleGuidancePosition} onTarget={setGuidanceTarget} />}
+      <Pressable accessibilityRole="button" onPress={toggleGuidance} style={styles.chooseButton}><Text style={styles.chooseButtonText}>{navigating ? 'Close route guidance' : waitForAdjustedStart ? 'Go to adjusted starting point' : 'Start Enclave guidance'}</Text></Pressable>
+      {navigating && <JourneyGuidance route={route} origin={origin.coordinate} destination={destination.coordinate} waitForStart={waitForAdjustedStart} onRouteReady={setRouteReady} onPosition={handleGuidancePosition} onTarget={setGuidanceTarget} onReroute={rerouteFromPosition} onComplete={handleGuidanceComplete} />}
     </>}
     {navigating && guidanceTarget && <Pressable accessibilityRole="button" onPress={() => camera.current?.easeTo({ center: guidanceTarget, zoom: 18, duration: 400 })} style={styles.textButton}><Text style={styles.link}>Focus next point</Text></Pressable>}
+    {navigating && gpsPosition && <Pressable accessibilityRole="button" onPress={() => { followCamera.current = true; camera.current?.easeTo({ center: gpsPosition, zoom: 17, duration: 400 }); }} style={styles.textButton}><Text style={styles.link}>Follow my location</Text></Pressable>}
     {results.length > 0 && <>
       <Text style={styles.title}>Choose your route.</Text>
       {results.map(result => <Pressable key={result.mode} accessibilityRole="radio" accessibilityState={{ checked: result.mode === mode, disabled: !result.route }} disabled={!result.route}
-        onPress={() => { setMode(result.mode); setSelected(null); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); if (result.route) fitRoute(result.route); }} style={[styles.routeCard, result.mode === mode && styles.selectedCard]}>
+        onPress={() => { routeRequest.current += 1; guidanceActive.current = false; setMode(result.mode); setSelected(null); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); if (result.route) fitRoute(result.route); }} style={[styles.routeCard, result.mode === mode && styles.selectedCard]}>
         <Text style={styles.cardTitle}>{labels[result.mode]} · {result.route ? formatDistance(result.route.distance) : 'Unavailable'}</Text>
         <Text style={styles.body}>{result.mode === 'shortest' ? 'Minimum mapped distance; may pass stairs or reported damage.' : result.mode === 'avoid_damage' ? 'Avoids confirmed damage; may use stairs.' : 'Avoids stairs and damage. Demo verification only; not field verified.'}</Text>
         {result.route ? <Text style={styles.body}>{Math.ceil(result.route.seconds / 60)} min estimate · {result.route.facilities.filter(f => isBlocked(f, state)).length} reported issues on route · {result.route.facilities.length} facilities</Text> :

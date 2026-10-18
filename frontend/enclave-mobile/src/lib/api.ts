@@ -718,6 +718,9 @@ export type NavigationRequest = {
 };
 
 export type NavigationManeuver = {
+  type?: number;
+  begin_shape_index?: number;
+  end_shape_index?: number;
   instruction: string;
   spoken_instruction: string;
   coordinate: [number, number];

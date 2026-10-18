@@ -2,12 +2,12 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict'),ts=require('typescript');
 const root=path.join(__dirname,'..');const raw=JSON.parse(fs.readFileSync(path.join(root,'kl-east-demo.json'),'utf8'));
 function compile(name,requires){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,name),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:requires,fetch:()=>{throw Error('Resident demo must not call live APIs');},console,Error});return m.exports;}
-const network=compile('network.ts',()=>raw);const driving=compile('driving.ts',()=>network);const access=compile('access.ts',()=>network);let states=[],cursor=0,exited=false,reported=false,cameraCalls=[],openedUrls=[],serverCalls=[];
+const network=compile('network.ts',()=>raw);const driving=compile('driving.ts',()=>network);const access=compile('access.ts',()=>network);const progress=compile('navigationProgress.ts',()=>network);let states=[],cursor=0,exited=false,reported=false,cameraCalls=[],openedUrls=[],serverCalls=[],responder=null;
 function serverResponse(payload){const adjusted=Math.abs(payload.origin.longitude-101.7310841)<1e-7;const selected=adjusted?(payload.start_candidates[0]||payload.origin):payload.origin;const modes=payload.profile==='wheelchair'?['accessible']:['shortest','avoid_damage','accessible'];return{area_id:'kl-east-pilot',requested_origin:payload.origin,selected_origin:selected,start_adjustment_meters:adjusted?35:0,adjusted_start:adjusted,options:modes.map((mode,i)=>({mode,unavailable_reason:null,route:{route_id:`demo-${serverCalls.length}-${mode}`,generated_at:new Date().toISOString(),area:'kl-east-pilot',routing_engine:'osm_roadside',road_fallback_used:true,crossing_policy:'mapped_facilities_only',mapped_crossing_count:0,route_mode:mode,geometry:{type:'LineString',coordinates:[[selected.longitude,selected.latitude],[payload.destination.longitude,payload.destination.latitude]]},distance_meters:160+i*25,duration_seconds:160,origin_snap_distance_meters:0,destination_snap_distance_meters:0,maneuvers:[],community_issue_avoidance:'not_applied',obstacle_count:0,obstacle_snapshot_at:null,obstacle_source:null,confirmation_threshold:2,data_source:'openstreetmap_unverified',field_verified:false,accessibility_status:mode==='accessible'?'synthetic_network':'not_requested',warnings:['Demo-only route'],attribution:'OpenStreetMap contributors',attribution_url:'https://www.openstreetmap.org/copyright',demo_facility_ids:[raw.facilities[0].id]}}))};}
-const react={useEffect:()=>{},useCallback:fn=>fn,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return[states[i],next=>states[i]=typeof next==='function'?next(states[i]):next];},useMemo:fn=>fn(),useRef:()=>({current:{fitBounds:(bounds,options)=>{assert.ok(Array.isArray(bounds)&&bounds.length===4&&bounds.every(Number.isFinite));assert.ok(options.padding);cameraCalls.push(bounds);},easeTo:x=>cameraCalls.push(x)}})};
+const react={useEffect:()=>{},useCallback:fn=>fn,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return[states[i],next=>states[i]=typeof next==='function'?next(states[i]):next];},useMemo:fn=>fn(),useRef(initial){const i=cursor++;if(!(i in states))states[i]={current:initial===null?{fitBounds:(bounds,options)=>{assert.ok(Array.isArray(bounds)&&bounds.length===4&&bounds.every(Number.isFinite));assert.ok(options.padding);cameraCalls.push(bounds);},easeTo:x=>cameraCalls.push(x)}:initial};return states[i];}};
 const Screen=compile('DemoMapScreen.tsx',name=>{
  if(name==='../savedPlaces/SavedPlacesControl')return{__esModule:true,default:'SavedPlacesControl'};
- if(name==='../lib/api')return{demoAreasApi:{getRoutes:async(token,areaId,payload)=>{serverCalls.push({token,areaId,payload});return serverResponse(payload);}}};
+ if(name==='../lib/api')return{demoAreasApi:{getRoutes:async(token,areaId,payload)=>{serverCalls.push({token,areaId,payload});return responder?responder(payload):serverResponse(payload);}}};
  if(name==='../lib/supabase')return{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'fixture-token'}},error:null})}}};
  if(name==='expo-location')return {};
  if(name==='react')return react;
@@ -17,7 +17,7 @@ const Screen=compile('DemoMapScreen.tsx',name=>{
  if(name==='@expo/vector-icons')return{MaterialCommunityIcons:'MaterialCommunityIcons'};
  if(name==='./access')return access;if(name==='./JourneyGuidance')return{__esModule:true,default:'JourneyGuidance'};
  if(name==='../theme')return{colors:{navy:'#202C46',muted:'#687083',white:'#FFFFFF',border:'#E3E1DC',lavender:'#E9E7F1'}};
- if(name==='./network')return network;if(name==='./driving')return driving;throw Error('Unexpected import '+name);
+ if(name==='./network')return network;if(name==='./driving')return driving;if(name==='./navigationProgress')return progress;throw Error('Unexpected import '+name);
 }).default;
 function tree(){cursor=0;return Screen({areaId:'kl-east-pilot',onShowLiveMap:()=>exited=true,onReportPress:()=>reported=true});}
 function all(t){if(!t||typeof t!=='object')return[];if(Array.isArray(t))return t.flatMap(all);return[t,...all(t.props?.children)];}
@@ -26,7 +26,7 @@ function find(t,predicate){const item=all(t).find(predicate);assert.ok(item,'UI 
 function button(t,label){return find(t,n=>n.type==='Pressable'&&(n.props.accessibilityLabel===label||text(n)===label));}
 function mapTap(t,coordinate){find(t,n=>n.type==='Map').props.onPress({nativeEvent:{lngLat:coordinate}});}
 async function chooseJourney(){let t=tree();mapTap(t,[101.7307337,3.2254158]);t=tree();mapTap(t,[101.732159,3.2277914]);t=tree();await button(t,'Choose route').props.onPress();return tree();}
-const cases=[],pending=[];function test(name,fn){pending.push(async()=>{states=[];cursor=0;exited=false;reported=false;cameraCalls=[];openedUrls=[];serverCalls=[];try{await fn();cases.push({name,passed:true});}catch(e){cases.push({name,passed:false,error:e.message});}});}
+const cases=[],pending=[];function test(name,fn){pending.push(async()=>{states=[];cursor=0;exited=false;reported=false;cameraCalls=[];openedUrls=[];serverCalls=[];responder=null;try{await fn();cases.push({name,passed:true});}catch(e){cases.push({name,passed:false,error:e.message});}});}
 test('Resident screen starts with blank inputs, no route or predefined endpoints',()=>{
  const t=tree();const inputs=all(t).filter(n=>n.type==='TextInput');assert.equal(inputs.length,2);assert.ok(inputs.every(n=>n.props.value===''));
  assert.equal(all(t).filter(n=>n.type==='Marker').length,0);assert.ok(!all(t).some(n=>n.props?.id==='demo-selected-route'));
@@ -106,4 +106,57 @@ test('Backend nearby-start suggestion requires consent before updating the start
  button(t,'Accept and update start').props.onPress();t=tree();assert.ok(all(t).some(n=>n.props?.id==='demo-original-start'));
  button(t,'Go to adjusted starting point').props.onPress();t=tree();assert.ok(all(t).some(n=>n.type==='JourneyGuidance'));
 });
+test('Backend maneuver text and type are retained by the navigation route',async()=>{
+ responder=payload=>{const response=serverResponse(payload);for(const option of response.options)option.route.maneuvers=[{instruction:'Turn left onto Garden Road.',spoken_instruction:'Turn left.',coordinate:[payload.origin.longitude,payload.origin.latitude],distance_from_start_meters:0,begin_shape_index:0,type:15}];return response;};
+ let t=await chooseJourney();button(t,'Start Enclave guidance').props.onPress();t=tree();const guide=find(t,n=>n.type==='JourneyGuidance');
+ assert.equal(guide.props.route.maneuvers[0].instruction,'Turn left onto Garden Road.');assert.equal(guide.props.route.maneuvers[0].type,15);assert.equal(guide.props.route.maneuvers[0].distanceFromStart,0);
+});
+
+test('GPS reroute keeps the selected avoid-damage mode and destination and uses no silent start adjustment',async()=>{
+ let t=await chooseJourney();find(t,n=>n.props?.accessibilityRole==='radio'&&text(n).includes('Avoid damaged facilities')).props.onPress();t=tree();button(t,'Start Enclave guidance').props.onPress();t=tree();
+ const destination=Array.from(find(t,n=>n.props?.id==='demo-endpoint-1').props.lngLat),gps=[101.7308,3.2257];
+ const result=await find(t,n=>n.type==='JourneyGuidance').props.onReroute(gps);assert.equal(result,true);t=tree();
+ assert.equal(serverCalls.length,2);assert.equal(serverCalls[1].payload.profile,'walking');assert.equal(serverCalls[1].payload.start_candidates.length,0);
+ assert.equal(serverCalls[1].payload.destination.longitude,destination[0]);assert.equal(serverCalls[1].payload.destination.latitude,destination[1]);
+ assert.equal(find(t,n=>n.type==='JourneyGuidance').props.route.mode,'avoid_damage');assert.deepEqual(Array.from(find(t,n=>n.props?.id==='demo-endpoint-0').props.lngLat),gps);
+});
+
+test('Wheelchair reroute failure retains the existing accessible route instead of falling back to walking',async()=>{
+ let t=await chooseJourney();button(t,'Wheelchair').props.onPress();t=tree();await button(t,'Choose route').props.onPress();t=tree();button(t,'Start Enclave guidance').props.onPress();t=tree();
+ const guide=find(t,n=>n.type==='JourneyGuidance'),oldId=guide.props.route.id;
+ responder=payload=>{const response=serverResponse(payload);for(const option of response.options){option.route=null;option.unavailable_reason='No step-free route from this position.';}return response;};
+ await assert.rejects(guide.props.onReroute([101.7308,3.2257]),/No step-free route/);t=tree();
+ assert.equal(serverCalls.at(-1).payload.profile,'wheelchair');assert.equal(find(t,n=>n.type==='JourneyGuidance').props.route.id,oldId);assert.equal(find(t,n=>n.type==='JourneyGuidance').props.route.mode,'accessible');
+});
+
+test('Closing navigation invalidates a pending reroute response',async()=>{
+ let t=await chooseJourney();const original=Array.from(find(t,n=>n.props?.id==='demo-endpoint-0').props.lngLat);button(t,'Start Enclave guidance').props.onPress();t=tree();let finish,payload;
+ responder=body=>{payload=body;return new Promise(resolve=>finish=resolve);};const response=find(t,n=>n.type==='JourneyGuidance').props.onReroute([101.7308,3.2257]);
+ await new Promise(resolve=>setImmediate(resolve));button(tree(),'Close route guidance').props.onPress();finish(serverResponse(payload));assert.equal(await response,false);t=tree();
+ assert.ok(!all(t).some(n=>n.type==='JourneyGuidance'));assert.deepEqual(Array.from(find(t,n=>n.props?.id==='demo-endpoint-0').props.lngLat),original);
+});
+
+test('Changing route mode invalidates an old in-flight reroute',async()=>{
+ let t=await chooseJourney();button(t,'Start Enclave guidance').props.onPress();t=tree();let finish,payload;
+ responder=body=>{payload=body;return new Promise(resolve=>finish=resolve);};const response=find(t,n=>n.type==='JourneyGuidance').props.onReroute([101.7308,3.2257]);await new Promise(resolve=>setImmediate(resolve));
+ find(tree(),n=>n.props?.accessibilityRole==='radio'&&text(n).includes('Avoid damaged facilities')).props.onPress();finish(serverResponse(payload));assert.equal(await response,false);t=tree();
+ assert.ok(find(t,n=>n.props?.accessibilityRole==='radio'&&text(n).includes('Avoid damaged facilities')).props.accessibilityState.checked);assert.ok(!all(t).some(n=>n.type==='JourneyGuidance'));
+});
+
+test('Arrival invalidates a pending reroute so an old response cannot restart the journey',async()=>{
+ let t=await chooseJourney();button(t,'Start Enclave guidance').props.onPress();t=tree();const guide=find(t,n=>n.type==='JourneyGuidance'),oldId=guide.props.route.id;let finish,payload;
+ responder=body=>{payload=body;return new Promise(resolve=>finish=resolve);};const response=guide.props.onReroute([101.7308,3.2257]);await new Promise(resolve=>setImmediate(resolve));
+ guide.props.onComplete();finish(serverResponse(payload));assert.equal(await response,false);t=tree();assert.equal(find(t,n=>n.type==='JourneyGuidance').props.route.id,oldId);
+});
+
+test('Off-area GPS never makes a backend reroute request',async()=>{
+ let t=await chooseJourney();button(t,'Start Enclave guidance').props.onPress();t=tree();await assert.rejects(find(t,n=>n.type==='JourneyGuidance').props.onReroute([0,0]),/outside the selected service area/);assert.equal(serverCalls.length,1);
+});
+
+test('Following GPS does not fight user map gestures and can be resumed explicitly',async()=>{
+ let t=await chooseJourney();button(t,'Start Enclave guidance').props.onPress();t=tree();find(t,n=>n.type==='JourneyGuidance').props.onPosition([101.7308,3.2257]);t=tree();const count=cameraCalls.length;
+ find(t,n=>n.type==='View'&&n.props.onTouchStart).props.onTouchStart();find(t,n=>n.type==='JourneyGuidance').props.onPosition([101.7309,3.2257]);t=tree();assert.equal(cameraCalls.length,count);
+ button(t,'Follow my location').props.onPress();assert.equal(cameraCalls.length,count+1);
+});
+
 void(async()=>{for(const run of pending)await run();console.log(JSON.stringify(cases,null,2));process.exitCode=cases.some(c=>!c.passed)?1:0;})();
