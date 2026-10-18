@@ -27,6 +27,8 @@ export type ResidentReport = {
   description: string;
   category: string;
   priority: string;
+  latitude?: number;
+  longitude?: number;
   photoUri?: string;
 };
 
@@ -272,6 +274,8 @@ function mapReportRecord(record: ReportRecord): ResidentReport {
     description: record.description,
     category: record.category || 'Uncategorised',
     priority: record.priority || 'Not set',
+    latitude: record.latitude,
+    longitude: record.longitude,
     photoUri: record.image_url || undefined,
   };
 }

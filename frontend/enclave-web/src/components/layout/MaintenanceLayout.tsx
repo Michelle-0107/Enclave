@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ClipboardList, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const navigation = [
   { label: "My tasks", href: "/maintenance", icon: ClipboardList },
@@ -25,6 +26,7 @@ export default function MaintenanceLayout({ children }: Props) {
   const auth = useAuth();
   const [logoutError, setLogoutError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   useEffect(() => {
     if (auth.ready && !auth.user && !auth.error) router.replace("/sign-in");
     if (auth.ready && auth.user && auth.role === "management") router.replace("/management");
@@ -129,7 +131,7 @@ export default function MaintenanceLayout({ children }: Props) {
         <button
           type="button"
           disabled={signingOut}
-          onClick={logout}
+          onClick={() => setConfirmSignOut(true)}
           title="Log out will be connected with staff sign-in"
           className="mt-9 flex min-h-[52px] w-full items-center gap-[14px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground opacity-60"
         >
@@ -225,6 +227,15 @@ export default function MaintenanceLayout({ children }: Props) {
           })}
         </div>
       </nav>
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Confirm log out"
+        description="Are you sure you want to log out of your maintenance account?"
+        confirmLabel="Log out"
+        busy={signingOut}
+        onCancel={() => setConfirmSignOut(false)}
+        onConfirm={() => void logout()}
+      />
     </div>
   );
 }

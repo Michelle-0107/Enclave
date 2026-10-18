@@ -2,12 +2,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useMaintenance } from "./MaintenanceProvider";
 import { action, Heading } from "./Common";
 export default function Account() {
   const { onSignOut, demo } = useMaintenance();
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const router = useRouter();
   async function logout() {
     if (!onSignOut) {
@@ -52,7 +54,7 @@ export default function Account() {
         variant="secondary"
         className={action}
         disabled={busy}
-        onClick={logout}
+        onClick={() => setConfirmSignOut(true)}
       >
         {busy ? "Signing out…" : "Log out"}
       </Button>
@@ -61,6 +63,15 @@ export default function Account() {
           {notice}
         </p>
       )}
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Confirm log out"
+        description="Are you sure you want to log out of your maintenance account?"
+        confirmLabel="Log out"
+        busy={busy}
+        onCancel={() => setConfirmSignOut(false)}
+        onConfirm={() => void logout()}
+      />
     </section>
   );
 }

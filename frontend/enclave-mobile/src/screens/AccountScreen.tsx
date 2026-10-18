@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   ActivityIndicator,
   Pressable,
   StyleSheet,
@@ -31,6 +32,18 @@ export default function AccountScreen({
   const [residency, setResidency] = useState<ResidencyRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  function confirmLogOut() {
+    Alert.alert(
+      'Confirm log out',
+      'Are you sure you want to log out of your account?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Log out', style: 'destructive', onPress: onLogOut },
+      ],
+      { cancelable: true },
+    );
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -177,7 +190,7 @@ export default function AccountScreen({
 
       <Pressable
         accessibilityRole="button"
-        onPress={onLogOut}
+        onPress={confirmLogOut}
         style={({ pressed }) => [
           styles.logoutButton,
           pressed && styles.pressed,

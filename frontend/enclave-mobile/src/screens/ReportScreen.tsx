@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -13,9 +14,6 @@ import ReportPhotoScreen from './ReportPhotoScreen';
 import ReportLocationScreen, {
   type ReportLocationDetails,
 } from './ReportLocationScreen';
-import ReportReviewScreen, {
-  type ReportReviewData,
-} from './ReportReviewScreen';
 import ReportSuccessScreen from './ReportSuccessScreen';
 import type { ResidentReport } from './MyReportsScreen';
 
@@ -37,6 +35,7 @@ type Props = {
   onGoHome: () => void;
   onViewReports: () => void;
   onReportCreated: (report: ResidentReport) => void;
+  onDescriptionFocus?: () => void;
   onStepChange?: () => void;
 };
 
@@ -44,7 +43,6 @@ type Step =
   | 'photo'
   | 'location'
   | 'issue'
-  | 'review'
   | 'success';
 
 type Selection = {
@@ -105,6 +103,7 @@ export default function ReportScreen({
   onGoHome,
   onViewReports,
   onReportCreated,
+  onDescriptionFocus,
   onStepChange,
 }: Props) {
   const [step, setStep] = useState<Step>('photo');
@@ -114,9 +113,6 @@ export default function ReportScreen({
 
   const [details, setDetails] =
     useState<ReportLocationDetails>();
-
-  const [review, setReview] =
-    useState<ReportReviewData>();
 
   const [selection, setSelection] =
     useState<Selection>();
@@ -180,9 +176,7 @@ export default function ReportScreen({
     );
   }
 
-  async function handleSubmit(
-    reviewData: ReportReviewData,
-  ) {
+  async function handleSubmit(selected: Selection | undefined = selection) {
     if (submitLock.current || uploadUncertain) {
       return;
     }
@@ -207,7 +201,7 @@ export default function ReportScreen({
       return;
     }
 
-    if (!selection) {
+    if (!selected) {
       goToStep('issue');
       return;
     }
@@ -215,8 +209,8 @@ export default function ReportScreen({
     const separation = distanceMeters(
       details.coordinates.latitude,
       details.coordinates.longitude,
-      selection.facility.latitude,
-      selection.facility.longitude,
+      selected.facility.latitude,
+      selected.facility.longitude,
     );
 
     if (
@@ -234,7 +228,6 @@ export default function ReportScreen({
 
     submitLock.current = true;
     setIsSubmitting(true);
-    setReview(reviewData);
     setLinkError('');
 
     let uploadedTicket = pendingTicket;
@@ -316,7 +309,6 @@ export default function ReportScreen({
           onReportCreated(
             mapCreatedReport(
               record,
-              details.location,
               photo.uri,
             ),
           );
@@ -326,7 +318,7 @@ export default function ReportScreen({
       const linkResponse = await linkTicket(
         accessToken,
         uploadedTicket,
-        selection,
+        selected,
       );
 
       setLinkOutcome({
@@ -371,30 +363,14 @@ export default function ReportScreen({
         return (
           <ReportLocationScreen
             initialDetails={details}
+            onDescriptionFocus={onDescriptionFocus}
             onBack={() => goToStep('photo')}
             onContinue={handleLocationContinue}
           />
         );
 
       case 'issue':
-        if (!details) {
-          return null;
-        }
-
-        return (
-          <IssueSelection
-            details={details}
-            initialSelection={selection}
-            onBack={() => goToStep('location')}
-            onContinue={(value) => {
-              setSelection(value);
-              goToStep('review');
-            }}
-          />
-        );
-
-      case 'review':
-        if (!photo || !details || !selection) {
+        if (!details || !photo) {
           return null;
         }
 
@@ -423,11 +399,7 @@ export default function ReportScreen({
               <Pressable
                 accessibilityRole="button"
                 disabled={isSubmitting}
-                onPress={() => {
-                  if (review) {
-                    void handleSubmit(review);
-                  }
-                }}
+                onPress={() => void handleSubmit()}
                 style={[
                   styles.button,
                   isSubmitting && styles.disabled,
@@ -479,31 +451,16 @@ export default function ReportScreen({
         }
 
         return (
-          <View>
-            <View style={styles.summary}>
-              <Text style={styles.label}>
-                {selection.facility.name}
-              </Text>
-
-              <Text style={styles.body}>
-                {selection.faultKind === 'damage'
-                  ? 'Damage'
-                  : 'Obstruction'}
-
-                {selection.issueId
-                  ? ' · Existing issue'
-                  : ' · New or matching open issue'}
-              </Text>
-            </View>
-
-            <ReportReviewScreen
-              photo={photo}
-              details={details}
-              initialReview={review}
-              onBack={() => goToStep('issue')}
-              onSubmit={handleSubmit}
-            />
-          </View>
+          <IssueSelection
+            details={details}
+            photoUri={photo.uri}
+            initialSelection={selection}
+            onBack={() => goToStep('location')}
+            onSubmit={(value) => {
+              setSelection(value);
+              void handleSubmit(value);
+            }}
+          />
         );
 
       case 'success':
@@ -548,16 +505,18 @@ export default function ReportScreen({
 
 type IssueSelectionProps = {
   details: ReportLocationDetails;
+  photoUri: string;
   initialSelection?: Selection;
   onBack: () => void;
-  onContinue: (selection: Selection) => void;
+  onSubmit: (selection: Selection) => void;
 };
 
 function IssueSelection({
   details,
+  photoUri,
   initialSelection,
   onBack,
-  onContinue,
+  onSubmit,
 }: IssueSelectionProps) {
   const [facilities, setFacilities] =
     useState<FacilityRecord[]>([]);
@@ -742,6 +701,7 @@ function IssueSelection({
 
   return (
     <View style={styles.panel}>
+      <Text style={styles.stepLabel}>STEP 03 OF 03</Text>
       <Pressable
         accessibilityRole="button"
         onPress={onBack}
@@ -846,15 +806,14 @@ function IssueSelection({
 
       {selected && !loading && !error && (
         <View style={styles.summary}>
+          <Text style={styles.label}>Confirm report</Text>
+          <Image source={{ uri: photoUri }} style={styles.confirmPhoto} resizeMode="contain" />
+          <Text style={styles.body}>Location: {coordinates ? `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}` : 'Not selected'}</Text>
+          <Text style={styles.body}>Description: {details.description}</Text>
           <Text style={styles.body}>
             {existingIssue
               ? `Matching open issue: ${existingIssue.reporter_count} residents reported. Your report will be linked to this issue.`
               : 'Your report will create or join an open issue for this facility and problem type.'}
-          </Text>
-
-          <Text style={styles.body}>
-            A map marker appears after reports from at least
-            2 distinct verified residents.
           </Text>
         </View>
       )}
@@ -867,7 +826,7 @@ function IssueSelection({
             return;
           }
 
-          onContinue({
+          onSubmit({
             facility: selected,
             faultKind,
             issueId: existingIssue?.id,
@@ -879,7 +838,7 @@ function IssueSelection({
         ]}
       >
         <Text style={styles.buttonText}>
-          Continue to review
+          Submit report
         </Text>
       </Pressable>
     </View>
@@ -888,13 +847,12 @@ function IssueSelection({
 
 function mapCreatedReport(
   record: ReportRecord,
-  location: string,
   photoUri: string,
 ): ResidentReport {
   return {
     id: record.ticket_id,
     title: record.category || 'Community report',
-    location,
+    location: `${record.latitude.toFixed(5)}, ${record.longitude.toFixed(5)}`,
     date: record.created_at
       ? new Date(record.created_at).toLocaleDateString(
           'en-GB',
@@ -909,6 +867,8 @@ function mapCreatedReport(
     description: record.description,
     category: record.category || 'Uncategorised',
     priority: record.priority || 'Not set',
+    latitude: record.latitude,
+    longitude: record.longitude,
     photoUri: record.image_url || photoUri,
   };
 }
@@ -942,6 +902,14 @@ const styles = StyleSheet.create({
     color: colors.navy,
   },
 
+  stepLabel: {
+    fontSize: 10,
+    lineHeight: 20,
+    fontWeight: '700',
+    letterSpacing: 1,
+    color: colors.muted,
+  },
+
   choice: {
     padding: 14,
     borderRadius: 14,
@@ -963,6 +931,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#E6F3EA',
     gap: 6,
     marginBottom: 16,
+  },
+
+  confirmPhoto: {
+    width: '100%',
+    height: 170,
+    borderRadius: 12,
+    backgroundColor: colors.white,
   },
 
   button: {

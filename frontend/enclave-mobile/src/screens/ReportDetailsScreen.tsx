@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Linking,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { reportsApi, type ApiError, type ReportHistoryEvent, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -26,7 +31,10 @@ export type ReportProgressItem = {
 type Props = {
   report: ResidentReport;
   onBack: () => void;
+  onMapTouchChange?: (active: boolean) => void;
 };
+
+const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
 const tones = {
   normal: colors.navy,
@@ -59,12 +67,14 @@ function getStatusStyle(status: ReportStatus) {
 export default function ReportDetailsScreen({
   report,
   onBack,
+  onMapTouchChange,
 }: Props) {
   const [currentReport, setCurrentReport] = useState(report);
   const statusStyle = getStatusStyle(currentReport.status);
   const [progressItems, setProgressItems] = useState<ReportProgressItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [photoExpanded, setPhotoExpanded] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -159,9 +169,46 @@ export default function ReportDetailsScreen({
       </View>
 
       <View style={styles.issueDetails}>
-        <Text style={styles.location}>
-          {currentReport.location}
-        </Text>
+        {Number.isFinite(currentReport.latitude) && Number.isFinite(currentReport.longitude) ? (
+          <>
+            <Text style={styles.locationHeading}>Issue location</Text>
+            <View
+              style={styles.mapContainer}
+              onTouchStart={() => onMapTouchChange?.(true)}
+              onTouchEnd={() => onMapTouchChange?.(false)}
+              onTouchCancel={() => onMapTouchChange?.(false)}
+            >
+              <Map style={styles.map} mapStyle={MAP_STYLE} compass attribution>
+                <Camera
+                  initialViewState={{
+                    center: [currentReport.longitude!, currentReport.latitude!],
+                    zoom: 16,
+                  }}
+                />
+                <Marker id="report-location" lngLat={[currentReport.longitude!, currentReport.latitude!]}>
+                  <View collapsable={false} style={styles.mapPin} accessibilityLabel="Reported issue location">
+                    <Text style={styles.mapPinText}>!</Text>
+                  </View>
+                </Marker>
+              </Map>
+            </View>
+            <Text style={styles.location}>
+              {currentReport.latitude!.toFixed(5)}, {currentReport.longitude!.toFixed(5)}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${currentReport.latitude},${currentReport.longitude}`;
+                void Linking.openURL(url).catch(() => Alert.alert('Unable to open maps', 'Please open your maps app and search for the report coordinates.'));
+              }}
+              style={styles.navigationButton}
+            >
+              <Text style={styles.navigationButtonText}>Open navigation map</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.location}>{currentReport.location}</Text>
+        )}
 
         <Text style={styles.description}>
           {currentReport.description}
@@ -175,15 +222,26 @@ export default function ReportDetailsScreen({
 
       <View style={styles.photoContainer}>
         {currentReport.photoUri ? (
-          <Image
-            source={{ uri: currentReport.photoUri }}
-            style={styles.photo}
-            accessibilityLabel="Submitted report photo"
-          />
+          <>
+            <Image source={{ uri: currentReport.photoUri }} style={styles.photo} resizeMode="contain" accessibilityLabel="Submitted report photo" />
+            <Pressable accessibilityRole="button" onPress={() => setPhotoExpanded(true)} style={styles.expandButton}>
+              <Ionicons name="expand-outline" size={18} color={colors.white} />
+              <Text style={styles.expandText}>Expand photo</Text>
+            </Pressable>
+          </>
         ) : (
           <Text style={styles.photoPlaceholder}>No photo available</Text>
         )}
       </View>
+
+      <Modal visible={photoExpanded} transparent animationType="fade" onRequestClose={() => setPhotoExpanded(false)} statusBarTranslucent>
+        <View style={styles.photoModal}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close expanded photo" onPress={() => setPhotoExpanded(false)} style={styles.closePhotoButton}>
+            <Ionicons name="close" size={28} color={colors.white} />
+          </Pressable>
+          {!!currentReport.photoUri && <Image source={{ uri: currentReport.photoUri }} style={styles.expandedPhoto} resizeMode="contain" accessibilityLabel="Expanded report photo" />}
+        </View>
+      </Modal>
 
       <View style={styles.progress}>
         <Text style={styles.sectionTitle}>
@@ -265,6 +323,8 @@ function mapReportRecord(record: ReportRecord): ResidentReport {
     description: record.description,
     category: record.category || 'Uncategorised',
     priority: record.priority || 'Not set',
+    latitude: record.latitude,
+    longitude: record.longitude,
     photoUri: record.image_url || undefined,
   };
 }
@@ -332,6 +392,57 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
+  locationHeading: {
+    marginTop: 4,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+    color: colors.navy,
+  },
+
+  mapContainer: {
+    height: 220,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: colors.lavender,
+  },
+
+  map: {
+    flex: 1,
+  },
+
+  mapPin: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: colors.white,
+    backgroundColor: colors.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  mapPinText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  navigationButton: {
+    minHeight: 46,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.lavender,
+  },
+
+  navigationButtonText: {
+    color: colors.navy,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
   location: {
     fontSize: 16,
     fontWeight: '600',
@@ -346,7 +457,7 @@ const styles = StyleSheet.create({
   },
 
   photoContainer: {
-    height: 110,
+    height: 260,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
@@ -359,7 +470,52 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    backgroundColor: colors.lavender,
+  },
+
+  expandButton: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    minHeight: 38,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(32, 44, 70, 0.9)',
+  },
+
+  expandText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  photoModal: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.96)',
+  },
+
+  expandedPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+
+  closePhotoButton: {
+    position: 'absolute',
+    zIndex: 1,
+    top: 44,
+    right: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(32, 44, 70, 0.75)',
   },
 
   photoPlaceholder: {

@@ -193,6 +193,13 @@ export default function SignIn() {
               Request access
             </Link>
           </p>
+
+          <p className="text-xs text-muted-foreground">
+            Maintenance staff?{' '}
+            <Link href="/maintenance" className="font-semibold text-primary underline-offset-4 hover:underline">
+              Open maintenance portal
+            </Link>
+          </p>
         </div>
       </main>
     </div>

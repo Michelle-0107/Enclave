@@ -6,6 +6,8 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -339,6 +341,7 @@ function ResidentApp({
           <ReportDetailsScreen
             report={report}
             onBack={openMyReports}
+            onMapTouchChange={setMapTouchActive}
           />
         );
       }
@@ -396,6 +399,9 @@ function ResidentApp({
           <ReportScreen
             onGoHome={() => changeTab('Home')}
             onStepChange={scrollToTop}
+            onDescriptionFocus={() => {
+              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+            }}
             onViewReports={openMyReports}
             onReportCreated={addReport}
           />
@@ -414,6 +420,10 @@ function ResidentApp({
   }
 
   return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
     <SafeAreaView
       style={styles.container}
       edges={['top', 'left', 'right']}
@@ -433,6 +443,7 @@ function ResidentApp({
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
         {renderScreen()}
@@ -478,6 +489,7 @@ function ResidentApp({
         })}
       </View>
     </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 

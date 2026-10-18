@@ -19,7 +19,6 @@ import { colors } from '../theme';
 import { ReportFacilityMarkers, ReportFacilityHint, useReportFacilityPoints } from '../facilities/ReportFacilityPoints';
 
 export type ReportLocationDetails = {
-  location: string;
   description: string;
   coordinates: {
     latitude: number;
@@ -29,6 +28,7 @@ export type ReportLocationDetails = {
 
 type Props = {
   initialDetails?: ReportLocationDetails;
+  onDescriptionFocus?: () => void;
   onBack: () => void;
   onContinue: (details: ReportLocationDetails) => void;
 };
@@ -66,16 +66,13 @@ function coordinateLabel(value: Coordinates): string {
 
 export default function ReportLocationScreen({
   initialDetails,
+  onDescriptionFocus,
   onBack,
   onContinue,
 }: Props) {
   const facilityPoints = useReportFacilityPoints();
   const cameraRef = useRef<CameraRef>(null);
   const locationLock = useRef(false);
-
-  const [location, setLocation] = useState(
-    initialDetails?.location ?? '',
-  );
 
   const [description, setDescription] = useState(
     initialDetails?.description ?? '',
@@ -120,9 +117,6 @@ export default function ReportLocationScreen({
 
     setCoordinates(next);
 
-    // Changing the pin resets its label to avoid retaining
-    // a place name that belongs to the previous location.
-    setLocation(coordinateLabel(next));
     setError('');
   }
 
@@ -174,7 +168,6 @@ export default function ReportLocationScreen({
       }
 
       setCoordinates(next);
-      setLocation(coordinateLabel(next));
 
       cameraRef.current?.easeTo({
         center: [next.longitude, next.latitude],
@@ -212,11 +205,6 @@ export default function ReportLocationScreen({
       return;
     }
 
-    if (!location.trim()) {
-      setError('Please add a location label.');
-      return;
-    }
-
     if (!description.trim()) {
       setError('Please add a short description.');
       return;
@@ -225,7 +213,6 @@ export default function ReportLocationScreen({
     setError('');
 
     onContinue({
-      location: location.trim(),
       description: description.trim(),
       coordinates,
     });
@@ -243,7 +230,7 @@ export default function ReportLocationScreen({
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
 
-        <Text style={styles.step}>STEP 02 OF 04</Text>
+        <Text style={styles.step}>STEP 02 OF 03</Text>
       </View>
 
       <View style={styles.introduction}>
@@ -252,8 +239,7 @@ export default function ReportLocationScreen({
         </Text>
 
         <Text style={styles.subtitle}>
-          Tap the actual issue location on the map,
-          then add a short description.
+          Tap the actual issue location on the map, then describe what needs attention.
         </Text>
       </View>
 
@@ -310,7 +296,6 @@ export default function ReportLocationScreen({
           <ReportFacilityMarkers facilities={facilityPoints.facilities} onSelect={facility => {
             if (locationLock.current) return;
             selectMapLocation(facility.longitude, facility.latitude);
-            setLocation(facility.name);
           }} />
 
           {coordinates && isInsidePilot(coordinates) && (
@@ -367,33 +352,11 @@ export default function ReportLocationScreen({
       </Text>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Location label</Text>
-
-        <TextInput
-          accessibilityLabel="Issue location label"
-          value={location}
-          onChangeText={(value) => {
-            setLocation(value);
-          }}
-          editable={!locating}
-          placeholder="e.g. Walkway beside the entrance"
-          placeholderTextColor={colors.muted}
-          maxLength={200}
-          style={styles.input}
-        />
-
-        <Text style={styles.helper}>
-          This label describes the selected pin.
-          To change the location, tap a different spot
-          on the map.
-        </Text>
-      </View>
-
-      <View style={styles.field}>
         <Text style={styles.label}>Description</Text>
 
         <TextInput
           accessibilityLabel="Issue description"
+          onFocus={onDescriptionFocus}
           value={description}
           onChangeText={setDescription}
           editable={!locating}

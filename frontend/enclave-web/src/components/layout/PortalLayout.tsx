@@ -7,14 +7,16 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
   ClipboardList,
+  ChevronLeft,
   House,
   LogOut,
   UserRound,
   UsersRound,
   Route,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 const navigation = [
   {
@@ -57,6 +59,7 @@ export default function PortalLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, role, ready, error, signOut } = useAuth();
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   useEffect(() => {
     if (ready && !user && !error) router.replace('/sign-in');
@@ -88,6 +91,7 @@ export default function PortalLayout({ children }: Props) {
 
   function handleSignOut() {
     signOut();
+    setConfirmSignOut(false);
     router.replace('/sign-in');
   }
 
@@ -101,6 +105,8 @@ export default function PortalLayout({ children }: Props) {
       pathname.startsWith(`${href}/`)
     );
   }
+
+  const isReportDetail = pathname.startsWith('/management/reports/') && pathname !== '/management/reports';
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -165,7 +171,7 @@ export default function PortalLayout({ children }: Props) {
 
         <button
           type="button"
-          onClick={handleSignOut}
+          onClick={() => setConfirmSignOut(true)}
           className="mt-9 flex min-h-[52px] w-full items-center gap-[14px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground hover:bg-secondary"
         >
           <LogOut size={24} strokeWidth={1.7} />
@@ -175,10 +181,16 @@ export default function PortalLayout({ children }: Props) {
 
       {/* Workspace */}
       <div className="lg:pl-[248px]">
-        <header className="flex min-h-[90px] items-center justify-between px-6 py-5 lg:justify-end lg:px-10 lg:py-6">
-          <p className="mr-auto hidden max-w-[320px] truncate text-xs text-muted-foreground lg:block">
-            {user?.email}
-          </p>
+        <header className={`sticky top-0 z-30 flex min-h-[90px] items-center justify-between bg-background/95 px-6 py-5 backdrop-blur lg:px-10 lg:py-6 ${isReportDetail ? '' : 'lg:justify-end'}`}>
+          {isReportDetail ? (
+            <Link href="/management/reports" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary">
+              <ChevronLeft size={18} aria-hidden="true" /> Reports
+            </Link>
+          ) : (
+            <p className="mr-auto hidden max-w-[320px] truncate text-xs text-muted-foreground lg:block">
+              {user?.email}
+            </p>
+          )}
           <Link
             href="/management"
             className="flex items-center gap-2 lg:hidden"
@@ -258,6 +270,14 @@ export default function PortalLayout({ children }: Props) {
           })}
         </div>
       </nav>
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Confirm log out"
+        description="Are you sure you want to log out of your management account?"
+        confirmLabel="Log out"
+        onCancel={() => setConfirmSignOut(false)}
+        onConfirm={handleSignOut}
+      />
     </div>
   );
 }

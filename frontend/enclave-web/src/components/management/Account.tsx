@@ -3,13 +3,17 @@
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function Account() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   function handleSignOut() {
     signOut();
+    setConfirmSignOut(false);
     router.replace('/sign-in');
   }
 
@@ -59,12 +63,19 @@ export default function Account() {
 
       <Button
         type="button"
-        onClick={handleSignOut}
+        onClick={() => setConfirmSignOut(true)}
         className="min-h-[52px] w-full rounded-2xl bg-enclave-lavender px-6 text-sm font-semibold text-primary hover:bg-enclave-lavender hover:opacity-80"
       >
         Log out
       </Button>
-
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Confirm log out"
+        description="Are you sure you want to log out of your management account?"
+        confirmLabel="Log out"
+        onCancel={() => setConfirmSignOut(false)}
+        onConfirm={handleSignOut}
+      />
     </div>
   );
 }
