@@ -74,6 +74,22 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const placeData = useMemo(() => ({ type: 'FeatureCollection' as const,
     features: dataset.landmarks.map(p => ({ type: 'Feature' as const, id: p.id, properties: { id: p.id, name: p.name },
       geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), [dataset]);
+  const selectedMarkerData = useMemo(() => {
+    if (!feature) return null;
+    const color = selected?.type === 'place'
+      ? '#0B4FB8'
+      : facility && isBlocked(facility, state)
+        ? '#7F2E28'
+        : '#15575C';
+    return {
+      type: 'FeatureCollection' as const,
+      features: [{
+        type: 'Feature' as const,
+        properties: { color },
+        geometry: { type: 'Point' as const, coordinates: feature.coordinate },
+      }],
+    };
+  }, [feature, facility, selected, state]);
   const bounds: [number, number, number, number] = dataset.bbox;
 
   function clearRoute() { routeRequest.current += 1; guidanceActive.current = false; followCamera.current = true; setCalculating(false); setResults([]); setSelected(null); setError(''); setAlternative(null); setAdjustmentVisible(false); setWaitForAdjustedStart(false); setRouteReady(true); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); approachCameraCentered.current = false; }
@@ -376,9 +392,19 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
             'circle-color': ['case', ['get', 'blocked'], '#A63E37', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
           <Layer id="demo-facility-labels" type="symbol" minzoom={15.5} layout={{ 'text-field': ['get', 'symbol'], 'text-size': 9, 'text-allow-overlap': true }} paint={{ 'text-color': '#FFFFFF' }} />
         </GeoJSONSource>
-        {feature && <Marker id="demo-selection-frame" lngLat={feature.coordinate}>
-          <View collapsable={false} pointerEvents="none" accessibilityLabel={`Selected: ${feature.name}`} style={styles.selectionFrame} />
-        </Marker>}
+        {feature && selectedMarkerData && <GeoJSONSource id="demo-selection-highlight" data={selectedMarkerData}>
+          <Layer id="demo-selection-shadow" type="circle" paint={{
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 12, 5, 14, 7, 16, 9, 18, 11],
+            'circle-color': ['get', 'color'], 'circle-opacity': 0.28,
+            'circle-translate': [2, 3], 'circle-blur': 0.35,
+          }} />
+          <Layer id="demo-selection-halo" type="circle" paint={{
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4.5, 12, 5.5, 14, 7, 16, 9, 18, 11],
+            'circle-color': ['get', 'color'], 'circle-opacity': 0.1,
+            'circle-stroke-color': ['get', 'color'],
+            'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 1.6, 18, 2],
+          }} />
+        </GeoJSONSource>}
         {([origin, destination] as const).map((p, i) => p && <Marker key={i} id={'demo-endpoint-' + i} lngLat={p.coordinate}>
           <View collapsable={false} style={[styles.endpointFrame, field === (i === 0 ? 'origin' : 'destination') && styles.activeEndpointFrame]}>
             <View style={[styles.marker, i === 1 && styles.destinationPin]}><Text style={styles.pinText}>{i === 0 ? 'S' : 'D'}</Text></View>
@@ -459,7 +485,6 @@ const styles = StyleSheet.create({
   transportLabel: { color: colors.navy, fontSize: 12, fontWeight: '600' },
   mapContainer: { width: '100%', height: 320, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.lavender }, map: { flex: 1 },
   marker: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.navy, borderWidth: 2, borderColor: colors.white, alignItems: 'center', justifyContent: 'center' },
-  selectionFrame: { width: 40, height: 40, borderRadius: 8, borderWidth: 3, borderColor: '#D99A13', backgroundColor: '#F7BD2922' },
   endpointFrame: { padding: 3, borderRadius: 9, borderWidth: 3, borderColor: 'transparent' },
   activeEndpointFrame: { borderColor: '#D99A13', backgroundColor: '#FFF3D0' },
   accessPin: { backgroundColor: '#BD6509' }, originalPin: { backgroundColor: '#8790A0' }, suggestedPin: { backgroundColor: '#2675D8' }, destinationPin: { backgroundColor: '#247A80' }, pinText: { color: colors.white, fontSize: 13, fontWeight: '700' },
