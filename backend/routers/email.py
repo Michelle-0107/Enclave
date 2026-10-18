@@ -83,6 +83,21 @@ def update_resident(resident_id: UUID, data: ResidentUpdate,
     return registration.update_resident(identity.user_id, resident_id, data)
 
 
+@router.delete("/api/v1/management/residents/{resident_id}", status_code=204, tags=["Management"])
+def delete_resident(resident_id: UUID, request: Request, response: Response,
+                    identity=Depends(user), registration=Depends(service)):
+    response.headers["Cache-Control"] = "no-store"
+    deletion = registration.prepare_resident_deletion(identity.user_id, resident_id)
+    if deletion["auth_user_id"] is not None:
+        registration.delete_auth_user(deletion["auth_user_id"])
+    if deletion["image_urls"]:
+        media = getattr(request.app.state, "media", None)
+        if media is None or not media.delete_report_images(deletion["image_urls"]):
+            raise RegistrationRejected(503, "Account and report records are removed; photo cleanup is pending. Retry deletion to finish cleanup")
+    registration.finalize_resident_deletion(identity.user_id, resident_id)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
 @router.post("/api/v1/management/residents/{resident_id}/invitations", response_model=InvitationResult,
              status_code=201, tags=["Management"])
 def issue_invitation(resident_id: UUID, response: Response, identity=Depends(user), registration=Depends(service)):

@@ -100,6 +100,40 @@ class MediaServices:
             logger.warning("Report photo access link could not be generated.")
             raise MediaUnavailable() from None
 
+    def delete_report_images(self, image_urls: list[str]) -> bool:
+        """Delete only report objects hosted in this application's configured bucket."""
+        if not image_urls:
+            return True
+        bucket = (self.values.get("S3_BUCKET_NAME") or "").strip()
+        if not bucket:
+            return False
+        region = (self.values.get("AWS_REGION") or "us-east-1").strip()
+        hosts = {f"{bucket}.s3.amazonaws.com", f"{bucket}.s3.{region}.amazonaws.com"}
+        try:
+            objects = []
+            for image_url in image_urls:
+                parsed = urlsplit(image_url)
+                if (parsed.scheme != "https" or parsed.hostname not in hosts
+                    or parsed.username is not None or parsed.password is not None
+                    or parsed.port not in (None, 443) or parsed.fragment):
+                    continue
+                key = unquote(parsed.path.lstrip("/"))
+                if not key:
+                    continue
+                objects.append({"Key": key})
+            if not objects:
+                return True
+            with self.lock:
+                if self._s3 is None:
+                    self._s3 = self._client("s3")
+                client = self._s3
+            for item in objects:
+                client.delete_object(Bucket=bucket, Key=item["Key"])
+            return True
+        except Exception:
+            logger.warning("Resident report photo cleanup did not complete.")
+            return False
+
     def analyze(self, image_bytes: bytes, description: str) -> dict:
         # Retain the team's Bedrock -> Gemini -> manual-review fallback sequence.
         prompt = (

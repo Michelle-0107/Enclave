@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { createResident, issueResidentInvitation, type InvitationResult } from '@/lib/api';
 
 type CreatedResident = { id: string; fullName: string; email: string };
+type ResidentCreateProps = { modal?: boolean; onClose?: () => void; onCreated?: () => void };
 
-export default function ResidentCreate() {
+export default function ResidentCreate({ modal = false, onClose, onCreated }: ResidentCreateProps = {}) {
   const [reference, setReference] = useState('');
   const [fullName, setFullName] = useState('');
   const [unitNumber, setUnitNumber] = useState('');
@@ -29,6 +30,7 @@ export default function ResidentCreate() {
         registered_email: email.trim().toLowerCase(),
       });
       setResident({ id: result.resident_id, fullName: fullName.trim(), email: email.trim().toLowerCase() });
+      onCreated?.();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to create resident record.');
     } finally {
@@ -60,10 +62,14 @@ export default function ResidentCreate() {
     }
   }
 
-  return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <Link href="/management/residents" className="w-fit text-sm font-semibold text-primary underline">← Residents</Link>
-      <h1 className="text-[30px] font-semibold leading-[1.35] text-primary lg:text-[36px]">Add resident.</h1>
+  const content = (
+    <div className={`flex flex-col gap-6 ${modal ? '' : 'max-w-3xl'}`}>
+      {modal ? (
+        <button type="button" onClick={onClose} disabled={working} className="w-fit text-sm font-semibold text-primary underline disabled:opacity-60">← Residents</button>
+      ) : (
+        <Link href="/management/residents" className="w-fit text-sm font-semibold text-primary underline">← Residents</Link>
+      )}
+      <h1 id="create-resident-title" className="text-[30px] font-semibold leading-[1.35] text-primary lg:text-[36px]">Add resident.</h1>
       <p className="text-sm leading-relaxed text-muted-foreground">
         Create an approved resident record, then issue a one-time invitation token. The invitation endpoint does not send email; share the token with the resident through your approved private channel.
       </p>
@@ -96,6 +102,16 @@ export default function ResidentCreate() {
         </section>
       )}
       {error && <p role="alert" className="rounded-xl bg-status-red-bg p-3 text-sm text-status-red">{error}</p>}
+    </div>
+  );
+
+  if (!modal) return content;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/45 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !working) onClose?.(); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="create-resident-title" className="my-auto w-full max-w-3xl rounded-3xl border border-border bg-card p-5 shadow-xl sm:p-7">
+        {content}
+      </section>
     </div>
   );
 }

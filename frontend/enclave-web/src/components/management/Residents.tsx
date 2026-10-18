@@ -1,8 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import ResidentCreate from '@/components/management/ResidentCreate';
 import {
+  deleteResident,
   getManagementResidents,
   updateResident,
   type ManagementResident,
@@ -44,8 +45,11 @@ export default function Residents() {
   const [selected, setSelected] = useState<ManagementResident | null>(null);
   const [form, setForm] = useState<UpdateResidentInput>(blankForm);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
 
   const loadResidents = useCallback(async () => {
     setLoading(true);
@@ -74,6 +78,7 @@ export default function Residents() {
       status: selected.status,
     });
     setFormError('');
+    setConfirmDelete(false);
   }, [selected]);
 
   const filteredResidents = useMemo(() => {
@@ -117,15 +122,32 @@ export default function Residents() {
     }
   }
 
+  async function removeResident() {
+    if (!selected) return;
+    setDeleting(true);
+    setFormError('');
+    try {
+      await deleteResident(selected.resident_id);
+      setSelected(null);
+      setConfirmDelete(false);
+      setNotice('Resident account, reports, and resident record permanently deleted.');
+      await loadResidents();
+    } catch (reason) {
+      setFormError(reason instanceof Error ? reason.message : 'Unable to delete this resident.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-7">
       <h1 className="text-[30px] font-semibold leading-[1.45] text-primary lg:text-[36px]">Resident records.</h1>
       <p className="text-sm leading-relaxed text-muted-foreground">
         Manage approved resident records and their account-link status.
       </p>
-      <Link href="/management/residents/new" className="flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground hover:opacity-90 sm:w-[240px]">
+      <button type="button" onClick={() => setCreateOpen(true)} className="flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground hover:opacity-90 sm:w-[240px]">
         Add resident
-      </Link>
+      </button>
 
       <section aria-labelledby="resident-directory-title" className="flex flex-col gap-4 rounded-3xl bg-enclave-lavender p-5 sm:p-7">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -189,8 +211,16 @@ export default function Residents() {
         )}
       </section>
 
+      {createOpen && (
+        <ResidentCreate
+          modal
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => void loadResidents()}
+        />
+      )}
+
       {selected && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/45 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setSelected(null); }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/45 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving && !deleting) setSelected(null); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="edit-resident-title" className="my-auto w-full max-w-xl rounded-3xl border border-border bg-card p-5 shadow-xl sm:p-7">
             <h2 id="edit-resident-title" className="text-xl font-semibold text-primary">Edit resident record</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Resident values are validated before saving. Email cannot be changed after the resident links an account.</p>
@@ -215,9 +245,20 @@ export default function Residents() {
               </label>
               {formError && <p role="alert" className="rounded-xl bg-status-red-bg p-3 text-sm text-status-red">{formError}</p>}
               {form.status === 'inactive' && selected.status !== 'inactive' && <p className="rounded-xl bg-status-orange-bg p-3 text-sm text-status-orange">Setting this resident inactive revokes unused invitations and pending verification codes.</p>}
+              {confirmDelete && (
+                <div role="alert" className="rounded-2xl border border-status-red/30 bg-status-red-bg p-4">
+                  <p className="font-semibold text-status-red">Permanently delete {selected.full_name}?</p>
+                  <p className="mt-2 text-sm leading-relaxed text-status-red">This removes the resident record, Supabase login account, their submitted reports and status history, and associated report photos. This cannot be undone. Public facilities and management-wide notifications will remain.</p>
+                  <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)} className="min-h-10 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-primary disabled:opacity-60">Keep resident</button>
+                    <button type="button" disabled={deleting} onClick={() => void removeResident()} className="min-h-10 rounded-xl bg-status-red px-4 text-sm font-semibold text-white disabled:opacity-60">{deleting ? 'Deleting…' : 'Delete permanently'}</button>
+                  </div>
+                </div>
+              )}
               <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button type="button" disabled={saving} onClick={() => setSelected(null)} className="min-h-11 rounded-xl border border-border px-5 text-sm font-semibold text-primary disabled:opacity-60">Cancel</button>
-                <button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? 'Saving…' : 'Save changes'}</button>
+                <button type="button" disabled={saving || deleting} onClick={() => setSelected(null)} className="min-h-11 rounded-xl border border-border px-5 text-sm font-semibold text-primary disabled:opacity-60">Cancel</button>
+                <button type="button" disabled={saving || deleting} onClick={() => setConfirmDelete(true)} className="min-h-11 rounded-xl bg-status-red-bg px-5 text-sm font-semibold text-status-red disabled:opacity-60">Delete resident</button>
+                <button type="submit" disabled={saving || deleting} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? 'Saving…' : 'Save changes'}</button>
               </div>
             </form>
           </section>

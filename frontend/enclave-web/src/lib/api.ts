@@ -293,7 +293,7 @@ async function readError(response: Response) {
 }
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
 };
 
@@ -439,6 +439,12 @@ export function updateResident(residentId: string, input: UpdateResidentInput) {
     `/api/v1/management/residents/${encodeURIComponent(residentId)}`,
     { method: 'PATCH', body: input },
   );
+}
+
+export function deleteResident(residentId: string) {
+  return apiRequest<void>(`/api/v1/management/residents/${encodeURIComponent(residentId)}`, {
+    method: 'DELETE',
+  });
 }
 
 export function issueResidentInvitation(residentId: string) {
