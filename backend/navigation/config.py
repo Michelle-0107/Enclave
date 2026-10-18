@@ -12,8 +12,12 @@ class NavigationSettings:
     # Never accept a provider URL from a request or add keys to the mobile app.
     provider_url: str = 'http://127.0.0.1:8002'
     source: Literal['openstreetmap_unverified', 'synthetic_demo'] = 'openstreetmap_unverified'
+    # Trusted compatibility setting for engine-reader fixtures; resident live routes default to strict crossings.
+    crossing_policy: Literal['mapped_facilities_only','provider_default'] = 'mapped_facilities_only'
 
     def __post_init__(self):
+        if self.crossing_policy not in ('mapped_facilities_only','provider_default'):
+            raise ValueError('Unsupported pedestrian crossing policy')
         parsed = urlsplit(self.provider_url)
         if (parsed.scheme not in ('http','https') or not parsed.hostname or parsed.username or parsed.password
             or parsed.query or parsed.fragment or parsed.path not in ('','/')):

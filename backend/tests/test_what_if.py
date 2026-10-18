@@ -17,6 +17,7 @@ from backend.core.config import Settings
 from backend.navigation.accessibility import VerifiedNetwork
 from backend.navigation.demo import encode_polyline6
 from backend.navigation.service import distance_meters
+from backend.navigation.config import NavigationSettings
 from backend.navigation.zones import zone_bounds, route_intersects_zone
 from backend.what_if.contracts import CompareRequest
 from backend.what_if.repository import Snapshot, WhatIfRejected
@@ -102,7 +103,8 @@ class WhatIfTests(unittest.TestCase):
             auth_transport=httpx.MockTransport(no_call), residents_transport=httpx.MockTransport(no_call),
             reports_transport=httpx.MockTransport(no_call), community_transport=httpx.MockTransport(no_call),
             workflow_transport=httpx.MockTransport(no_call), what_if_transport=httpx.MockTransport(rpc_handler or snapshot),
-            navigation_transport=httpx.MockTransport(engine), accessibility_network=network)
+            navigation_transport=httpx.MockTransport(engine),
+            navigation_settings=NavigationSettings(crossing_policy='provider_default'), accessibility_network=network)
         def user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
             tokens = {'manager-fixture': MANAGER, 'resident-fixture': RESIDENT}
             actor = tokens.get(credentials.credentials) if credentials else None

@@ -18,6 +18,7 @@ import {
   ApiError,
   navigationApi,
   type NavigationPoint,
+  type NavigationArea,
   type NavigationRouteResponse,
   type RouteMode,
 } from '../lib/api';
@@ -35,6 +36,7 @@ export type RouteOption = {
 };
 
 type Props = {
+  navigationArea?: NavigationArea;
   start: string;
   destination: string;
   initialOrigin?: NavigationPoint | null;
@@ -87,14 +89,15 @@ const PILOT_CENTER: [number, number] = [
   3.226,
 ];
 
-function insidePilot(point: NavigationPoint): boolean {
+function insidePilot(point: NavigationPoint, area?: NavigationArea): boolean {
+  const [west, south, east, north] = area?.bbox ?? [101.7211, 3.2171, 101.7409, 3.2349];
   return (
     Number.isFinite(point.latitude) &&
     Number.isFinite(point.longitude) &&
-    point.latitude >= 3.2171 &&
-    point.latitude <= 3.2349 &&
-    point.longitude >= 101.7211 &&
-    point.longitude <= 101.7409
+    point.latitude >= south &&
+    point.latitude <= north &&
+    point.longitude >= west &&
+    point.longitude <= east
   );
 }
 
@@ -105,6 +108,7 @@ function formatDistance(meters: number): string {
 }
 
 export default function RouteOptionsScreen({
+  navigationArea,
   start,
   destination,
   initialOrigin,
@@ -114,10 +118,10 @@ export default function RouteOptionsScreen({
   onMapTouchChange,
 }: Props) {
   const [origin, setOrigin] =
-    useState<NavigationPoint | null>(() => initialOrigin && insidePilot(initialOrigin) ? initialOrigin : null);
+    useState<NavigationPoint | null>(() => initialOrigin && insidePilot(initialOrigin, navigationArea) ? initialOrigin : null);
 
   const [target, setTarget] =
-    useState<NavigationPoint | null>(() => initialDestination && insidePilot(initialDestination) ? initialDestination : null);
+    useState<NavigationPoint | null>(() => initialDestination && insidePilot(initialDestination, navigationArea) ? initialDestination : null);
   const [originName, setOriginName] = useState(start);
   const [targetName, setTargetName] = useState(destination);
 
@@ -155,9 +159,9 @@ export default function RouteOptionsScreen({
 
     const point = { latitude, longitude };
 
-    if (!insidePilot(point)) {
+    if (!insidePilot(point, navigationArea)) {
       setError(
-        'Select a point inside the KL East pilot area.',
+        'Select a point inside the selected live service area.',
       );
       return;
     }
@@ -216,6 +220,9 @@ export default function RouteOptionsScreen({
 
       const nextResults = await Promise.all(
         MODES.map(async (config): Promise<ModeResult> => {
+          if (navigationArea && !navigationArea.supported_route_modes.includes(config.mode)) {
+            return { mode: config.mode, error: 'This route mode is not enabled in the selected live service area.' };
+          }
           try {
             const response = await navigationApi.getRoute(
               token,
@@ -404,7 +411,7 @@ export default function RouteOptionsScreen({
         >
           <Camera
             initialViewState={{
-              center: PILOT_CENTER,
+              center: navigationArea?.center ?? PILOT_CENTER,
               zoom: 15,
             }}
           />

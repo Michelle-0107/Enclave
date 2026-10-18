@@ -25,9 +25,10 @@ import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 import type { PlacePoint } from '../savedPlaces/store';
 
-export type MapEndpoints = { origin: { latitude: number; longitude: number } | null; destination: { latitude: number; longitude: number } | null };
+export type MapEndpoints = { area?: NavigationArea; origin: { latitude: number; longitude: number } | null; destination: { latitude: number; longitude: number } | null };
 
 type Props = {
+  navigationArea?: NavigationArea;
   onReportPress: () => void;
   onMapTouchChange?: (active: boolean) => void;
   onChooseRoute?: (
@@ -61,6 +62,7 @@ function faultLabel(issue: MapIssueFeature): string {
 }
 
 export default function MapScreen({
+  navigationArea,
   onReportPress,
   onChooseRoute,
   onMapTouchChange,
@@ -80,7 +82,7 @@ export default function MapScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [area, setArea] = useState<NavigationArea | null>(null);
+  const [area, setArea] = useState<NavigationArea | null>(navigationArea ?? null);
 
   const [mapError, setMapError] = useState(false);
   const [mapKey, setMapKey] = useState(0);
@@ -111,10 +113,14 @@ export default function MapScreen({
           );
         }
 
-        const navigationArea = await navigationApi.getArea(accessToken);
+        const loadedArea = await navigationApi.getArea(accessToken, navigationArea?.id);
 
         if (!mounted) return;
-        setArea(navigationArea);
+        setArea(loadedArea);
+        if (loadedArea.community_issues_supported === false) {
+          setIssues([]);
+          return;
+        }
 
         const loaded = new globalThis.Map<
           string,
@@ -129,7 +135,7 @@ export default function MapScreen({
               accessToken,
               100,
               offset,
-              navigationArea.bbox,
+              loadedArea.bbox,
               false,
             );
 
@@ -190,7 +196,7 @@ export default function MapScreen({
     return () => {
       mounted = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, navigationArea?.id]);
 
   const selectedIssue =
     issues.find((issue) => issue.id === selectedIssueId) ??
@@ -206,7 +212,7 @@ export default function MapScreen({
     const [longitude, latitude] = point.coordinate;
     const [west, south, east, north] = area?.bbox ?? [101.7211, 3.2171, 101.7409, 3.2349];
     if (longitude < west || longitude > east || latitude < south || latitude > north) {
-      setError('Select a point inside the KL East pilot area.'); return;
+      setError('Select a point inside the selected live service area.'); return;
     }
     setError('');
     if (which === 'origin') { setStartPlace(point); setStart(point.label); setSelecting('destination'); }
@@ -235,6 +241,7 @@ export default function MapScreen({
 
     // Carry numeric selections into the live routing page; names alone are labels.
     onChooseRoute(startingPoint, endPoint, {
+      area: area ?? undefined,
       origin: startPlace ? { longitude: startPlace.coordinate[0], latitude: startPlace.coordinate[1] } : null,
       destination: endPlace ? { longitude: endPlace.coordinate[0], latitude: endPlace.coordinate[1] } : null,
     });
@@ -302,7 +309,7 @@ export default function MapScreen({
         onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
         onTouchCancel={() => onMapTouchChange?.(false)}>
         <Map
-          key={mapKey}
+          key={`${area?.id ?? 'loading'}-${mapKey}`}
           style={styles.map}
           mapStyle={area?.map_style_url || MAP_STYLE}
           androidView="texture"
@@ -440,7 +447,7 @@ export default function MapScreen({
       ) : issues.length === 0 ? (
         <View style={styles.issueState}>
           <Text style={styles.cardTitle}>
-            No community-confirmed issues in this area.
+            {area?.community_issues_supported === false ? 'Community issue coverage is not enabled in this temporary area.' : 'No community-confirmed issues in this area.'}
           </Text>
 
           <Text style={styles.mapHint}>

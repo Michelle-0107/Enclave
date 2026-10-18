@@ -1,6 +1,7 @@
 """Actual KL East road routing with synthetic damage; no hosted data or network."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 import sys
 import unittest
@@ -26,6 +27,7 @@ class WhatIfNativeTests(unittest.TestCase):
                 return httpx.Response(400, json={'error_code': error.code})
         app = create_demo_app(navigation_transport=httpx.MockTransport(engine))
         with TestClient(app) as client:
+            app.state.navigation.provider.settings=replace(app.state.navigation.provider.settings,crossing_policy='provider_default')
             response = client.post('/api/v1/management/what-if/compare', json=sample_request(),
                                    headers={'Authorization': 'Bearer demo-management-token'})
         self.assertEqual(response.status_code, 200, response.text)

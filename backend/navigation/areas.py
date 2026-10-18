@@ -21,6 +21,9 @@ class ServiceArea(BaseModel):
     enabled: bool = Field(strict=True)
     routing_supported: bool = Field(strict=True, description='A route implementation exists; not a routing-engine health check.')
     resident_demo_supported: bool = Field(strict=True, description='A compatible server-owned resident-demo road graph exists for this area.')
+    temporary_live: bool = False
+    community_issues_supported: bool = True
+    crossing_policy: Literal['provider_default','mapped_facilities_only'] = 'mapped_facilities_only'
     location_reference: str = Field(pattern=r'^https://www\.openstreetmap\.org/(node|way|relation)/[0-9]+$')
     boundary_type: Literal['development_window'] = 'development_window'
     official_boundary: Literal[False] = False
@@ -65,6 +68,16 @@ class DemoAreaDataset(BaseModel):
 
 def find_area(area_id: str) -> ServiceArea | None:
     return next((area for area in service_areas().items if area.id == area_id and area.enabled), None)
+
+
+def route_area(origin, destination):
+    for area in service_areas().items:
+        if not area.enabled or not area.routing_supported:
+            continue
+        w,s,e,n=area.bbox
+        if all(w<=p[0]<=e and s<=p[1]<=n for p in (origin,destination)):
+            return area
+    return None
 
 
 @lru_cache(maxsize=4)

@@ -35,7 +35,7 @@ class NavigationTests(unittest.TestCase):
             map_transport=httpx.MockTransport(no_call),workflow_transport=httpx.MockTransport(no_call),
             community_transport=httpx.MockTransport(lambda r:httpx.Response(404,json={})),
             residents_transport=httpx.MockTransport(lambda request:httpx.Response(200,json=self.rows)),
-            navigation_transport=httpx.MockTransport(engine))
+            navigation_transport=httpx.MockTransport(engine),navigation_settings=NavigationSettings(crossing_policy='provider_default'))
         def user(credentials: HTTPAuthorizationCredentials | None=Depends(bearer)):
             if credentials is None or credentials.credentials != 'fixture-resident':
                 raise HTTPException(401,'Invalid credentials')

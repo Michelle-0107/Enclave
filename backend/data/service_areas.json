@@ -17,7 +17,8 @@
       "enabled": true,
       "routing_supported": true,
       "resident_demo_supported": true,
-      "location_reference": "https://www.openstreetmap.org/node/9555390383"
+      "location_reference": "https://www.openstreetmap.org/node/9555390383",
+      "crossing_policy": "mapped_facilities_only"
     },
     {
       "id": "kajang-prima-saujana",
@@ -33,9 +34,12 @@
         3.0083238
       ],
       "enabled": true,
-      "routing_supported": false,
+      "routing_supported": true,
       "resident_demo_supported": true,
-      "location_reference": "https://www.openstreetmap.org/way/25689860"
+      "location_reference": "https://www.openstreetmap.org/way/25689860",
+      "temporary_live": true,
+      "community_issues_supported": false,
+      "crossing_policy": "mapped_facilities_only"
     }
   ]
 }

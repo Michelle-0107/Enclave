@@ -34,7 +34,7 @@ class RealObstacleDetourTests(unittest.TestCase):
             obstacles=CommunityIssues(Settings('https://example.supabase.co','sb_secret_native_fixture'),
                 transport=httpx.MockTransport(lambda r:httpx.Response(200,json={'state':'ok',
                     'checked_at':datetime.now(timezone.utc).isoformat(),'items':[row]})))
-            provider=ValhallaProvider(NavigationSettings(),transport=httpx.MockTransport(
+            provider=ValhallaProvider(NavigationSettings(crossing_policy='provider_default'),transport=httpx.MockTransport(
                 lambda r:httpx.Response(200,json=actor.route(json.loads(r.content)))))
             try:
                 service=NavigationService(provider,obstacles)
