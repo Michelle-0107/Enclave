@@ -117,42 +117,13 @@ export default function ReportDetailsScreen({
   return (
     <View style={styles.container}>
       <View style={styles.heading}>
-        <Text style={styles.title}>
-          {currentReport.title}
-        </Text>
-
-        <Text style={styles.meta}>
-          #{currentReport.id} · Submitted {currentReport.date}
-        </Text>
-      </View>
-
-      <View
-        style={[
-          styles.status,
-          {
-            backgroundColor: statusStyle.background,
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.statusDot,
-            {
-              backgroundColor: statusStyle.text,
-            },
-          ]}
-        />
-
-        <Text
-          style={[
-            styles.statusText,
-            {
-              color: statusStyle.text,
-            },
-          ]}
-        >
-          {currentReport.status}
-        </Text>
+        <Text style={styles.eyebrow}>REPORT DETAILS</Text>
+        <Text style={styles.title}>{currentReport.title}</Text>
+        <Text style={styles.meta}>#{currentReport.id}  ·  Submitted {currentReport.date}</Text>
+        <View style={[styles.status, { backgroundColor: statusStyle.background }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusStyle.text }]} />
+          <Text style={[styles.statusText, { color: statusStyle.text }]}>{currentReport.status}</Text>
+        </View>
       </View>
 
       <View style={styles.photoContainer}>
@@ -169,10 +140,32 @@ export default function ReportDetailsScreen({
         )}
       </View>
 
+      <View style={styles.detailsCard}>
+        <View style={styles.cardHeadingRow}>
+          <View style={styles.cardIcon}><Ionicons name="document-text-outline" size={19} color={colors.navy} /></View>
+          <Text style={styles.cardTitle}>Report details</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <View style={styles.detailIcon}><Ionicons name="grid-outline" size={16} color={colors.muted} /></View>
+          <View style={styles.detailCopy}><Text style={styles.detailLabel}>Category</Text><Text style={styles.detailValue}>{currentReport.category}</Text></View>
+        </View>
+        <View style={styles.detailRow}>
+          <View style={styles.detailIcon}><Ionicons name="flag-outline" size={16} color={colors.muted} /></View>
+          <View style={styles.detailCopy}><Text style={styles.detailLabel}>Priority</Text><Text style={styles.detailValue}>{currentReport.priority}</Text></View>
+        </View>
+        <View style={styles.descriptionBlock}>
+          <Text style={styles.detailLabel}>Description</Text>
+          <Text style={styles.description}>{currentReport.description || 'No description provided.'}</Text>
+        </View>
+      </View>
+
       <View style={styles.issueDetails}>
         {Number.isFinite(currentReport.latitude) && Number.isFinite(currentReport.longitude) ? (
           <>
-            <Text style={styles.locationHeading}>Issue location</Text>
+            <View style={styles.sectionHeader}>
+              <View><Text style={styles.sectionTitle}>Issue location</Text><Text style={styles.sectionSubtitle}>Map preview of the reported spot</Text></View>
+              <Ionicons name="location" size={20} color={colors.navy} />
+            </View>
             <View
               style={styles.mapContainer}
               onTouchStart={() => onMapTouchChange?.(true)}
@@ -193,9 +186,7 @@ export default function ReportDetailsScreen({
                 </Marker>
               </Map>
             </View>
-            <Text style={styles.location}>
-              {currentReport.latitude!.toFixed(5)}, {currentReport.longitude!.toFixed(5)}
-            </Text>
+            <View style={styles.coordinateRow}><Ionicons name="navigate-outline" size={16} color={colors.muted} /><Text style={styles.location}>{currentReport.latitude!.toFixed(5)}, {currentReport.longitude!.toFixed(5)}</Text></View>
             <Pressable
               accessibilityRole="button"
               onPress={() => {
@@ -213,13 +204,6 @@ export default function ReportDetailsScreen({
 
       </View>
 
-      <View style={styles.issueDetails}>
-        <Text style={styles.description}>{currentReport.description}</Text>
-        <Text style={styles.meta}>
-          Category: {currentReport.category} · Priority: {currentReport.priority}
-        </Text>
-      </View>
-
       <Modal visible={photoExpanded} transparent animationType="fade" onRequestClose={() => setPhotoExpanded(false)} statusBarTranslucent>
         <View style={styles.photoModal}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close expanded photo" onPress={() => setPhotoExpanded(false)} style={styles.closePhotoButton}>
@@ -230,9 +214,7 @@ export default function ReportDetailsScreen({
       </Modal>
 
       <View style={styles.progress}>
-        <Text style={styles.sectionTitle}>
-          Progress
-        </Text>
+        <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Progress</Text><Text style={styles.sectionSubtitle}>Updates on your report</Text></View><View style={styles.progressIcon}><Ionicons name="time-outline" size={19} color={colors.navy} /></View></View>
 
         {isLoading ? (
           <View style={styles.progressLoading}>
@@ -243,10 +225,9 @@ export default function ReportDetailsScreen({
           <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
         ) : progressItems.length > 0 ? (
           progressItems.map((item) => (
-            <View
-              key={item.id}
-              style={styles.progressItem}
-            >
+            <View key={item.id} style={styles.progressItem}>
+              <View style={styles.timelineRail}><View style={[styles.timelineDot, { backgroundColor: tones[item.tone ?? 'normal'] }]} /></View>
+              <View style={styles.progressCopy}>
               <Text
                 style={[
                   styles.progressTitle,
@@ -261,6 +242,7 @@ export default function ReportDetailsScreen({
               <Text style={styles.meta}>
                 {item.description}
               </Text>
+              </View>
             </View>
           ))
         ) : (
@@ -317,17 +299,25 @@ function mapReportRecord(record: ReportRecord): ResidentReport {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 22,
+    gap: 18,
+    paddingBottom: 12,
   },
 
   heading: {
-    gap: 8,
+    gap: 9,
+  },
+
+  eyebrow: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
   },
 
   title: {
-    fontSize: 27,
+    fontSize: 26,
     fontWeight: '700',
-    lineHeight: 35,
+    lineHeight: 33,
     color: colors.navy,
   },
 
@@ -344,7 +334,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 18,
     maxWidth: '100%',
   },
 
@@ -362,20 +352,53 @@ const styles = StyleSheet.create({
   },
 
   issueDetails: {
-    gap: 10,
+    gap: 11,
   },
 
-  locationHeading: {
-    marginTop: 4,
-    fontSize: 16,
+  detailsCard: {
+    gap: 16,
+    padding: 18,
+    borderRadius: 22,
+    backgroundColor: colors.lavender,
+  },
+
+  cardHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 },
+
+  cardIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    lineHeight: 22,
     color: colors.navy,
   },
 
+  detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  detailCopy: { flex: 1, gap: 3 },
+  detailIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.68)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  detailLabel: { color: colors.navy, fontSize: 13, fontWeight: '700' },
+  detailValue: { color: colors.muted, fontSize: 14, lineHeight: 21 },
+  descriptionBlock: { gap: 7, paddingTop: 13, borderTopWidth: 1, borderTopColor: 'rgba(32,44,70,0.1)' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  sectionSubtitle: { marginTop: 2, color: colors.muted, fontSize: 12, lineHeight: 18 },
+
   mapContainer: {
-    height: 220,
-    borderRadius: 16,
+    height: 225,
+    borderRadius: 22,
     overflow: 'hidden',
     backgroundColor: colors.lavender,
   },
@@ -402,26 +425,28 @@ const styles = StyleSheet.create({
   },
 
   navigationButton: {
-    minHeight: 46,
-    borderRadius: 14,
+    minHeight: 50,
+    borderRadius: 16,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.lavender,
+    backgroundColor: colors.navy,
   },
 
   navigationButtonText: {
-    color: colors.navy,
+    color: colors.white,
     fontSize: 14,
     fontWeight: '600',
   },
 
   location: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: 22,
-    color: colors.navy,
+    lineHeight: 19,
+    color: colors.muted,
   },
+
+  coordinateRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
 
   description: {
     fontSize: 14,
@@ -430,11 +455,9 @@ const styles = StyleSheet.create({
   },
 
   photoContainer: {
-    height: 260,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
+    height: 250,
+    backgroundColor: colors.lavender,
+    borderRadius: 22,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -499,19 +522,31 @@ const styles = StyleSheet.create({
   },
 
   progress: {
-    gap: 14,
+    gap: 15,
+    padding: 18,
+    borderRadius: 22,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    lineHeight: 22,
+    fontWeight: '700',
+    lineHeight: 23,
     color: colors.navy,
   },
 
   progressItem: {
-    gap: 3,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 48,
   },
+
+  timelineRail: { width: 14, alignItems: 'center', paddingTop: 5 },
+  timelineDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: colors.white },
+  progressCopy: { flex: 1, gap: 3, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  progressIcon: { width: 36, height: 36, borderRadius: 13, backgroundColor: colors.lavender, alignItems: 'center', justifyContent: 'center' },
 
   progressTitle: {
     fontSize: 14,
