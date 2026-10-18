@@ -812,6 +812,19 @@ export type DemoRouteResponse = {
   options: DemoRouteOption[];
 };
 
+export type MapPlace = {
+  id: string; area_id: string; name: string; address: string; longitude: number; latitude: number;
+  position_basis: string; source: 'openstreetmap';
+};
+export const placesApi = {
+  search(accessToken: string, areaId: string, query: string): Promise<{
+    area_id: string; items: MapPlace[]; storage: 'database' | 'bundled_catalog'; attribution: string;
+  }> {
+    return request(`/api/v1/navigation/areas/${encodeURIComponent(areaId)}/places?q=${encodeURIComponent(query)}`,
+      { accessToken, timeoutMs: 12000 });
+  },
+};
+
 export const demoAreasApi = {
   getAll(accessToken: string): Promise<{ default_area_id: string; items: ResidentServiceArea[] }> {
     return request('/api/v1/navigation/areas', { accessToken, timeoutMs: 15000 });
