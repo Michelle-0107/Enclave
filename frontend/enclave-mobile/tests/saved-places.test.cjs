@@ -49,6 +49,7 @@ function hooks() {
 const native = Object.fromEntries(['ActivityIndicator','Alert','Camera','Map','Marker','GeoJSONSource','Layer','Pressable','Text','TextInput','View','Modal'].map(x => [x,x]));
 native.StyleSheet = { create: value => value };
 native.Keyboard = { dismiss() {} };
+native.Alert = { alert() {} };
 native.Linking = { openURL: async () => {} };
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
 function elements(tree) {
@@ -68,8 +69,10 @@ function button(tree, title) {
 function screen(file, extras = {}, props = {}) {
   const runtime = hooks();
   const Screen = load(file, { react: runtime.react, 'react/jsx-runtime': jsx, 'react-native': native,
+    '../lib/api': {}, '../lib/supabase': {}, './navigationProgress': {},
     '@maplibre/maplibre-react-native': native, '../theme': { colors: {} },
     '../savedPlaces/SavedPlacesControl': { __esModule: true, default: 'SavedPlacesControl' }, ...extras,
+    '../navigation/PlaceSearch': { __esModule: true, default: 'PlaceSearch' },
   }).default;
   return () => { runtime.reset(); return Screen(props); };
 }
@@ -125,7 +128,8 @@ async function main() {
     assert.equal(sent[0], 'Home'); assert.equal(sent[1], 'Gym');
     assert.equal(sent[2].origin.longitude,101.730755); assert.equal(sent[2].destination.latitude,3.225);
     elements(tree).find(x => x.type === 'TextInput').props.onChangeText('Different place');
-    tree = render(); button(tree, 'Choose route').props.onPress(); assert.equal(sent[2].origin, null);
+    sent = null;
+    tree = render(); button(tree, 'Choose route').props.onPress(); assert.equal(sent, null, 'Typed labels require selecting a resolved location');
   });
   await test('Live routing initializes from saved coordinates and uses replacement presets in all three API modes', async () => {
     const sent = [];

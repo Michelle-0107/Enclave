@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import {
   Camera,
   Map,
   Marker,
+  type CameraRef,
 } from '@maplibre/maplibre-react-native';
 
 import {
@@ -24,6 +26,7 @@ import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 import type { PlacePoint } from '../savedPlaces/store';
+import PlaceSearch from '../navigation/PlaceSearch';
 
 export type MapEndpoints = { area?: NavigationArea; origin: { latitude: number; longitude: number } | null; destination: { latitude: number; longitude: number } | null };
 
@@ -72,6 +75,9 @@ export default function MapScreen({
   const [startPlace, setStartPlace] = useState<PlacePoint | null>(null);
   const [endPlace, setEndPlace] = useState<PlacePoint | null>(null);
   const [selecting, setSelecting] = useState<'origin' | 'destination'>('origin');
+  const [inputMode, setInputMode] = useState<'search' | 'map'>('map');
+  const [searching, setSearching] = useState(false);
+  const camera = useRef<CameraRef>(null);
 
   const [issues, setIssues] =
     useState<MapIssueFeature[]>([]);
@@ -211,10 +217,12 @@ export default function MapScreen({
   function chooseLocation(point: PlacePoint, which: 'origin' | 'destination') {
     const [longitude, latitude] = point.coordinate;
     const [west, south, east, north] = area?.bbox ?? [101.7211, 3.2171, 101.7409, 3.2349];
-    if (longitude < west || longitude > east || latitude < south || latitude > north) {
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || longitude < west || longitude > east || latitude < south || latitude > north) {
       setError('Select a point inside the selected live service area.'); return;
     }
     setError('');
+    Keyboard.dismiss(); setSearching(false); setSelectedIssueId(null);
+    camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 });
     if (which === 'origin') { setStartPlace(point); setStart(point.label); setSelecting('destination'); }
     else { setEndPlace(point); setDestination(point.label); }
   }
@@ -223,10 +231,10 @@ export default function MapScreen({
     const startingPoint = start.trim();
     const endPoint = destination.trim();
 
-    if (!startingPoint || !endPoint) {
+    if (!startingPoint || !endPoint || !startPlace || !endPlace) {
       Alert.alert(
         'Choose your locations',
-        'Please enter a starting point and an end point.',
+        'Choose both locations from search results, saved places, or the map.',
       );
       return;
     }
@@ -257,6 +265,13 @@ export default function MapScreen({
         Community-reported issues, at a glance.
       </Text>
 
+      <View accessibilityLabel="Location selection method" style={styles.methodRow}>
+        {(['search', 'map'] as const).map(method => <Pressable key={method} accessibilityRole="button"
+          accessibilityState={{ selected: inputMode === method }} onPress={() => { setInputMode(method); setSearching(method === 'search'); Keyboard.dismiss(); }}
+          style={[styles.methodButton, inputMode === method && styles.activeMethod]}>
+          <Text style={styles.fieldLabel}>{method === 'search' ? 'Address / place name' : 'Pick on map'}</Text>
+        </Pressable>)}
+      </View>
       <View style={styles.endpoints}>
         <View style={styles.endpoint}>
           <Text style={styles.fieldLabel}>
@@ -266,9 +281,9 @@ export default function MapScreen({
           <TextInput
             accessibilityLabel="Starting point"
             value={start}
-            onChangeText={value => { setStart(value); setStartPlace(null); }}
-            onFocus={() => setSelecting('origin')}
-            placeholder="Choose a starting point"
+            onChangeText={value => { setStart(value); setStartPlace(null); setSelecting('origin'); setInputMode('search'); setSearching(true); }}
+            onFocus={() => { setSelecting('origin'); setInputMode('search'); setSearching(true); }}
+            placeholder="Enter address or place name"
             placeholderTextColor={colors.muted}
             autoCorrect={false}
             returnKeyType="next"
@@ -287,9 +302,9 @@ export default function MapScreen({
           <TextInput
             accessibilityLabel="End point"
             value={destination}
-            onChangeText={value => { setDestination(value); setEndPlace(null); }}
-            onFocus={() => setSelecting('destination')}
-            placeholder="Choose an end point"
+            onChangeText={value => { setDestination(value); setEndPlace(null); setSelecting('destination'); setInputMode('search'); setSearching(true); }}
+            onFocus={() => { setSelecting('destination'); setInputMode('search'); setSearching(true); }}
+            placeholder="Enter address or place name"
             placeholderTextColor={colors.muted}
             autoCorrect={false}
             returnKeyType="done"
@@ -299,11 +314,14 @@ export default function MapScreen({
         </View>
       </View>
 
+      {inputMode === 'search' && searching && area && <PlaceSearch areaId={area.id}
+        query={selecting === 'origin' ? start : destination} field={selecting === 'origin' ? 'starting point' : 'destination'}
+        onChoose={point => chooseLocation(point, selecting)} />}
       <View style={{ flexDirection: 'row', gap: 16 }}>
-        <Pressable accessibilityRole="button" onPress={() => setSelecting('origin')} style={{ padding: 12 }}><Text style={styles.fieldLabel}>Pick starting point{selecting === 'origin' ? ' ✓' : ''}</Text></Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setSelecting('destination')} style={{ padding: 12 }}><Text style={styles.fieldLabel}>Pick destination{selecting === 'destination' ? ' ✓' : ''}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => { setSelecting('origin'); setInputMode('map'); setSearching(false); Keyboard.dismiss(); }} style={{ padding: 12 }}><Text style={styles.fieldLabel}>Pick starting point{inputMode === 'map' && selecting === 'origin' ? ' ✓' : ''}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => { setSelecting('destination'); setInputMode('map'); setSearching(false); Keyboard.dismiss(); }} style={{ padding: 12 }}><Text style={styles.fieldLabel}>Pick destination{inputMode === 'map' && selecting === 'destination' ? ' ✓' : ''}</Text></Pressable>
       </View>
-      <Text style={styles.subtitle}>Tap the map to select your {selecting === 'origin' ? 'starting point' : 'destination'}, or choose a saved place.</Text>
+      <Text style={styles.subtitle}>{inputMode === 'map' ? `Tap the map to select your ${selecting === 'origin' ? 'starting point' : 'destination'}.` : 'Enter an address or place name above and choose a search result.'} You can also choose a saved place.</Text>
       <View style={styles.mapContainer}
         onTouchStart={() => onMapTouchChange?.(true)}
         onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
@@ -318,28 +336,32 @@ export default function MapScreen({
           touchZoom
           doubleTapZoom
           onPress={event => {
+            Keyboard.dismiss(); if (inputMode !== 'map') return;
             const [longitude, latitude] = event.nativeEvent.lngLat;
-            chooseLocation({ label: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`, coordinate: [longitude, latitude] }, selecting);
+            chooseLocation({ label: selecting === 'origin' ? 'Selected starting point' : 'Selected destination', coordinate: [longitude, latitude] }, selecting);
           }}
           attribution
           onDidFinishLoadingMap={() => setMapError(false)}
           onDidFailLoadingMap={() => setMapError(true)}
         >
           <Camera
+            ref={camera}
             initialViewState={{
               center: area?.center || PILOT_CENTER,
               zoom: 15,
             }}
           />
           {([startPlace, endPlace] as const).map((point, index) => point && <Marker key={`saved-endpoint-${index}`} id={`saved-endpoint-${index}`} lngLat={point.coordinate}>
-            <View collapsable={false} style={{ backgroundColor: colors.navy, borderRadius: 20, padding: 10 }}><Text style={{ color: colors.white, fontWeight: '700' }}>{index === 0 ? 'S' : 'D'}</Text></View>
+            <View collapsable={false} style={[styles.endpointFrame, selecting === (index === 0 ? 'origin' : 'destination') && styles.activeEndpointFrame]}>
+              <View style={{ backgroundColor: colors.navy, borderRadius: 20, padding: 10 }}><Text style={{ color: colors.white, fontWeight: '700' }}>{index === 0 ? 'S' : 'D'}</Text></View>
+            </View>
           </Marker>)}
           {issues.map((issue) => (
             <Marker
               key={issue.id}
               id={issue.id}
               lngLat={issue.geometry.coordinates}
-              onPress={() => setSelectedIssueId(issue.id)}
+              onPress={event => { event.stopPropagation(); setSelectedIssueId(issue.id); Keyboard.dismiss(); setSearching(false); }}
             >
               <View
                 collapsable={false}
@@ -619,8 +641,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectedMarker: {
-    backgroundColor: colors.navy,
+    width: 50,
+    height: 50,
+    borderColor: '#D99A13',
+    borderWidth: 4,
+    borderRadius: 25,
+    shadowColor: '#1B2633',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.38,
+    shadowRadius: 5,
+    elevation: 8,
+    zIndex: 2,
   },
+  endpointFrame: { padding: 3, borderRadius: 9, borderWidth: 3, borderColor: 'transparent' },
+  activeEndpointFrame: { borderColor: '#D99A13', backgroundColor: '#FFF3D0' },
+  methodRow: { flexDirection: 'row', gap: 8 },
+  methodButton: { flex: 1, minHeight: 44, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 12, justifyContent: 'center' },
+  activeMethod: { borderColor: colors.navy, backgroundColor: colors.lavender },
   markerText: {
     fontSize: 23,
     lineHeight: 28,

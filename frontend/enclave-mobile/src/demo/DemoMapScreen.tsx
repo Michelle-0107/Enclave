@@ -7,6 +7,7 @@ import { demoAreasApi, type DemoRouteResponse } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
+import PlaceSearch from '../navigation/PlaceSearch';
 import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, nearbyAccessPoints, searchPlaces, selectLocation,
   type Coordinate, type Dataset, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
 import { drivingDirectionsUrl } from './driving';
@@ -33,6 +34,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const [endText, setEndText] = useState('');
   const [field, setField] = useState<Field>('origin');
   const [searching, setSearching] = useState(false);
+  const [inputMode, setInputMode] = useState<'search' | 'map'>('map');
   const [results, setResults] = useState<ModeResult[]>([]);
   const [mode, setMode] = useState<Mode>('shortest');
   const [selected, setSelected] = useState<{ type: 'facility' | 'place'; id: string } | null>(null);
@@ -72,6 +74,22 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const placeData = useMemo(() => ({ type: 'FeatureCollection' as const,
     features: dataset.landmarks.map(p => ({ type: 'Feature' as const, id: p.id, properties: { id: p.id, name: p.name },
       geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), [dataset]);
+  const selectedMarkerData = useMemo(() => {
+    if (!feature) return null;
+    const color = selected?.type === 'place'
+      ? '#0B4FB8'
+      : facility && isBlocked(facility, state)
+        ? '#7F2E28'
+        : '#15575C';
+    return {
+      type: 'FeatureCollection' as const,
+      features: [{
+        type: 'Feature' as const,
+        properties: { color },
+        geometry: { type: 'Point' as const, coordinates: feature.coordinate },
+      }],
+    };
+  }, [feature, facility, selected, state]);
   const bounds: [number, number, number, number] = dataset.bbox;
 
   function clearRoute() { routeRequest.current += 1; guidanceActive.current = false; followCamera.current = true; setCalculating(false); setResults([]); setSelected(null); setError(''); setAlternative(null); setAdjustmentVisible(false); setWaitForAdjustedStart(false); setRouteReady(true); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); approachCameraCentered.current = false; }
@@ -88,7 +106,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       Math.max(...points.map(p => p[0])), Math.max(...points.map(p => p[1]))], { padding: { top: 35, right: 35, bottom: 35, left: 35 }, duration: 400 });
   }
   function edit(value: string, which: Field) {
-    setField(which); setSearching(true); clearRoute();
+    setField(which); setInputMode('search'); setSearching(true); clearRoute();
     if (which === 'origin') { setStartText(value); setOrigin(null); setOriginalOrigin(null); } else { setEndText(value); setDestination(null); }
   }
   function choose(coordinate: Coordinate, label: string, which: Field = field) {
@@ -292,11 +310,18 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
     {transport === 'driving' ? <Text style={styles.hint}>Car navigation opens Google Maps with your selected locations. Demo facility restrictions are not sent to Google Maps.</Text> :
       transport === 'wheelchair' ? <Text style={styles.hint}>Wheelchair travel uses step-free paths and avoids reported damage. Demo access conditions are not field verified.</Text> :
         <Text style={styles.hint}>Walking: shortest, avoid damaged facilities, or verified step-free route. Verification is simulated in this demo.</Text>}
+    <View accessibilityLabel="Location selection method" style={styles.row}>
+      {(['search', 'map'] as const).map(method => <Pressable key={method} accessibilityRole="button"
+        accessibilityState={{ selected: inputMode === method }} onPress={() => { setInputMode(method); setSearching(method === 'search'); Keyboard.dismiss(); }}
+        style={[styles.pointButton, inputMode === method && styles.selectedCard]}>
+        <Text style={styles.cardTitle}>{method === 'search' ? 'Address / place name' : 'Pick on map'}</Text>
+      </Pressable>)}
+    </View>
     <View style={styles.endpoints}>
       <View style={styles.endpoint}>
         <Text style={styles.fieldLabel}>Starting point</Text>
         <TextInput accessibilityLabel="Starting point" value={startText} onChangeText={value => edit(value, 'origin')}
-          onFocus={() => { setField('origin'); setSearching(true); }} placeholder="Choose a starting point"
+          onFocus={() => { setField('origin'); setInputMode('search'); setSearching(true); }} placeholder="Enter address or place name"
           placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
         <SavedPlacesControl field="starting point" current={origin} disabled={navigating}
           onChoose={point => { choose(point.coordinate, point.label, 'origin'); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
@@ -306,25 +331,24 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <View style={styles.endpoint}>
         <Text style={styles.fieldLabel}>End point</Text>
         <TextInput accessibilityLabel="End point" value={endText} onChangeText={value => edit(value, 'destination')}
-          onFocus={() => { setField('destination'); setSearching(true); }} placeholder="Choose an end point"
+          onFocus={() => { setField('destination'); setInputMode('search'); setSearching(true); }} placeholder="Enter address or place name"
           placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
         <SavedPlacesControl field="destination" current={destination} disabled={navigating}
           onChoose={point => { choose(point.coordinate, point.label, 'destination'); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
         {transport !== 'driving' && destination?.snap && <Text style={styles.hint}>Road access {Math.round(destination.snap.distance)} m from selection</Text>}
       </View>
     </View>
-    {suggestions.map(p => <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={'Choose place: ' + p.name}
-      onPress={() => { choose(p.coordinate, p.name); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} style={styles.suggestion}>
-      <Text style={styles.cardTitle}>{p.name}</Text><Text style={styles.body}>{p.coordinate[1].toFixed(5)}, {p.coordinate[0].toFixed(5)}</Text>
-    </Pressable>)}
-    {searching && !suggestions.length && (field === 'origin' ? startText : endText).trim().length >= 2 &&
-      <Text style={styles.hint}>No matching mapped place. Tap the map or enter latitude, longitude.</Text>}
+    {inputMode === 'search' && searching && <PlaceSearch areaId={areaId} query={field === 'origin' ? startText : endText}
+      field={field === 'origin' ? 'starting point' : 'destination'}
+      local={suggestions.map(p => ({ id: p.id, label: p.name, coordinate: p.coordinate, address: '', basis: p.positionBasis }))}
+      onChoose={p => { choose(p.coordinate, p.label); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} />}
     <View style={styles.row}>
       {(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="button"
         accessibilityLabel={which === 'origin' ? 'Pick starting point on map' : 'Pick end point on map'}
-        onPress={() => { setField(which); setSearching(false); Keyboard.dismiss(); }} style={[styles.pointButton, field === which && styles.selectedCard]}>
+        accessibilityState={{ selected: inputMode === 'map' && field === which }}
+        onPress={() => { setField(which); setInputMode('map'); setSearching(false); Keyboard.dismiss(); }} style={[styles.pointButton, inputMode === 'map' && field === which && styles.selectedCard]}>
         <Text style={styles.cardTitle}>{which === 'origin' ? '1. Starting point' : '2. End point'}</Text>
-        <Text style={styles.body}>{field === which ? 'Tap map to choose' : 'Tap to select'}</Text>
+        <Text style={styles.body}>{inputMode === 'map' && field === which ? 'Tap map to choose' : 'Pick on map'}</Text>
       </Pressable>)}
     </View>
     <View style={styles.row}>
@@ -338,7 +362,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
       onTouchCancel={() => onMapTouchChange?.(false)}>
       <Map key={mapKey} style={styles.map} mapStyle={dataset.styleUrl} androidView="texture" compass attribution dragPan touchZoom doubleTapZoom
-        onPress={event => { const p = event.nativeEvent.lngLat; choose(p, `Map pin · ${p[1].toFixed(5)}, ${p[0].toFixed(5)}`); }}
+        onPress={event => { Keyboard.dismiss(); if (inputMode !== 'map') return; const p = event.nativeEvent.lngLat; choose(p, field === 'origin' ? 'Selected starting point' : 'Selected destination'); }}
         onDidFailLoadingMap={() => setMapError(true)} onDidFinishLoadingMap={() => setMapError(false)}>
         <Camera ref={camera} initialViewState={{ bounds, padding: { top: 15, right: 15, bottom: 15, left: 15 } }} />
         {alternative?.results[0]?.route && <GeoJSONSource id="demo-suggested-route" data={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: alternative.results[0].route.coordinates } }}>
@@ -368,8 +392,23 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
             'circle-color': ['case', ['get', 'blocked'], '#A63E37', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
           <Layer id="demo-facility-labels" type="symbol" minzoom={15.5} layout={{ 'text-field': ['get', 'symbol'], 'text-size': 9, 'text-allow-overlap': true }} paint={{ 'text-color': '#FFFFFF' }} />
         </GeoJSONSource>
+        {feature && selectedMarkerData && <GeoJSONSource id="demo-selection-highlight" data={selectedMarkerData}>
+          <Layer id="demo-selection-shadow" type="circle" paint={{
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 12, 5, 14, 7, 16, 9, 18, 11],
+            'circle-color': ['get', 'color'], 'circle-opacity': 0.28,
+            'circle-translate': [2, 3], 'circle-blur': 0.35,
+          }} />
+          <Layer id="demo-selection-halo" type="circle" paint={{
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4.5, 12, 5.5, 14, 7, 16, 9, 18, 11],
+            'circle-color': ['get', 'color'], 'circle-opacity': 0.1,
+            'circle-stroke-color': ['get', 'color'],
+            'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 1.6, 18, 2],
+          }} />
+        </GeoJSONSource>}
         {([origin, destination] as const).map((p, i) => p && <Marker key={i} id={'demo-endpoint-' + i} lngLat={p.coordinate}>
-          <View collapsable={false} style={[styles.marker, i === 1 && styles.destinationPin]}><Text style={styles.pinText}>{i === 0 ? 'S' : 'D'}</Text></View>
+          <View collapsable={false} style={[styles.endpointFrame, field === (i === 0 ? 'origin' : 'destination') && styles.activeEndpointFrame]}>
+            <View style={[styles.marker, i === 1 && styles.destinationPin]}><Text style={styles.pinText}>{i === 0 ? 'S' : 'D'}</Text></View>
+          </View>
         </Marker>)}
       </Map>
       {mapError && <View style={styles.mapErrorCard}><Text style={styles.cardTitle}>Could not load map</Text>
@@ -379,7 +418,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
     </View>
     <View style={styles.row}><Text style={styles.count}>{dataset.facilities.length} facilities · {dataset.facilities.filter(f => isBlocked(f, state)).length} reported issues in the pilot area</Text>
       <Pressable accessibilityRole="button" onPress={() => camera.current?.fitBounds(bounds, { padding: { top: 15, right: 15, bottom: 15, left: 15 }, duration: 400 })} style={styles.textButton}><Text style={styles.link}>Show area</Text></Pressable></View>
-    <Text style={styles.hint}>Red: reported damage · Teal: facilities · Blue: real places. Tap a marker for details, or tap the map to choose {field === 'origin' ? 'your start' : 'your destination'}.</Text>
+    <Text style={styles.hint}>Red: reported damage · Teal: facilities · Blue: real places. A gold frame marks your selection. {inputMode === 'map' ? `Tap the map to choose ${field === 'origin' ? 'your start' : 'your destination'}.` : 'Search for an address or place above, or switch to Pick on map.'}</Text>
     {feature && <View style={styles.selectedPanel}>
       <Text style={styles.cardTitle}>{feature.name}</Text>
       <Text style={styles.body}>{facility ? `${facility.kind.replaceAll('_', ' ')} · ${isBlocked(facility, state) ? `${facility.reporters} residents reported` : 'No confirmed damage'}` : 'Real mapped landmark'}</Text>
@@ -446,6 +485,8 @@ const styles = StyleSheet.create({
   transportLabel: { color: colors.navy, fontSize: 12, fontWeight: '600' },
   mapContainer: { width: '100%', height: 320, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.lavender }, map: { flex: 1 },
   marker: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.navy, borderWidth: 2, borderColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  endpointFrame: { padding: 3, borderRadius: 9, borderWidth: 3, borderColor: 'transparent' },
+  activeEndpointFrame: { borderColor: '#D99A13', backgroundColor: '#FFF3D0' },
   accessPin: { backgroundColor: '#BD6509' }, originalPin: { backgroundColor: '#8790A0' }, suggestedPin: { backgroundColor: '#2675D8' }, destinationPin: { backgroundColor: '#247A80' }, pinText: { color: colors.white, fontSize: 13, fontWeight: '700' },
   mapErrorCard: { position: 'absolute', top: 16, right: 16, left: 16, padding: 14, borderRadius: 14, backgroundColor: colors.white, gap: 6 },
   count: { flex: 1, color: colors.muted, fontSize: 12 }, hint: { fontSize: 11, lineHeight: 17, color: colors.muted },

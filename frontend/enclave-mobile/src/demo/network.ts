@@ -119,11 +119,6 @@ export function selectLocation(label: string, coordinate: Coordinate, data = dat
 }
 export function searchPlaces(query: string, data = dataset): Landmark[] {
   const value = query.trim().toLocaleLowerCase(); if (value.length < 2) return [];
-  const pair = value.split(',').map(s => Number(s.trim()));
-  if (pair.length === 2 && pair.every(Number.isFinite)) {
-    const coordinate: Coordinate = [pair[1], pair[0]];
-    return insidePilot(coordinate, data) ? [{ id: 'coordinate-search', name: `${pair[0].toFixed(6)}, ${pair[1].toFixed(6)}`, coordinate, osmType: 'node', osmId: '0', positionBasis: 'User-entered coordinate' }] : [];
-  }
   return data.landmarks.filter(p => p.name.toLocaleLowerCase().includes(value)).sort((a, b) => Number(!a.name.toLocaleLowerCase().startsWith(value)) - Number(!b.name.toLocaleLowerCase().startsWith(value)) || a.name.localeCompare(b.name)).slice(0, 6);
 }
 function pointAt(edge: Edge, offset: number): Coordinate {
