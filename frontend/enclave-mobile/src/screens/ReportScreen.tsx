@@ -42,7 +42,6 @@ type Props = {
 type Step =
   | 'photo'
   | 'location'
-  | 'issue'
   | 'success';
 
 type Selection = {
@@ -111,8 +110,10 @@ export default function ReportScreen({
   const [photo, setPhoto] =
     useState<ImagePickerAsset>();
 
-  const [details, setDetails] =
-    useState<ReportLocationDetails>();
+  const [details, setDetails] = useState<ReportLocationDetails>({
+    description: '',
+    coordinates: null,
+  });
 
   const [selection, setSelection] =
     useState<Selection>();
@@ -145,12 +146,10 @@ export default function ReportScreen({
     goToStep('location');
   }
 
-  function handleLocationContinue(
+  function handleLocationChange(
     locationDetails: ReportLocationDetails,
   ) {
     setDetails(locationDetails);
-    setSelection(undefined);
-    goToStep('issue');
   }
 
   async function linkTicket(
@@ -181,13 +180,13 @@ export default function ReportScreen({
       return;
     }
 
-    if (!photo || !details) {
+    if (!photo) {
       Alert.alert(
         'Missing report details',
         'Please add a photo and location first.',
       );
 
-      goToStep(!photo ? 'photo' : 'location');
+      goToStep('photo');
       return;
     }
 
@@ -202,7 +201,6 @@ export default function ReportScreen({
     }
 
     if (!selected) {
-      goToStep('issue');
       return;
     }
 
@@ -360,17 +358,7 @@ export default function ReportScreen({
         );
 
       case 'location':
-        return (
-          <ReportLocationScreen
-            initialDetails={details}
-            onDescriptionFocus={onDescriptionFocus}
-            onBack={() => goToStep('photo')}
-            onContinue={handleLocationContinue}
-          />
-        );
-
-      case 'issue':
-        if (!details || !photo) {
+        if (!photo) {
           return null;
         }
 
@@ -451,16 +439,22 @@ export default function ReportScreen({
         }
 
         return (
-          <IssueSelection
-            details={details}
-            photoUri={photo.uri}
-            initialSelection={selection}
-            onBack={() => goToStep('location')}
-            onSubmit={(value) => {
-              setSelection(value);
-              void handleSubmit(value);
-            }}
-          />
+          <ReportLocationScreen
+            initialDetails={details}
+            onDescriptionFocus={onDescriptionFocus}
+            onBack={() => goToStep('photo')}
+            onDetailsChange={handleLocationChange}
+          >
+            <IssueSelection
+              details={details}
+              photoUri={photo.uri}
+              initialSelection={selection}
+              onSubmit={(value) => {
+                setSelection(value);
+                void handleSubmit(value);
+              }}
+            />
+          </ReportLocationScreen>
         );
 
       case 'success':
@@ -507,7 +501,6 @@ type IssueSelectionProps = {
   details: ReportLocationDetails;
   photoUri: string;
   initialSelection?: Selection;
-  onBack: () => void;
   onSubmit: (selection: Selection) => void;
 };
 
@@ -515,7 +508,6 @@ function IssueSelection({
   details,
   photoUri,
   initialSelection,
-  onBack,
   onSubmit,
 }: IssueSelectionProps) {
   const [facilities, setFacilities] =
@@ -528,10 +520,7 @@ function IssueSelection({
     initialSelection?.facility.id ?? '',
   );
 
-  const [faultKind, setFaultKind] =
-    useState<FaultKind>(
-      initialSelection?.faultKind ?? 'damage',
-    );
+  const faultKind: FaultKind = initialSelection?.faultKind ?? 'damage';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -697,27 +686,14 @@ function IssueSelection({
     : undefined;
 
   const canContinue =
-    !!selected && !loading && !error;
+    !!selected && !!coordinates && !!details.description.trim() && !loading && !error;
 
   return (
     <View style={styles.panel}>
-      <Text style={styles.stepLabel}>STEP 03 OF 03</Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onBack}
-        style={styles.textButton}
-      >
-        <Text style={styles.link}>
-          ‹ Back to location
-        </Text>
-      </Pressable>
-
-      <Text style={styles.title}>
-        Which facility?
-      </Text>
+      <Text style={styles.sectionTitle}>Choose a facility</Text>
 
       <Text style={styles.body}>
-        Select the actual facility and problem. Your report
+        Select the facility nearest to the pin. Your report
         location must be within 100 m of the facility.
       </Text>
 
@@ -776,46 +752,22 @@ function IssueSelection({
         ))
       )}
 
-      <Text style={styles.label}>
-        Problem type
-      </Text>
-
-      {(['damage', 'obstruction'] as FaultKind[]).map(
-        (value) => (
-          <Pressable
-            key={value}
-            accessibilityRole="radio"
-            accessibilityState={{
-              checked: value === faultKind,
-            }}
-            onPress={() => setFaultKind(value)}
-            style={[
-              styles.choice,
-              value === faultKind &&
-                styles.selectedChoice,
-            ]}
-          >
-            <Text style={styles.label}>
-              {value === 'damage'
-                ? 'Damage'
-                : 'Obstruction'}
-            </Text>
-          </Pressable>
-        ),
-      )}
-
       {selected && !loading && !error && (
         <View style={styles.summary}>
-          <Text style={styles.label}>Confirm report</Text>
+          <Text style={styles.label}>Report preview</Text>
           <Image source={{ uri: photoUri }} style={styles.confirmPhoto} resizeMode="contain" />
           <Text style={styles.body}>Location: {coordinates ? `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}` : 'Not selected'}</Text>
-          <Text style={styles.body}>Description: {details.description}</Text>
+          <Text style={styles.body}>Facility: {selected.name}</Text>
           <Text style={styles.body}>
             {existingIssue
               ? `Matching open issue: ${existingIssue.reporter_count} residents reported. Your report will be linked to this issue.`
-              : 'Your report will create or join an open issue for this facility and problem type.'}
+              : 'Your report will be added to the community issue list for this facility.'}
           </Text>
         </View>
+      )}
+
+      {!details.description.trim() && (
+        <Text style={styles.body}>Add a description above to continue.</Text>
       )}
 
       <Pressable
@@ -889,6 +841,13 @@ const styles = StyleSheet.create({
     color: colors.navy,
   },
 
+  sectionTitle: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+
   body: {
     fontSize: 13,
     lineHeight: 20,
@@ -900,14 +859,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '600',
     color: colors.navy,
-  },
-
-  stepLabel: {
-    fontSize: 10,
-    lineHeight: 20,
-    fontWeight: '700',
-    letterSpacing: 1,
-    color: colors.muted,
   },
 
   choice: {

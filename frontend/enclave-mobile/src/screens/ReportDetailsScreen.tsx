@@ -30,7 +30,6 @@ export type ReportProgressItem = {
 
 type Props = {
   report: ResidentReport;
-  onBack: () => void;
   onMapTouchChange?: (active: boolean) => void;
 };
 
@@ -66,7 +65,6 @@ function getStatusStyle(status: ReportStatus) {
 
 export default function ReportDetailsScreen({
   report,
-  onBack,
   onMapTouchChange,
 }: Props) {
   const [currentReport, setCurrentReport] = useState(report);
@@ -118,17 +116,6 @@ export default function ReportDetailsScreen({
 
   return (
     <View style={styles.container}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onBack}
-        hitSlop={8}
-        style={styles.backButton}
-      >
-        <Text style={styles.backText}>
-          ‹ My reports
-        </Text>
-      </Pressable>
-
       <View style={styles.heading}>
         <Text style={styles.title}>
           {currentReport.title}
@@ -166,6 +153,20 @@ export default function ReportDetailsScreen({
         >
           {currentReport.status}
         </Text>
+      </View>
+
+      <View style={styles.photoContainer}>
+        {currentReport.photoUri ? (
+          <>
+            <Image source={{ uri: currentReport.photoUri }} style={styles.photo} resizeMode="contain" accessibilityLabel="Submitted report photo" />
+            <Pressable accessibilityRole="button" onPress={() => setPhotoExpanded(true)} style={styles.expandButton}>
+              <Ionicons name="expand-outline" size={18} color={colors.white} />
+              <Text style={styles.expandText}>Expand photo</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.photoPlaceholder}>No photo available</Text>
+        )}
       </View>
 
       <View style={styles.issueDetails}>
@@ -210,28 +211,13 @@ export default function ReportDetailsScreen({
           <Text style={styles.location}>{currentReport.location}</Text>
         )}
 
-        <Text style={styles.description}>
-          {currentReport.description}
-        </Text>
-
-        <Text style={styles.meta}>
-          Category: {currentReport.category} · Priority:{' '}
-          {currentReport.priority}
-        </Text>
       </View>
 
-      <View style={styles.photoContainer}>
-        {currentReport.photoUri ? (
-          <>
-            <Image source={{ uri: currentReport.photoUri }} style={styles.photo} resizeMode="contain" accessibilityLabel="Submitted report photo" />
-            <Pressable accessibilityRole="button" onPress={() => setPhotoExpanded(true)} style={styles.expandButton}>
-              <Ionicons name="expand-outline" size={18} color={colors.white} />
-              <Text style={styles.expandText}>Expand photo</Text>
-            </Pressable>
-          </>
-        ) : (
-          <Text style={styles.photoPlaceholder}>No photo available</Text>
-        )}
+      <View style={styles.issueDetails}>
+        <Text style={styles.description}>{currentReport.description}</Text>
+        <Text style={styles.meta}>
+          Category: {currentReport.category} · Priority: {currentReport.priority}
+        </Text>
       </View>
 
       <Modal visible={photoExpanded} transparent animationType="fade" onRequestClose={() => setPhotoExpanded(false)} statusBarTranslucent>
@@ -332,19 +318,6 @@ function mapReportRecord(record: ReportRecord): ResidentReport {
 const styles = StyleSheet.create({
   container: {
     gap: 22,
-  },
-
-  backButton: {
-    alignSelf: 'flex-start',
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-
-  backText: {
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 22,
-    color: colors.navy,
   },
 
   heading: {
