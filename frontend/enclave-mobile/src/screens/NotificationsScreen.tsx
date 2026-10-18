@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -25,7 +27,10 @@ export type ResidentNotification = {
         reportId: string;
       }
     | {
-        type: 'map';
+        type: 'reports';
+      }
+    | {
+        type: 'announcement';
       };
 };
 
@@ -41,6 +46,7 @@ export default function NotificationsScreen({
   const [notifications, setNotifications] = useState<ResidentNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedNotification, setSelectedNotification] = useState<ResidentNotification | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -116,7 +122,7 @@ export default function NotificationsScreen({
                   item.id === notification.id ? { ...item, read: true } : item,
                 ));
                 void markNotificationRead(notification);
-                onNotificationPress(notification);
+                setSelectedNotification({ ...notification, read: true });
               }}
               style={({ pressed }) => [
                 styles.notificationRow,
@@ -166,6 +172,31 @@ export default function NotificationsScreen({
         </View>
       )}
 
+      <Modal visible={selectedNotification !== null} transparent animationType="fade"
+        onRequestClose={() => setSelectedNotification(null)}>
+        <View style={styles.detailOverlay}>
+          <View style={styles.detailCard}>
+            {selectedNotification && <>
+              <View style={styles.detailHeader}>
+                <Text accessibilityRole="header" style={styles.detailTitle}>{selectedNotification.title}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel="Close notification"
+                  onPress={() => setSelectedNotification(null)} style={styles.closeButton}>
+                  <Text style={styles.actionText}>×</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.detailMeta}>{selectedNotification.time} · {selectedNotification.reference}</Text>
+              <ScrollView style={styles.detailBody} contentContainerStyle={styles.detailContent}>
+                <Text selectable style={styles.detailMessage}>{selectedNotification.description}</Text>
+              </ScrollView>
+              {selectedNotification.target.type !== 'announcement' && <Pressable accessibilityRole="button"
+                onPress={() => { setSelectedNotification(null); onNotificationPress(selectedNotification); }}
+                style={styles.reportButton}>
+                <Text style={styles.reportButtonText}>View my reports</Text>
+              </Pressable>}
+            </>}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -180,19 +211,19 @@ function mapNotification(notification: NotificationRecord): ResidentNotification
       : 'Management announcement',
     time: formatRelativeTime(notification.created_at),
     read: notification.is_read,
-    // related_report_id is an internal numeric database ID, not a ticket_id.
-    // Keep the broadcast non-navigable until the backend exposes a safe ticket mapping.
-    target: { type: 'map' },
+    // The internal numeric related_report_id cannot be used as a public ticket_id.
+    // Open the resident's report list only when they explicitly request it.
+    target: notification.related_report_id != null ? { type: 'reports' } : { type: 'announcement' },
   };
 }
 
 async function markNotificationRead(notification: ResidentNotification) {
   const notificationId = Number(notification.id);
   if (!Number.isInteger(notificationId)) return;
-  const { data } = await supabase.auth.getSession();
-  const accessToken = data.session?.access_token;
-  if (!accessToken) return;
   try {
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
+    if (!accessToken) return;
     await notificationsApi.markRead(accessToken, notificationId);
   } catch {
     // The local state remains useful if a read receipt cannot be saved.
@@ -210,6 +241,18 @@ function formatRelativeTime(value: string | null): string {
 }
 
 const styles = StyleSheet.create({
+  detailOverlay: { flex: 1, backgroundColor: '#00000077', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  detailCard: { width: '100%', maxWidth: 560, maxHeight: '85%', backgroundColor: colors.white, borderRadius: 20, padding: 20, gap: 12 },
+  detailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  detailMeta: { fontSize: 13, lineHeight: 20, color: colors.muted },
+  detailBody: { flexGrow: 0, flexShrink: 1 },
+  detailContent: { paddingBottom: 4 },
+  detailTitle: { flex: 1, fontSize: 22, lineHeight: 30, color: colors.navy, fontWeight: '700' },
+  detailMessage: { fontSize: 16, lineHeight: 25, color: colors.navy },
+  closeButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', backgroundColor: colors.background },
+  actionText: { color: colors.navy, fontSize: 28, lineHeight: 32, textAlign: 'center' },
+  reportButton: { minHeight: 48, borderRadius: 16, backgroundColor: colors.navy, padding: 14, alignItems: 'center', justifyContent: 'center' },
+  reportButtonText: { color: colors.white, fontWeight: '700' },
   container: {
     gap: 20,
   },

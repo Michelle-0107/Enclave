@@ -4,24 +4,26 @@ import { Camera, GeoJSONSource, Layer, Map, Marker, type CameraRef } from '@mapl
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { colors } from '../theme';
-import { dataset, initialScenario, insidePilot, isBlocked, labels, meters, searchPlaces, selectLocation,
-  type Coordinate, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
+import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
+import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, searchPlaces, selectLocation,
+  type Coordinate, type Dataset, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
 import { drivingDirectionsUrl } from './driving';
 import { MAX_START_ADJUSTMENT_METERS, planJourney, type AccessPlan } from './access';
 import JourneyGuidance from './JourneyGuidance';
 
 type Field = 'origin' | 'destination';
-type Props = { onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
+type Props = { data?: Dataset; onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
 type Choice = { label: string; coordinate: Coordinate; snap?: Selection['snap'] };
 const transports: { id: Transport; name: string; icon: 'car-outline' | 'walk' | 'wheelchair-accessibility' }[] = [
   { id: 'driving', name: 'Car', icon: 'car-outline' }, { id: 'walking', name: 'Walking', icon: 'walk' }, { id: 'wheelchair', name: 'Wheelchair', icon: 'wheelchair-accessibility' },
 ];
 const routeColors: Record<Mode, string> = { shortest: '#8147B4', avoid_damage: '#BD6509', accessible: '#247A80' };
 const symbols: Record<string, string> = { stairs: 'ST', crossing: 'ZX', footbridge: 'FB', ramp: 'RP', path_surface: 'P', step_free_path: 'SF' };
-const state = initialScenario(); // Read-only resident view. No management controls or writes.
 const formatDistance = (m: number) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`;
 
-export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouchChange }: Props) {
+export default function DemoMapScreen({ data = builtInSnapshot, onShowLiveMap, onReportPress, onMapTouchChange }: Props) {
+  const dataset = data;
+  const state = useMemo(() => initialScenario(data), [data]);
   const [origin, setOrigin] = useState<Choice | null>(null);
   const [destination, setDestination] = useState<Choice | null>(null);
   const [startText, setStartText] = useState('');
@@ -51,7 +53,7 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
   useEffect(() => () => { locationRequest.current += 1; onMapTouchChange?.(false); }, [onMapTouchChange]);
   const approachCameraCentered = useRef(false);
   const camera = useRef<CameraRef>(null);
-  const suggestions = searching ? searchPlaces(field === 'origin' ? startText : endText) : [];
+  const suggestions = searching ? searchPlaces(field === 'origin' ? startText : endText, dataset) : [];
   const route = results.find(item => item.mode === mode)?.route;
   const facility = selected?.type === 'facility' ? dataset.facilities.find(f => f.id === selected.id) : undefined;
   const place = selected?.type === 'place' ? dataset.landmarks.find(p => p.id === selected.id) : undefined;
@@ -59,10 +61,10 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
   const facilityData = useMemo(() => ({ type: 'FeatureCollection' as const,
     features: dataset.facilities.map(f => ({ type: 'Feature' as const, id: f.id,
       properties: { id: f.id, blocked: isBlocked(f, state), symbol: symbols[f.kind] },
-      geometry: { type: 'Point' as const, coordinates: f.coordinate } })) }), []);
+      geometry: { type: 'Point' as const, coordinates: f.coordinate } })) }), [dataset, state]);
   const placeData = useMemo(() => ({ type: 'FeatureCollection' as const,
     features: dataset.landmarks.map(p => ({ type: 'Feature' as const, id: p.id, properties: { id: p.id, name: p.name },
-      geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), []);
+      geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), [dataset]);
   const bounds: [number, number, number, number] = dataset.bbox;
 
   function clearRoute() { setResults([]); setSelected(null); setError(''); setAlternative(null); setAdjustmentVisible(false); setWaitForAdjustedStart(false); setRouteReady(true); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); approachCameraCentered.current = false; }
@@ -84,9 +86,9 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
   }
   function choose(coordinate: Coordinate, label: string, which: Field = field) {
     try {
-      if (!insidePilot(coordinate, dataset)) throw new Error('Select a point inside the KL East pilot area.');
+      if (!insidePilot(coordinate, dataset)) throw new Error('Select a point inside the current service area.');
       let selection: Choice = { label, coordinate };
-      if (transport !== 'driving') { try { selection = selectLocation(label, coordinate); } catch { /* Keep the raw pin for explicit nearby-access planning. */ } }
+      if (transport !== 'driving') { try { selection = selectLocation(label, coordinate, dataset); } catch { /* Keep the raw pin for explicit nearby-access planning. */ } }
       clearRoute(); setSearching(false); Keyboard.dismiss();
       if (which === 'origin') { setOrigin(selection); setOriginalOrigin(null); setStartText(label); setField('destination'); }
       else { setDestination(selection); setEndText(label); }
@@ -97,7 +99,7 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
     if (!origin || !destination) { setError('Select both locations using the map or search results.'); return; }
     try {
       if (transport === 'driving') throw new Error('Use Open driving navigation for car travel.');
-      const plan = planJourney(transport, origin.coordinate, destination.coordinate);
+      const plan = planJourney(transport, origin.coordinate, destination.coordinate, dataset);
       const next = plan.direct; setResults(next);
       const available = next.find(item => item.route); setMode(available?.mode ?? 'shortest');
       if (plan.adjustment) {
@@ -131,7 +133,7 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
   async function openDriving() {
     setError(''); Keyboard.dismiss(); setSearching(false);
     if (!origin || !destination) { setError('Select both locations using the map or search results.'); return; }
-    try { await Linking.openURL(drivingDirectionsUrl(origin.coordinate, destination.coordinate)); }
+    try { await Linking.openURL(drivingDirectionsUrl(origin.coordinate, destination.coordinate, dataset)); }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to open driving directions.'); }
   }
   const handleGuidancePosition = useCallback((point: Coordinate | null) => {
@@ -168,7 +170,7 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
       camera.current?.easeTo({ center: point, zoom: 16, duration: 400 });
       if (useAsStart && insidePilot(point, dataset)) choose(point, 'Current location', 'origin');
       setLocationStatus(!insidePilot(point, dataset)
-        ? 'You are outside the KL East pilot area. Your starting point is unchanged; use Show area to plan a demo route.'
+        ? 'You are outside the selected service area. Your starting point is unchanged; use Show area or switch service area.'
         : `Location updated${value.coords.accuracy == null ? '' : ` · accuracy approximately ${Math.round(value.coords.accuracy)} m`}.`);
     } catch (failure) {
       if (request === locationRequest.current) setLocationStatus(failure instanceof Error ? failure.message : 'Could not get your location. Try again.');
@@ -186,7 +188,7 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
   return <View style={styles.container}>
     <Text style={styles.title}>Around your neighbourhood.</Text>
     <Text style={styles.subtitle}>Facilities and community-reported issues, at a glance.</Text>
-    <Text style={styles.demoBadge}>Demo facilities · real KL East map</Text>
+    <Text style={styles.demoBadge}>Demo · {dataset.name}</Text>
     <View style={styles.transportRow} accessibilityRole="tablist">
       {transports.map(item => <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.name}
         accessibilityState={{ selected: transport === item.id }} onPress={() => changeTransport(item.id)}
@@ -204,6 +206,8 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
         <TextInput accessibilityLabel="Starting point" value={startText} onChangeText={value => edit(value, 'origin')}
           onFocus={() => { setField('origin'); setSearching(true); }} placeholder="Choose a starting point"
           placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
+        <SavedPlacesControl field="starting point" current={origin} disabled={navigating}
+          onChoose={point => { choose(point.coordinate, point.label, 'origin'); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
         {originalOrigin && origin ? <Text style={styles.hint}>Updated {formatDistance(meters(originalOrigin.coordinate, origin.coordinate))} from your original start</Text> : transport !== 'driving' && origin?.snap && <Text style={styles.hint}>Mapped access {Math.round(origin.snap.distance)} m from selection</Text>}
       </View>
       <View style={styles.divider} />
@@ -212,6 +216,8 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
         <TextInput accessibilityLabel="End point" value={endText} onChangeText={value => edit(value, 'destination')}
           onFocus={() => { setField('destination'); setSearching(true); }} placeholder="Choose an end point"
           placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
+        <SavedPlacesControl field="destination" current={destination} disabled={navigating}
+          onChoose={point => { choose(point.coordinate, point.label, 'destination'); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
         {transport !== 'driving' && destination?.snap && <Text style={styles.hint}>Road access {Math.round(destination.snap.distance)} m from selection</Text>}
       </View>
     </View>
@@ -320,7 +326,7 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouch
         <Text style={styles.modalEyebrow}>STARTING POINT SUGGESTION</Text>
         <Text style={styles.cardTitle}>Move your starting point to a nearby connected place?</Text>
         <Text style={styles.body}>A mapped walking route reaches your destination from this point. It is {formatDistance(alternative?.startGap ?? 0)} from your selected start and within the {MAX_START_ADJUSTMENT_METERS} m demo limit.</Text>
-        <Text style={styles.body}>Accepting updates this trip's starting point. The map marks the original point O and suggested point N. After you accept, navigation first waits for you to reach the new start.</Text>
+        <Text style={styles.body}>Accepting updates the starting point for this trip. The map marks the original point O and suggested point N. After you accept, navigation first waits for you to reach the new start.</Text>
         <Pressable accessibilityRole="button" onPress={acceptStartAdjustment} style={styles.chooseButton}><Text style={styles.chooseButtonText}>Accept and update start</Text></Pressable>
         <Pressable accessibilityRole="button" onPress={declineStartAdjustment} style={styles.textButton}><Text style={styles.link}>No, let me choose another start</Text></Pressable>
       </View></View>
