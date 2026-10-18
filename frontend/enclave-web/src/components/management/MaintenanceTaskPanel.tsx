@@ -79,7 +79,7 @@ export default function MaintenanceTaskPanel({ report, onChange }: { report: Man
     void save(() => reviewMaintenance(task, decision, note.trim(), publicNote.trim()),
       decision === 'approve' ? 'Repair verified and report resolved.' : 'Rework requested. The assigned staff have been notified.');
   }
-  return <section className="flex flex-col gap-5 rounded-3xl border bg-white p-5" aria-label="Maintenance assignment and verification">
+  return <section className="flex flex-1 flex-col gap-5 rounded-3xl border border-border bg-white p-5" aria-label="Maintenance assignment and verification">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Maintenance task</h2>
       <button type="button" disabled={loading || busy} onClick={() => void load()} className="text-sm font-semibold underline">Refresh</button></div>
     {loading && <p role="status">Loading maintenance task…</p>}
