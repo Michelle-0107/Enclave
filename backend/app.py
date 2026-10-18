@@ -43,6 +43,8 @@ from .registration import RegistrationRejected, RegistrationService
 from .registration.clients import RegistrationUnavailable
 from .registration.settings import load_registration_settings
 from .routers.email import router as registration_router
+from .maintenance.repository import MaintenanceRepository, MaintenanceRejected, MaintenanceUnavailable
+from .maintenance.routes import create_router as maintenance_router
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -98,6 +100,7 @@ def create_app(
     what_if_transport: httpx.AsyncBaseTransport | None = None,
     registration_service: RegistrationService | None = None,
     places_transport: httpx.AsyncBaseTransport | None = None,
+    maintenance_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
 
     @asynccontextmanager
@@ -117,6 +120,7 @@ def create_app(
         application.state.notifications = notifications
         application.state.places = PlacesRepository(configured, transport=places_transport)
         application.state.report_workflow = ReportWorkflow(configured, transport=workflow_transport)
+        application.state.maintenance = MaintenanceRepository(configured, transport=maintenance_transport)
         routing_provider = ValhallaProvider(navigation_settings or NavigationSettings(), transport=navigation_transport)
         application.state.accessibility = accessibility_network or VerifiedNetwork()
         application.state.navigation = NavigationService(routing_provider,application.state.community_issues,application.state.accessibility)
@@ -141,6 +145,7 @@ def create_app(
             await notifications.close()
             await application.state.places.close()
             await application.state.report_workflow.close()
+            await application.state.maintenance.close()
             await routing_provider.close()
             await application.state.what_if_repository.close()
             if application.state.registration is not None:
@@ -162,6 +167,16 @@ def create_app(
         allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
     )
     application.include_router(registration_router)
+    application.include_router(maintenance_router(current_user))
+
+    @application.exception_handler(MaintenanceUnavailable)
+    async def maintenance_unavailable(request, error):
+        return JSONResponse(status_code=503, content={'detail': 'Maintenance service unavailable; confirm SQL 017 is installed'},
+                            headers={'Cache-Control': 'no-store'})
+
+    @application.exception_handler(MaintenanceRejected)
+    async def maintenance_rejected(request, error):
+        return JSONResponse(status_code=error.status, content={'detail': error.message}, headers={'Cache-Control': 'no-store'})
 
     @application.exception_handler(RegistrationRejected)
     async def registration_rejected(request, error):
@@ -175,7 +190,7 @@ def create_app(
 
     @application.exception_handler(RequestValidationError)
     async def sanitized_registration_validation(request, error):
-        if request.url.path.startswith(("/api/v1/registration/", "/api/v1/management/", "/api/v1/navigation/", "/api/v1/community/", "/api/v1/facilities")) or request.url.path == "/api/send-verification-email":
+        if request.url.path.startswith(("/api/v1/registration/", "/api/v1/management/", "/api/v1/maintenance/", "/api/v1/navigation/", "/api/v1/community/", "/api/v1/facilities")) or request.url.path == "/api/send-verification-email":
             # FastAPI's default validation output includes input values, including passwords/OTPs.
             details = [{"loc": e["loc"], "type": e["type"], "msg": "Invalid request field"} for e in error.errors()]
             return JSONResponse(status_code=422, content={"detail": details}, headers={"Cache-Control": "no-store"})

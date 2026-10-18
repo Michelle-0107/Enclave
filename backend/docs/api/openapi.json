@@ -171,6 +171,31 @@
       }
     },
     "/api/v1/management/residents": {
+      "get": {
+        "tags": [
+          "Registration",
+          "Management"
+        ],
+        "summary": "Management Residents",
+        "operationId": "management_residents_api_v1_management_residents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementResidentList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      },
       "post": {
         "tags": [
           "Registration",
@@ -215,6 +240,103 @@
         ]
       }
     },
+    "/api/v1/management/residents/{resident_id}": {
+      "patch": {
+        "tags": [
+          "Registration",
+          "Management"
+        ],
+        "summary": "Update Resident",
+        "operationId": "update_resident_api_v1_management_residents__resident_id__patch",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resident Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResidentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Registration",
+          "Management"
+        ],
+        "summary": "Delete Resident",
+        "operationId": "delete_resident_api_v1_management_residents__resident_id__delete",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resident Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/management/residents/{resident_id}/invitations": {
       "post": {
         "tags": [
@@ -250,6 +372,1517 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/role": {
+      "get": {
+        "tags": [
+          "Maintenance",
+          "Authentication"
+        ],
+        "summary": "Identity",
+        "operationId": "identity_api_v1_auth_role_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffIdentity"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          }
+        },
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/management/maintenance/teams": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Create Team",
+        "operationId": "create_team_api_v1_management_maintenance_teams_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Teams",
+        "operationId": "teams_api_v1_management_maintenance_teams_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/maintenance/staff": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Create Staff",
+        "description": "Enable an existing confirmed Supabase Auth account as staff. Does not create passwords or send invitations. Registered residents and managers cannot be converted.",
+        "operationId": "create_staff_api_v1_management_maintenance_staff_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Staff"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Staff List",
+        "operationId": "staff_list_api_v1_management_maintenance_staff_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/maintenance/staff/{profile_id}": {
+      "patch": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Update Staff",
+        "operationId": "update_staff_api_v1_management_maintenance_staff__profile_id__patch",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Staff"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/maintenance/tasks": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Assign",
+        "operationId": "assign_api_v1_management_maintenance_tasks_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Management Tasks",
+        "operationId": "management_tasks_api_v1_management_maintenance_tasks_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "assigned",
+                    "in_progress",
+                    "awaiting_verification",
+                    "changes_requested",
+                    "resolved"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/tasks": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "My Tasks",
+        "operationId": "my_tasks_api_v1_maintenance_tasks_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "assigned",
+                    "in_progress",
+                    "awaiting_verification",
+                    "changes_requested",
+                    "resolved"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/maintenance/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Task",
+        "operationId": "task_api_v1_management_maintenance_tasks__task_id__get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Task",
+        "operationId": "task_api_v1_maintenance_tasks__task_id__get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/maintenance/tasks/{task_id}/history": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "History",
+        "operationId": "history_api_v1_management_maintenance_tasks__task_id__history_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/tasks/{task_id}/history": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "History",
+        "operationId": "history_api_v1_maintenance_tasks__task_id__history_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/tasks/{task_id}/start": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Start",
+        "operationId": "start_api_v1_maintenance_tasks__task_id__start_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Versioned"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/tasks/{task_id}/progress": {
+      "patch": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Progress",
+        "operationId": "progress_api_v1_maintenance_tasks__task_id__progress_patch",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Progress"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/tasks/{task_id}/blockers": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Blocker",
+        "operationId": "blocker_api_v1_maintenance_tasks__task_id__blockers_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Blocker"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/maintenance/tasks/{task_id}/assignment": {
+      "patch": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Reassign",
+        "operationId": "reassign_api_v1_management_maintenance_tasks__task_id__assignment_patch",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskReassign"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/management/maintenance/tasks/{task_id}/review": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Review",
+        "operationId": "review_api_v1_management_maintenance_tasks__task_id__review_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Review"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/tasks/{task_id}/evidence": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Evidence",
+        "description": "Multipart JPEG/PNG up to 10 MiB. Authorization/version checked before upload and again at commit. Evidence awaits management review.",
+        "operationId": "evidence_api_v1_maintenance_tasks__task_id__evidence_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_evidence_api_v1_maintenance_tasks__task_id__evidence_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/notifications": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Notifications",
+        "operationId": "notifications_api_v1_maintenance_notifications_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maintenance/notifications/{notification_id}/read": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Notification Read",
+        "operationId": "notification_read_api_v1_maintenance_notifications__notification_id__read_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notification Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing, invalid or expired Supabase access token"
+          },
+          "403": {
+            "description": "The database has not authorized this active staff account"
+          },
+          "404": {
+            "description": "Record missing or not assigned to this worker/team"
+          },
+          "409": {
+            "description": "Stale version or invalid workflow state; refresh before retrying"
+          },
+          "503": {
+            "description": "Maintenance unavailable; confirm SQL 017 and storage configuration"
           },
           "422": {
             "description": "Validation Error",
@@ -1464,21 +3097,21 @@
         ]
       }
     },
-    "/api/v1/navigation/area": {
+    "/api/v1/navigation/areas": {
       "get": {
         "tags": [
           "Navigation"
         ],
-        "summary": "Navigation Area",
-        "description": "Development window for the KL East walking pilot; not an official township boundary or field-verified access map.",
-        "operationId": "navigation_area_api_v1_navigation_area_get",
+        "summary": "Navigation Areas",
+        "description": "Server-owned service-area catalog. Registered coverage and available route/demo graphs are reported separately.",
+        "operationId": "navigation_areas_api_v1_navigation_areas_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NavigationArea"
+                  "$ref": "#/components/schemas/ServiceAreas"
                 }
               }
             }
@@ -1498,6 +3131,268 @@
             "SupabaseAccessToken": []
           }
         ]
+      }
+    },
+    "/api/v1/navigation/areas/{area_id}/places": {
+      "get": {
+        "tags": [
+          "Navigation"
+        ],
+        "summary": "Navigation Places",
+        "description": "Search stored OpenStreetMap names and addresses within the selected service area.",
+        "operationId": "navigation_places_api_v1_navigation_areas__area_id__places_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "area_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{1,63}$",
+              "title": "Area Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 160,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceSearchResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "404": {
+            "description": "Service area not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/navigation/areas/{area_id}/demo": {
+      "get": {
+        "tags": [
+          "Navigation"
+        ],
+        "summary": "Navigation Area Demo",
+        "description": "Read-only OSM road graph and real landmarks for the selected resident demo. Facility/access annotations, where present, are simulated.",
+        "operationId": "navigation_area_demo_api_v1_navigation_areas__area_id__demo_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "area_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{1,63}$",
+              "title": "Area Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoAreaDataset"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "404": {
+            "description": "Service area not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/navigation/areas/{area_id}/demo-routes": {
+      "post": {
+        "tags": [
+          "Navigation"
+        ],
+        "summary": "Navigation Demo Routes",
+        "description": "Authenticated resident demo routing on the server-owned OSM roadside graph. Facility damage and step-free annotations are simulated; routes are not field verified.",
+        "operationId": "navigation_demo_routes_api_v1_navigation_areas__area_id__demo_routes_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "area_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{1,63}$",
+              "title": "Area Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoRouteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoRouteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Demo routing graph unavailable."
+          },
+          "404": {
+            "description": "Resident demo service area not found"
+          },
+          "422": {
+            "description": "Invalid endpoints or no route satisfies mapped crossing rules."
+          }
+        }
+      }
+    },
+    "/api/v1/navigation/area": {
+      "get": {
+        "tags": [
+          "Navigation"
+        ],
+        "summary": "Navigation Area",
+        "description": "Selected live service-area coverage; defaults to KL East for compatibility. Service rectangles are not official boundaries or field-verified access maps.",
+        "operationId": "navigation_area_api_v1_navigation_area_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "area_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{1,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Area Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NavigationArea"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Active residency or a database policy denied access."
+          },
+          "503": {
+            "description": "Authentication, resident directory, or cloud service unavailable."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/navigation/routes": {
@@ -1742,6 +3637,26 @@
             ],
             "title": "Route Mode"
           },
+          "comparison_origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comparison_destination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "current": {
             "$ref": "#/components/schemas/RouteOutcome"
           },
@@ -1758,6 +3673,71 @@
           "reference_without_damage"
         ],
         "title": "BaselinePath"
+      },
+      "Blocker": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Notes"
+          },
+          "blocker_type": {
+            "type": "string",
+            "enum": [
+              "parts",
+              "access",
+              "safety",
+              "other"
+            ],
+            "title": "Blocker Type"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "notes",
+          "blocker_type"
+        ],
+        "title": "Blocker"
+      },
+      "Body_evidence_api_v1_maintenance_tasks__task_id__evidence_post": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Notes"
+          },
+          "checked_on_site": {
+            "type": "boolean",
+            "title": "Checked On Site"
+          },
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expected_version",
+          "notes",
+          "checked_on_site",
+          "file"
+        ],
+        "title": "Body_evidence_api_v1_maintenance_tasks__task_id__evidence_post"
       },
       "Body_submit_report_api_v1_reports_post": {
         "properties": {
@@ -2089,6 +4069,13 @@
             "type": "integer",
             "title": "Baseline Road Obstacle Count"
           },
+          "routing_restrictions": {
+            "items": {
+              "$ref": "#/components/schemas/RoutingRestriction"
+            },
+            "type": "array",
+            "title": "Routing Restrictions"
+          },
           "baseline": {
             "items": {
               "$ref": "#/components/schemas/BaselinePath"
@@ -2149,6 +4136,172 @@
           "email"
         ],
         "title": "CurrentUserResponse"
+      },
+      "DemoAreaDataset": {
+        "properties": {
+          "area_id": {
+            "type": "string",
+            "title": "Area Id"
+          },
+          "dataset": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Dataset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "area_id",
+          "dataset"
+        ],
+        "title": "DemoAreaDataset"
+      },
+      "DemoRouteOption": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "shortest",
+              "avoid_damage",
+              "accessible"
+            ],
+            "title": "Mode"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "DemoRouteOption"
+      },
+      "DemoRouteRequest": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "walking",
+              "wheelchair"
+            ],
+            "title": "Profile",
+            "default": "walking"
+          },
+          "start_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/Location"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Start Candidates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "origin",
+          "destination"
+        ],
+        "title": "DemoRouteRequest"
+      },
+      "DemoRouteResponse": {
+        "properties": {
+          "area_id": {
+            "type": "string",
+            "title": "Area Id"
+          },
+          "requested_origin": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "selected_origin": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "start_adjustment_meters": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Start Adjustment Meters"
+          },
+          "adjusted_start": {
+            "type": "boolean",
+            "title": "Adjusted Start"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/DemoRouteOption"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Options"
+          }
+        },
+        "type": "object",
+        "required": [
+          "area_id",
+          "requested_origin",
+          "selected_origin",
+          "start_adjustment_meters",
+          "adjusted_start",
+          "options"
+        ],
+        "title": "DemoRouteResponse"
+      },
+      "EventList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskEvent"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "EventList"
       },
       "Facility": {
         "properties": {
@@ -2659,6 +4812,90 @@
         ],
         "title": "ManagementReportList"
       },
+      "ManagementResident": {
+        "properties": {
+          "resident_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Resident Id"
+          },
+          "resident_reference": {
+            "type": "string",
+            "title": "Resident Reference"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "unit_number": {
+            "type": "string",
+            "title": "Unit Number"
+          },
+          "registered_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Registered Email"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "title": "Status"
+          },
+          "account_linked": {
+            "type": "boolean",
+            "title": "Account Linked"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resident_id",
+          "resident_reference",
+          "full_name",
+          "unit_number",
+          "registered_email",
+          "status",
+          "account_linked",
+          "verified_at",
+          "created_at"
+        ],
+        "title": "ManagementResident"
+      },
+      "ManagementResidentList": {
+        "properties": {
+          "residents": {
+            "items": {
+              "$ref": "#/components/schemas/ManagementResident"
+            },
+            "type": "array",
+            "title": "Residents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "residents"
+        ],
+        "title": "ManagementResidentList"
+      },
       "Maneuver": {
         "properties": {
           "index": {
@@ -2774,6 +5011,65 @@
         ],
         "title": "MapPagination"
       },
+      "MapPlace": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "area_id": {
+            "type": "string",
+            "title": "Area Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 250,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Address"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude"
+          },
+          "position_basis": {
+            "type": "string",
+            "maxLength": 250,
+            "title": "Position Basis"
+          },
+          "source": {
+            "type": "string",
+            "const": "openstreetmap",
+            "title": "Source",
+            "default": "openstreetmap"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "area_id",
+          "name",
+          "address",
+          "longitude",
+          "latitude",
+          "position_basis"
+        ],
+        "title": "MapPlace"
+      },
       "MapPoint": {
         "properties": {
           "type": {
@@ -2884,7 +5180,6 @@
         "properties": {
           "id": {
             "type": "string",
-            "const": "kl-east-pilot",
             "title": "Id",
             "default": "kl-east-pilot"
           },
@@ -2977,6 +5272,26 @@
               "accessible"
             ]
           },
+          "temporary_live": {
+            "type": "boolean",
+            "title": "Temporary Live",
+            "default": false
+          },
+          "community_issues_supported": {
+            "type": "boolean",
+            "title": "Community Issues Supported",
+            "default": true
+          },
+          "crossing_policy": {
+            "type": "string",
+            "enum": [
+              "provider_default",
+              "mapped_facilities_only",
+              "resident_local_roads"
+            ],
+            "title": "Crossing Policy",
+            "default": "provider_default"
+          },
           "accessible_network_available": {
             "type": "boolean",
             "title": "Accessible Network Available",
@@ -3055,6 +5370,37 @@
           "message"
         ],
         "title": "NotificationCreate"
+      },
+      "NotificationList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StaffNotification"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "NotificationList"
       },
       "NotificationListResponse": {
         "properties": {
@@ -3236,6 +5582,17 @@
             ],
             "title": "Effect"
           },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
           "distance_saved_meters": {
             "anyOf": [
               {
@@ -3291,6 +5648,41 @@
           "reference_intersecting_facility_ids"
         ],
         "title": "PathImpact"
+      },
+      "PlaceSearchResult": {
+        "properties": {
+          "area_id": {
+            "type": "string",
+            "title": "Area Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MapPlace"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "storage": {
+            "type": "string",
+            "enum": [
+              "database",
+              "bundled_catalog"
+            ],
+            "title": "Storage"
+          },
+          "attribution": {
+            "type": "string",
+            "title": "Attribution",
+            "default": "OpenStreetMap contributors (ODbL)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "area_id",
+          "items",
+          "storage"
+        ],
+        "title": "PlaceSearchResult"
       },
       "PlanResult": {
         "properties": {
@@ -3390,6 +5782,28 @@
           "paths"
         ],
         "title": "PlanResult"
+      },
+      "Progress": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "notes"
+        ],
+        "title": "Progress"
       },
       "RepairCandidates": {
         "properties": {
@@ -3796,6 +6210,101 @@
         ],
         "title": "ResidentInput"
       },
+      "ResidentUpdate": {
+        "properties": {
+          "resident_reference": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Resident Reference"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "unit_number": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit Number"
+          },
+          "registered_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Registered Email"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "resident_reference",
+          "full_name",
+          "unit_number",
+          "registered_email",
+          "status"
+        ],
+        "title": "ResidentUpdate"
+      },
+      "Review": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "rework"
+            ],
+            "title": "Decision"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Note",
+            "description": "Internal staff review note."
+          },
+          "public_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Note"
+          },
+          "repair_verified": {
+            "type": "boolean",
+            "title": "Repair Verified",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "decision",
+          "note"
+        ],
+        "title": "Review"
+      },
       "RouteGeometry": {
         "properties": {
           "type": {
@@ -3909,6 +6418,16 @@
               }
             ],
             "title": "Field Verified"
+          },
+          "fallback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WalkingReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -3931,7 +6450,6 @@
           },
           "area": {
             "type": "string",
-            "const": "kl-east-pilot",
             "title": "Area",
             "default": "kl-east-pilot"
           },
@@ -3961,10 +6479,38 @@
             "type": "string",
             "enum": [
               "valhalla",
-              "verified_network"
+              "verified_network",
+              "osm_roadside"
             ],
             "title": "Routing Engine",
             "default": "valhalla"
+          },
+          "road_fallback_used": {
+            "type": "boolean",
+            "title": "Road Fallback Used",
+            "default": false
+          },
+          "crossing_policy": {
+            "type": "string",
+            "enum": [
+              "provider_default",
+              "mapped_facilities_only",
+              "resident_local_roads"
+            ],
+            "title": "Crossing Policy",
+            "default": "provider_default"
+          },
+          "mapped_crossing_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Mapped Crossing Count",
+            "default": 0
+          },
+          "unmarked_crossing_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unmarked Crossing Count",
+            "default": 0
           },
           "geometry": {
             "$ref": "#/components/schemas/RouteGeometry"
@@ -4067,6 +6613,14 @@
             ],
             "title": "Obstacle Source"
           },
+          "demo_facility_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Demo Facility Ids"
+          },
           "confirmation_threshold": {
             "type": "integer",
             "const": 2,
@@ -4106,6 +6660,236 @@
         ],
         "title": "RouteResponse"
       },
+      "RoutingRestriction": {
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          },
+          "facility_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Facility Id"
+          },
+          "facility_name": {
+            "type": "string",
+            "title": "Facility Name"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "binding_source": {
+            "type": "string",
+            "enum": [
+              "mapped_demo_segment",
+              "point_only"
+            ],
+            "title": "Binding Source"
+          },
+          "affected_segment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteGeometry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "exclusion_rings": {
+            "items": {
+              "items": {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Exclusion Rings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue_id",
+          "facility_id",
+          "facility_name",
+          "latitude",
+          "longitude",
+          "binding_source",
+          "exclusion_rings"
+        ],
+        "title": "RoutingRestriction"
+      },
+      "ServiceArea": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,63}$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "bbox": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Bbox"
+          },
+          "center": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Center"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "routing_supported": {
+            "type": "boolean",
+            "title": "Routing Supported",
+            "description": "A route implementation exists; not a routing-engine health check."
+          },
+          "resident_demo_supported": {
+            "type": "boolean",
+            "title": "Resident Demo Supported",
+            "description": "A compatible server-owned resident-demo road graph exists for this area."
+          },
+          "temporary_live": {
+            "type": "boolean",
+            "title": "Temporary Live",
+            "default": false
+          },
+          "community_issues_supported": {
+            "type": "boolean",
+            "title": "Community Issues Supported",
+            "default": true
+          },
+          "crossing_policy": {
+            "type": "string",
+            "enum": [
+              "provider_default",
+              "mapped_facilities_only",
+              "resident_local_roads"
+            ],
+            "title": "Crossing Policy",
+            "default": "resident_local_roads"
+          },
+          "location_reference": {
+            "type": "string",
+            "pattern": "^https://www\\.openstreetmap\\.org/(node|way|relation)/[0-9]+$",
+            "title": "Location Reference"
+          },
+          "boundary_type": {
+            "type": "string",
+            "const": "development_window",
+            "title": "Boundary Type",
+            "default": "development_window"
+          },
+          "official_boundary": {
+            "type": "boolean",
+            "const": false,
+            "title": "Official Boundary",
+            "default": false
+          },
+          "field_verified": {
+            "type": "boolean",
+            "const": false,
+            "title": "Field Verified",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "bbox",
+          "center",
+          "enabled",
+          "routing_supported",
+          "resident_demo_supported",
+          "location_reference"
+        ],
+        "title": "ServiceArea"
+      },
+      "ServiceAreas": {
+        "properties": {
+          "default_area_id": {
+            "type": "string",
+            "title": "Default Area Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceArea"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "default_area_id",
+          "items"
+        ],
+        "title": "ServiceAreas"
+      },
       "SignupResult": {
         "properties": {
           "status": {
@@ -4135,6 +6919,248 @@
           "session"
         ],
         "title": "SignupResult"
+      },
+      "Staff": {
+        "properties": {
+          "profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Profile Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile_id",
+          "email",
+          "display_name",
+          "team_id",
+          "active",
+          "created_at"
+        ],
+        "title": "Staff"
+      },
+      "StaffCreate": {
+        "properties": {
+          "profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Profile Id"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile_id",
+          "email",
+          "display_name"
+        ],
+        "title": "StaffCreate"
+      },
+      "StaffIdentity": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "management",
+              "maintenance"
+            ],
+            "title": "Role"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "role",
+          "display_name"
+        ],
+        "title": "StaffIdentity"
+      },
+      "StaffList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Staff"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "StaffList"
+      },
+      "StaffNotification": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Task Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "is_read": {
+            "type": "boolean",
+            "title": "Is Read"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "task_id",
+          "title",
+          "message",
+          "is_read",
+          "created_at"
+        ],
+        "title": "StaffNotification"
+      },
+      "StaffPatch": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Id"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "StaffPatch"
       },
       "StatusEvent": {
         "properties": {
@@ -4182,7 +7208,10 @@
           },
           "actor_role": {
             "type": "string",
-            "const": "management",
+            "enum": [
+              "management",
+              "maintenance"
+            ],
             "title": "Actor Role",
             "default": "management"
           },
@@ -4272,6 +7301,441 @@
         ],
         "title": "StatusUpdated"
       },
+      "Task": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "before_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Photo Url"
+          },
+          "report_status": {
+            "type": "string",
+            "title": "Report Status"
+          },
+          "assigned_staff_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Staff Id"
+          },
+          "assigned_team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Team Id"
+          },
+          "instructions": {
+            "type": "string",
+            "title": "Instructions"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Priority"
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "assigned",
+              "in_progress",
+              "awaiting_verification",
+              "changes_requested",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "work_notes": {
+            "type": "string",
+            "title": "Work Notes"
+          },
+          "completion_notes": {
+            "type": "string",
+            "title": "Completion Notes"
+          },
+          "after_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Photo Url"
+          },
+          "checked_on_site": {
+            "type": "boolean",
+            "title": "Checked On Site"
+          },
+          "review_note": {
+            "type": "string",
+            "title": "Review Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ticket_id",
+          "title",
+          "description",
+          "latitude",
+          "longitude",
+          "before_photo_url",
+          "report_status",
+          "assigned_staff_id",
+          "assigned_team_id",
+          "instructions",
+          "priority",
+          "target_date",
+          "status",
+          "version",
+          "work_notes",
+          "completion_notes",
+          "after_photo_url",
+          "checked_on_site",
+          "review_note",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Task"
+      },
+      "TaskCreate": {
+        "properties": {
+          "assigned_staff_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Staff Id"
+          },
+          "assigned_team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Team Id"
+          },
+          "ticket_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Ticket Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Instructions"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Priority",
+            "default": "medium"
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "title",
+          "instructions",
+          "target_date"
+        ],
+        "title": "TaskCreate"
+      },
+      "TaskEvent": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Task Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "actor_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Actor Id"
+          },
+          "actor_role": {
+            "type": "string",
+            "enum": [
+              "management",
+              "maintenance"
+            ],
+            "title": "Actor Role"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "task_id",
+          "action",
+          "actor_id",
+          "actor_role",
+          "note",
+          "created_at"
+        ],
+        "title": "TaskEvent"
+      },
+      "TaskList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "TaskList"
+      },
+      "TaskReassign": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "assigned_staff_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Staff Id"
+          },
+          "assigned_team_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Team Id"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "note"
+        ],
+        "title": "TaskReassign"
+      },
+      "Team": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at"
+        ],
+        "title": "Team"
+      },
+      "TeamCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "TeamCreate"
+      },
+      "TeamList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Team"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "TeamList"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -4341,6 +7805,83 @@
           "password"
         ],
         "title": "VerifySignup"
+      },
+      "Versioned": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "title": "Versioned"
+      },
+      "WalkingReference": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "const": "available",
+            "title": "State",
+            "default": "available"
+          },
+          "route_mode": {
+            "type": "string",
+            "const": "avoid_damage",
+            "title": "Route Mode",
+            "default": "avoid_damage"
+          },
+          "reference_only": {
+            "type": "boolean",
+            "const": true,
+            "title": "Reference Only",
+            "default": true
+          },
+          "accessibility_verified": {
+            "type": "boolean",
+            "const": false,
+            "title": "Accessibility Verified",
+            "default": false
+          },
+          "warning": {
+            "type": "string",
+            "title": "Warning",
+            "default": "Walking reference only; accessibility has not been verified."
+          },
+          "distance_meters": {
+            "type": "number",
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "title": "Duration Seconds"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteGeometry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_source": {
+            "type": "string",
+            "title": "Data Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "distance_meters",
+          "duration_seconds",
+          "data_source"
+        ],
+        "title": "WalkingReference"
       },
       "WalkingRouteRequest": {
         "properties": {

@@ -55,7 +55,6 @@ export function Status({
     </span>
   );
 }
-// These are deliberately placeholders in the approved Figma, not missing photo assets.
 export function Photo({ label, url }: { label: string; url?: string }) {
   return (
     <div className="flex min-h-[142px] flex-col justify-center gap-2 overflow-hidden rounded-3xl bg-enclave-lavender p-5 lg:min-h-[180px]">
@@ -74,7 +73,7 @@ export function Photo({ label, url }: { label: string; url?: string }) {
       ) : (
         <>
           <p className="text-sm font-semibold">{label}</p>
-          <p className="text-xs text-muted-foreground">Photo preview</p>
+          <p className="text-xs text-muted-foreground">No photo attached.</p>
         </>
       )}
     </div>

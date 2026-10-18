@@ -51,7 +51,7 @@ export type StatusEvent = {
   note: string;
   repair_verified: boolean;
   created_at: string;
-  actor_role: 'management';
+  actor_role: 'management' | 'maintenance';
 };
 
 export type ReportHistory = {
@@ -311,8 +311,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}) 
   let body: BodyInit | undefined;
 
   if (options.body !== undefined) {
-    headers.set('Content-Type', 'application/json');
-    body = JSON.stringify(options.body);
+    if (options.body instanceof FormData) {
+      body = options.body;
+    } else {
+      headers.set('Content-Type', 'application/json');
+      body = JSON.stringify(options.body);
+    }
   }
 
   let response: Response;
@@ -417,6 +421,16 @@ export function getReportHistory(ticketId: string) {
 
 export function getCurrentUser() {
   return apiRequest<CurrentUser>('/auth/me');
+}
+
+export async function getStaffAccess() {
+  const identity = await apiRequest<{
+    user_id: string; role: 'management' | 'maintenance'; display_name: string; team_id: string | null;
+  }>('/api/v1/auth/role');
+  if (!identity || !['management', 'maintenance'].includes(identity.role) || typeof identity.user_id !== 'string') {
+    throw new ApiError('Unable to verify your Enclave staff role.', 503);
+  }
+  return identity;
 }
 
 export function getManagementAccess() {

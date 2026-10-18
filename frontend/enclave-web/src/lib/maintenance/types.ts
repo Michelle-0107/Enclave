@@ -6,6 +6,7 @@ export type TaskStatus =
   | "resolved";
 export type MaintenanceTask = {
   id: string;
+  ticketId?: string;
   title: string;
   location: string;
   description: string;
@@ -30,6 +31,7 @@ export type EvidenceInput = {
 /** Implement with your real authenticated API. Enforce role and assignment server-side. */
 export interface MaintenanceGateway {
   listTasks(): Promise<MaintenanceTask[]>;
+  getTask(id: string): Promise<MaintenanceTask>;
   startWork(id: string): Promise<MaintenanceTask>;
   saveUpdate(id: string, notes: string): Promise<MaintenanceTask>;
   submitEvidence(id: string, input: EvidenceInput): Promise<MaintenanceTask>;

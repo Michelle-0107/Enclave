@@ -55,7 +55,7 @@ export default function ReportRoute({ reportId, unavailableFeature }: Props) {
     );
   }
 
-  if (unavailableFeature) {
+  if (unavailableFeature === 'request-information') {
     const feature = unavailableFeature === 'request-information'
       ? 'Requesting additional information from a resident'
       : 'Sending a maintenance rework request';
