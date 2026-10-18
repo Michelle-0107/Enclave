@@ -27,6 +27,10 @@ class MemoryStore:
         self.invitation_id = str(uuid4())
         self.invitation_digest = hashlib.sha256(DEMO_INVITATION.encode()).hexdigest()
         self.email = "resident@example.com"
+        self.resident_reference = "DEMO-1"
+        self.full_name = "Demo Resident"
+        self.unit_number = "DEMO-101"
+        self.created_at = datetime.now(timezone.utc)
         self.challenges = {}
         self.rates = {}
         self.profile_id = None
@@ -35,6 +39,38 @@ class MemoryStore:
 
     def close(self):
         pass
+
+    def management_call(self, action, **a):
+        with self.lock:
+            if a.get("actor_id") != str(MANAGER):
+                return {"state": "forbidden"}
+            if action == "list":
+                return {
+                    "state": "listed",
+                    "residents": [{
+                        "resident_id": self.resident_id,
+                        "resident_reference": self.resident_reference,
+                        "full_name": self.full_name,
+                        "unit_number": self.unit_number,
+                        "registered_email": self.email,
+                        "status": "active" if self.active else "inactive",
+                        "account_linked": self.profile_id is not None,
+                        "verified_at": self.created_at.isoformat() if self.profile_id else None,
+                        "created_at": self.created_at.isoformat(),
+                    }],
+                }
+            if action == "update":
+                if a.get("resident_id") != self.resident_id:
+                    return {"state": "not_found"}
+                if self.profile_id and a["registered_email"] != self.email:
+                    return {"state": "conflict"}
+                self.resident_reference = a["resident_reference"]
+                self.full_name = a["full_name"]
+                self.unit_number = a["unit_number"]
+                self.email = a["registered_email"]
+                self.active = a["status"] == "active"
+                return {"state": "updated", "resident_id": self.resident_id}
+            raise AssertionError("Unexpected management resident action")
 
     def call(self, action, **a):
         with self.lock:
@@ -120,6 +156,9 @@ class MemoryStore:
                     if self.profile_id:
                         return {"state": "conflict"}
                     self.email = a["registered_email"]
+                    self.resident_reference = a["resident_reference"]
+                    self.full_name = a["full_name"]
+                    self.unit_number = a["unit_number"]
                     return {"state": "created", "resident_id": self.resident_id}
                 self.invitation_digest = a["token_digest"]
                 return {"state": "created", "invitation_id": self.invitation_id,

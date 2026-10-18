@@ -6,7 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from ..core.auth import AuthUnavailable, InvalidCredentials
 from ..registration import RegistrationRejected
 from ..registration.contracts import (InvitationResult, OTPAccepted, RequestOTP, ResidentInput,
-                                    Residency, SignupResult, VerifySignup)
+                                    ManagementResidentList, Residency, ResidentUpdate, SignupResult, VerifySignup)
 
 router = APIRouter(tags=["Registration"])
 bearer = HTTPBearer(scheme_name="SupabaseAccessToken", auto_error=False,
@@ -69,6 +69,18 @@ def my_residency(response: Response, identity=Depends(user), registration=Depend
 @router.post("/api/v1/management/residents", status_code=201, tags=["Management"])
 def create_resident(data: ResidentInput, identity=Depends(user), registration=Depends(service)):
     return registration.create_resident(identity.user_id, data)
+
+
+@router.get("/api/v1/management/residents", response_model=ManagementResidentList, tags=["Management"])
+def management_residents(response: Response, identity=Depends(user), registration=Depends(service)):
+    response.headers["Cache-Control"] = "no-store"
+    return registration.management_residents(identity.user_id)
+
+
+@router.patch("/api/v1/management/residents/{resident_id}", tags=["Management"])
+def update_resident(resident_id: UUID, data: ResidentUpdate,
+                    identity=Depends(user), registration=Depends(service)):
+    return registration.update_resident(identity.user_id, resident_id, data)
 
 
 @router.post("/api/v1/management/residents/{resident_id}/invitations", response_model=InvitationResult,
