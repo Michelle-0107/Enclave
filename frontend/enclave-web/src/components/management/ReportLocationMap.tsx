@@ -56,8 +56,8 @@ export default function ReportLocationMap({ latitude, longitude }: Props) {
   const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
 
   return (
-    <section aria-label="Report location map" className="flex flex-col gap-3">
-      <div className="relative h-[190px] overflow-hidden rounded-3xl bg-enclave-lavender">
+    <section aria-label="Report location map" className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="relative min-h-[260px] flex-1 overflow-hidden rounded-2xl bg-enclave-lavender">
         <div ref={host} className="absolute inset-0 h-full w-full" />
         {!ready && !error && <p role="status" className="absolute inset-0 flex items-center justify-center bg-enclave-lavender text-sm text-muted-foreground">Loading location map…</p>}
         {error && <p role="status" className="absolute inset-0 flex items-center justify-center bg-enclave-lavender p-4 text-center text-sm text-muted-foreground">Map preview could not load. Use the navigation link to view this location.</p>}

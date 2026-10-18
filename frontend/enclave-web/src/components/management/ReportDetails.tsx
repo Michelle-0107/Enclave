@@ -142,9 +142,9 @@ export default function ReportDetails({ report: initialReport }: Props) {
         </section>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <section aria-label="Issue location" className="flex min-w-0 flex-col gap-3">
-          <h2 className="text-sm font-semibold text-primary">Issue location</h2>
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+        <section aria-label="Issue location" className="flex min-w-0 flex-col gap-5 rounded-3xl border border-border bg-white p-5">
+          <h2 className="text-lg font-semibold text-primary">Issue Location</h2>
           <ReportLocationMap latitude={report.latitude} longitude={report.longitude} />
         </section>
 
@@ -179,7 +179,7 @@ export default function ReportDetails({ report: initialReport }: Props) {
         )}
 
         {['approved', 'in_progress', 'resolved'].includes(report.status) && (
-          <div className="min-w-0">
+          <div className="flex min-w-0 flex-col">
             <MaintenanceTaskPanel key={report.id} report={report} onChange={maintenanceChanged} />
             {report.status === 'resolved' && <p className="mt-4 rounded-2xl bg-status-green-bg p-4 text-sm text-status-green">This report is resolved and has been marked as checked by management.</p>}
           </div>
