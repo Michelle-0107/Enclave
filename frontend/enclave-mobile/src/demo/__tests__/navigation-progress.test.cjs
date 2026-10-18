@@ -37,15 +37,24 @@ test('Noisy GPS or one transient departure never triggers a reroute',()=>{
  for(const time of [1000,5000]){const next=nav.offRouteEvidence(state,70,8,time);assert.equal(next.shouldReroute,false);state=next.evidence;}
  const noisy=nav.offRouteEvidence(state,100,80,10000);assert.equal(noisy.shouldReroute,false);assert.equal(noisy.evidence.hits,0);
  assert.equal(nav.offRouteEvidence(state,100,null,10000).shouldReroute,false);
- assert.equal(nav.offRouteEvidence(state,20,8,10000).evidence.hits,0);
+ assert.equal(nav.offRouteEvidence(state,10,8,10000).evidence.hits,0);
 });
-test('Sustained accurate departures trigger after eight seconds and respect cooldown',()=>{
+test('Sustained accurate departures trigger automatically and respect cooldown',()=>{
  let state={hits:0,since:0,lastAttempt:null},next;
  for(const time of [1000,5000,9000]){next=nav.offRouteEvidence(state,65,8,time);state=next.evidence;}
  assert.equal(next.shouldReroute,true);
  assert.equal(nav.offRouteEvidence({...state,lastAttempt:9000},65,8,15000).shouldReroute,false);
  assert.equal(nav.offRouteEvidence({...state,lastAttempt:9000},65,8,40000).shouldReroute,true);
- assert.equal(nav.offRouteEvidence(state,40,22,10000).offRoute,false);
+ assert.equal(nav.offRouteEvidence(state,30,22,10000).offRoute,false);
+});
+
+test('Walking a wrong residential street 15 m away triggers automatic replan after four seconds',()=>{
+ let state={hits:0,since:0,lastAttempt:null},next;
+ for(const time of [1000,3000,5000]){next=nav.offRouteEvidence(state,15,5,time);state=next.evidence;}
+ assert.equal(next.shouldReroute,true);
+ assert.equal(nav.offRouteEvidence(state,15,22,6000).offRoute,false);
+ assert.equal(nav.offRouteEvidence({...state,lastAttempt:5000},15,5,10000).shouldReroute,false);
+ assert.equal(nav.offRouteEvidence({...state,lastAttempt:5000},15,5,20000).shouldReroute,true);
 });
 test('Cached geometry without server steps still derives left and right turns on the actual path',()=>{
  const model=nav.navigationModel({coordinates:coords});

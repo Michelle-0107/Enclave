@@ -95,6 +95,17 @@ const cases=[];async function test(name,fn){reset();try{await fn();cases.push({n
   assert.equal(reroutes.length,1);assert.ok(text().includes('Backend connection unavailable'));assert.ok(text().includes('280 m remaining'));
   rerouteImpl=async()=>true;press('Recalculate from my location');await settle();assert.equal(reroutes.length,2);assert.ok(!text().includes('Backend connection unavailable'));
  });
+ await test('Navigation replans a 15 m departure automatically without any recalculate button press',async()=>{
+  render({presentation:{styleUrl:'fixture',onClose:()=>{}}});await settle();emit(p(20,0),5);
+  assert.equal(treeValue.props.onRetry,undefined);
+  emit(p(20,-15),5,2000);emit(p(20,-15),5,2000);assert.equal(reroutes.length,0);
+  emit(p(20,-15),5,2000);assert.equal(reroutes.length,1);assert.equal(treeValue.props.deviating,true);assert.equal(treeValue.props.rerouting,true);
+ });
+ await test('Failed automatic rerouting retries automatically after cooldown without manual intervention',async()=>{
+  rerouteImpl=async()=>{throw Error('Offline');};render();await settle();emit(p(20,0),5);
+  for(let i=0;i<3;i++)emit(p(20,-15),5,2000);await settle();assert.equal(reroutes.length,1);assert.ok(text().includes('Automatic retry is enabled'));
+  rerouteImpl=async()=>true;for(let i=0;i<4;i++)emit(p(20,-15),5,4000);await settle();assert.equal(reroutes.length,2);
+ });
  await test('Updating the route resets matching and turns without restarting GPS',async()=>{
   render();await settle();emit(p(40,0));const start=p(40,0),route={...baseRoute,id:'rerouted',coordinates:[start,coords[1],coords[2],coords[3]],originSnap:{coordinate:start},maneuvers:baseRoute.maneuvers.map(m=>({...m,distanceFromStart:m.distanceFromStart-40}))};
   render({route,origin:start});await settle();assert.equal(watches,1);emit(p(50,0));assert.ok(text().includes('Turn left'));assert.ok(text().includes('250 m remaining'));

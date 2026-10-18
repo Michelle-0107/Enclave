@@ -175,6 +175,27 @@ class RoadsideTests(unittest.TestCase):
                 self.assertEqual(route.mapped_crossing_count,0)
                 self.assertLess(route.distance_meters,170)
 
+    def test_inside_left_turn_has_no_right_turn_loop_at_offset_corner(self):
+        g=osm_graph({'w':(-100,0),'m':(0,0),'n':(0,100),'s':(0,-100)},
+            [(['s','m','n'],{'highway':'residential','access':'private'}),
+             (['m','w'],{'highway':'residential','access':'private'})],resident_access=True)
+        route=g.route(body(p(-6,-80),p(-80,-6)))
+        self.assertAlmostEqual(route.distance_meters,154,places=2)
+        turns=[step for step in route.maneuvers if step.type in (10,15)]
+        self.assertEqual([step.type for step in turns],[15])
+        points=list(map(xy,route.geometry.coordinates))
+        self.assertTrue(all(b[0]<=a[0]+.01 and b[1]>=a[1]-.01 for a,b in zip(points,points[1:])))
+        self.assertFalse(any('0 meters' in step.instruction or 'same-side road corner' in step.instruction for step in route.maneuvers))
+
+    def test_outside_corner_has_one_turn_without_crossing_the_carriageway(self):
+        g=osm_graph({'w':(-100,0),'m':(0,0),'n':(0,100)},
+            [(['w','m','n'],{'highway':'residential'})])
+        route=g.route(body(p(6,80),p(-80,-6)))
+        self.assertAlmostEqual(route.distance_meters,166,places=2)
+        self.assertEqual([step.type for step in route.maneuvers if step.type in (10,15)],[10])
+        self.assertEqual(route.mapped_crossing_count,0)
+        self.assertEqual(route.unmarked_crossing_count,0)
+
     def test_prima_saujana_same_side_and_opposite_side_real_routes(self):
         g=walking_graph('kajang-prima-saujana')
         same_side=g.route(body((101.804041,3.0026522),(101.803397,3.0048052)),area_id='kajang-prima-saujana')
