@@ -23,6 +23,7 @@ import {
 } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 
 export type RouteOption = {
   id: 'A' | 'B' | 'C';
@@ -36,8 +37,11 @@ export type RouteOption = {
 type Props = {
   start: string;
   destination: string;
+  initialOrigin?: NavigationPoint | null;
+  initialDestination?: NavigationPoint | null;
   onBack: () => void;
-  onStartJourney: (route: RouteOption) => void;
+  onMapTouchChange?: (active: boolean) => void;
+  onStartJourney: (route: RouteOption, points: { origin: NavigationPoint; destination: NavigationPoint }, names: { start: string; destination: string }) => void;
 };
 
 type ModeResult = {
@@ -103,14 +107,19 @@ function formatDistance(meters: number): string {
 export default function RouteOptionsScreen({
   start,
   destination,
+  initialOrigin,
+  initialDestination,
   onBack,
   onStartJourney,
+  onMapTouchChange,
 }: Props) {
   const [origin, setOrigin] =
-    useState<NavigationPoint | null>(null);
+    useState<NavigationPoint | null>(() => initialOrigin && insidePilot(initialOrigin) ? initialOrigin : null);
 
   const [target, setTarget] =
-    useState<NavigationPoint | null>(null);
+    useState<NavigationPoint | null>(() => initialDestination && insidePilot(initialDestination) ? initialDestination : null);
+  const [originName, setOriginName] = useState(start);
+  const [targetName, setTargetName] = useState(destination);
 
   const [selecting, setSelecting] =
     useState<'origin' | 'destination'>('origin');
@@ -127,6 +136,8 @@ export default function RouteOptionsScreen({
   const requestLock = useRef(false);
   const mounted = useRef(true);
 
+  useEffect(() => () => onMapTouchChange?.(false), [onMapTouchChange]);
+
   useEffect(() => {
     mounted.current = true;
 
@@ -139,7 +150,7 @@ export default function RouteOptionsScreen({
     (item) => item.mode === selectedMode,
   )?.route;
 
-  function choosePoint(longitude: number, latitude: number) {
+  function choosePoint(longitude: number, latitude: number, which = selecting, label = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`) {
     if (requestLock.current) return;
 
     const point = { latitude, longitude };
@@ -155,11 +166,11 @@ export default function RouteOptionsScreen({
     setResults([]);
     setSelectedMode(null);
 
-    if (selecting === 'origin') {
-      setOrigin(point);
+    if (which === 'origin') {
+      setOrigin(point); setOriginName(label);
       setSelecting('destination');
     } else {
-      setTarget(point);
+      setTarget(point); setTargetName(label);
     }
   }
 
@@ -317,12 +328,12 @@ export default function RouteOptionsScreen({
       </Text>
 
       <Text style={styles.body}>
-        {start} → {destination}
+        {originName} → {targetName}
       </Text>
 
       <Text style={styles.body}>
-        Names are labels only. Select the actual positions
-        below; they are not automatically located by name.
+        Select points on the map or choose your saved places.
+        Route calculations use the selected coordinates.
       </Text>
 
       <View style={styles.pointButtons}>
@@ -362,7 +373,16 @@ export default function RouteOptionsScreen({
         </Pressable>
       </View>
 
-      <View style={styles.mapContainer}>
+      <SavedPlacesControl field="starting point" disabled={loading}
+        current={origin ? { label: originName, coordinate: [origin.longitude, origin.latitude] } : null}
+        onChoose={point => choosePoint(point.coordinate[0], point.coordinate[1], 'origin', point.label)} />
+      <SavedPlacesControl field="destination" disabled={loading}
+        current={target ? { label: targetName, coordinate: [target.longitude, target.latitude] } : null}
+        onChoose={point => choosePoint(point.coordinate[0], point.coordinate[1], 'destination', point.label)} />
+      <View style={styles.mapContainer}
+        onTouchStart={() => onMapTouchChange?.(true)}
+        onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
+        onTouchCancel={() => onMapTouchChange?.(false)}>
         <Map
           key={mapKey}
           style={styles.map}
@@ -370,6 +390,9 @@ export default function RouteOptionsScreen({
           androidView="texture"
           attribution
           compass
+          dragPan
+          touchZoom
+          doubleTapZoom
           onPress={(event) => {
             const [longitude, latitude] =
               event.nativeEvent.lngLat;
@@ -557,7 +580,7 @@ export default function RouteOptionsScreen({
         <Pressable
           accessibilityRole="button"
           disabled={loading}
-          onPress={() => onStartJourney(selectedRoute)}
+          onPress={() => { if (origin && target) onStartJourney(selectedRoute, { origin, destination: target }, { start: originName, destination: targetName }); }}
           style={styles.button}
         >
           <Text style={styles.buttonText}>

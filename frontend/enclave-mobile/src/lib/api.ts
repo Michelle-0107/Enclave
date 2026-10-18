@@ -245,6 +245,7 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
+  timeoutMs?: number;
   method?: 'GET' | 'POST';
   accessToken?: string;
   body?: FormData | Record<string, unknown>;
@@ -326,7 +327,7 @@ async function request<T>(
   // Photo upload and AI processing may take longer.
   const timeout = setTimeout(
     () => controller.abort(),
-    60000,
+    options.timeoutMs ?? 60000,
   );
 
   const isFormData = options.body instanceof FormData;
@@ -768,5 +769,20 @@ export const navigationApi = {
         body: payload,
       },
     );
+  },
+};
+
+
+export type ResidentServiceArea = {
+  id: string; name: string; bbox: [number, number, number, number]; center: [number, number];
+  enabled: boolean; routing_supported: boolean; resident_demo_supported: boolean;
+};
+
+export const demoAreasApi = {
+  getAll(accessToken: string): Promise<{ default_area_id: string; items: ResidentServiceArea[] }> {
+    return request('/api/v1/navigation/areas', { accessToken, timeoutMs: 15000 });
+  },
+  getDataset(accessToken: string, areaId: string): Promise<{ area_id: string; dataset: unknown }> {
+    return request(`/api/v1/navigation/areas/${encodeURIComponent(areaId)}/demo`, { accessToken, timeoutMs: 15000 });
   },
 };

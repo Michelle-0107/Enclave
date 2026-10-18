@@ -27,8 +27,8 @@ import SignUpSuccessScreen from './src/screens/SignUpSuccessScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 
 import HomeScreen from './src/screens/HomeScreen';
-import MapScreen from './src/screens/MapScreen';
-import DemoMapScreen from './src/demo/DemoMapScreen';
+import MapScreen, { type MapEndpoints } from './src/screens/MapScreen';
+import DemoMapScreen from './src/demo/ServiceAreaDemoScreen';
 import RouteOptionsScreen, {
   type RouteOption,
 } from './src/screens/RouteOptionsScreen';
@@ -85,11 +85,13 @@ type MapFlow =
       page: 'options';
       start: string;
       destination: string;
+      points: MapEndpoints;
     }
   | {
       page: 'journey';
       start: string;
       destination: string;
+      points: MapEndpoints;
       route: RouteOption;
       startedAt: number;
     };
@@ -181,6 +183,7 @@ function ResidentApp({
     notification: ResidentNotification,
   ) {
     const target = notification.target;
+    if (target.type === 'announcement') return;
 
     if (target.type === 'report') {
       const reportExists = reports.some(
@@ -199,8 +202,7 @@ function ResidentApp({
       return;
     }
 
-    setMapFlow({ page: 'map' });
-    changeTab('Map');
+    openMyReports();
   }
 
   function renderMapScreen() {
@@ -215,12 +217,14 @@ function ResidentApp({
             <Text>Open resident demo</Text>
           </Pressable>
           <MapScreen
+            onMapTouchChange={setMapTouchActive}
             onReportPress={() => changeTab('Report')}
-            onChooseRoute={(start, destination) => {
+            onChooseRoute={(start, destination, points) => {
               setMapFlow({
                 page: 'options',
                 start,
                 destination,
+                points,
               });
               scrollToTop();
             }}
@@ -233,18 +237,22 @@ function ResidentApp({
 
         return (
           <RouteOptionsScreen
+            onMapTouchChange={setMapTouchActive}
             start={start}
             destination={destination}
+            initialOrigin={mapFlow.points.origin}
+            initialDestination={mapFlow.points.destination}
             onBack={() => {
               setMapFlow({ page: 'map' });
               scrollToTop();
             }}
-            onStartJourney={(route) => {
+            onStartJourney={(route, points, names) => {
               setMapFlow({
                 page: 'journey',
-                start,
-                destination,
+                start: names.start,
+                destination: names.destination,
                 route,
+                points,
                 startedAt: Date.now(),
               });
               scrollToTop();
@@ -271,6 +279,7 @@ function ResidentApp({
                 page: 'options',
                 start,
                 destination,
+                points: mapFlow.points,
               });
               scrollToTop();
             }}

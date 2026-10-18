@@ -22,12 +22,18 @@ import {
 } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
+import type { PlacePoint } from '../savedPlaces/store';
+
+export type MapEndpoints = { origin: { latitude: number; longitude: number } | null; destination: { latitude: number; longitude: number } | null };
 
 type Props = {
   onReportPress: () => void;
+  onMapTouchChange?: (active: boolean) => void;
   onChooseRoute?: (
     start: string,
     destination: string,
+    points: MapEndpoints,
   ) => void;
 };
 
@@ -57,9 +63,13 @@ function faultLabel(issue: MapIssueFeature): string {
 export default function MapScreen({
   onReportPress,
   onChooseRoute,
+  onMapTouchChange,
 }: Props) {
   const [start, setStart] = useState('');
   const [destination, setDestination] = useState('');
+  const [startPlace, setStartPlace] = useState<PlacePoint | null>(null);
+  const [endPlace, setEndPlace] = useState<PlacePoint | null>(null);
+  const [selecting, setSelecting] = useState<'origin' | 'destination'>('origin');
 
   const [issues, setIssues] =
     useState<MapIssueFeature[]>([]);
@@ -74,6 +84,8 @@ export default function MapScreen({
 
   const [mapError, setMapError] = useState(false);
   const [mapKey, setMapKey] = useState(0);
+
+  useEffect(() => () => onMapTouchChange?.(false), [onMapTouchChange]);
 
   useEffect(() => {
     let mounted = true;
@@ -190,6 +202,17 @@ export default function MapScreen({
     setRefreshKey((value) => value + 1);
   }
 
+  function chooseLocation(point: PlacePoint, which: 'origin' | 'destination') {
+    const [longitude, latitude] = point.coordinate;
+    const [west, south, east, north] = area?.bbox ?? [101.7211, 3.2171, 101.7409, 3.2349];
+    if (longitude < west || longitude > east || latitude < south || latitude > north) {
+      setError('Select a point inside the KL East pilot area.'); return;
+    }
+    setError('');
+    if (which === 'origin') { setStartPlace(point); setStart(point.label); setSelecting('destination'); }
+    else { setEndPlace(point); setDestination(point.label); }
+  }
+
   function handleChooseRoute() {
     const startingPoint = start.trim();
     const endPoint = destination.trim();
@@ -210,10 +233,11 @@ export default function MapScreen({
       return;
     }
 
-    // Existing page navigation only.
-    // Real routing requires selected numeric coordinates
-    // and the navigation API integration.
-    onChooseRoute(startingPoint, endPoint);
+    // Carry numeric selections into the live routing page; names alone are labels.
+    onChooseRoute(startingPoint, endPoint, {
+      origin: startPlace ? { longitude: startPlace.coordinate[0], latitude: startPlace.coordinate[1] } : null,
+      destination: endPlace ? { longitude: endPlace.coordinate[0], latitude: endPlace.coordinate[1] } : null,
+    });
   }
 
   return (
@@ -235,13 +259,15 @@ export default function MapScreen({
           <TextInput
             accessibilityLabel="Starting point"
             value={start}
-            onChangeText={setStart}
+            onChangeText={value => { setStart(value); setStartPlace(null); }}
+            onFocus={() => setSelecting('origin')}
             placeholder="Choose a starting point"
             placeholderTextColor={colors.muted}
             autoCorrect={false}
             returnKeyType="next"
             style={styles.locationInput}
           />
+          <SavedPlacesControl field="starting point" current={startPlace} onChoose={point => chooseLocation(point, 'origin')} />
         </View>
 
         <View style={styles.divider} />
@@ -254,23 +280,40 @@ export default function MapScreen({
           <TextInput
             accessibilityLabel="End point"
             value={destination}
-            onChangeText={setDestination}
+            onChangeText={value => { setDestination(value); setEndPlace(null); }}
+            onFocus={() => setSelecting('destination')}
             placeholder="Choose an end point"
             placeholderTextColor={colors.muted}
             autoCorrect={false}
             returnKeyType="done"
             style={styles.locationInput}
           />
+          <SavedPlacesControl field="destination" current={endPlace} onChoose={point => chooseLocation(point, 'destination')} />
         </View>
       </View>
 
-      <View style={styles.mapContainer}>
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <Pressable accessibilityRole="button" onPress={() => setSelecting('origin')} style={{ padding: 12 }}><Text style={styles.fieldLabel}>Pick starting point{selecting === 'origin' ? ' ✓' : ''}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setSelecting('destination')} style={{ padding: 12 }}><Text style={styles.fieldLabel}>Pick destination{selecting === 'destination' ? ' ✓' : ''}</Text></Pressable>
+      </View>
+      <Text style={styles.subtitle}>Tap the map to select your {selecting === 'origin' ? 'starting point' : 'destination'}, or choose a saved place.</Text>
+      <View style={styles.mapContainer}
+        onTouchStart={() => onMapTouchChange?.(true)}
+        onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
+        onTouchCancel={() => onMapTouchChange?.(false)}>
         <Map
           key={mapKey}
           style={styles.map}
           mapStyle={area?.map_style_url || MAP_STYLE}
           androidView="texture"
           compass
+          dragPan
+          touchZoom
+          doubleTapZoom
+          onPress={event => {
+            const [longitude, latitude] = event.nativeEvent.lngLat;
+            chooseLocation({ label: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`, coordinate: [longitude, latitude] }, selecting);
+          }}
           attribution
           onDidFinishLoadingMap={() => setMapError(false)}
           onDidFailLoadingMap={() => setMapError(true)}
@@ -281,7 +324,9 @@ export default function MapScreen({
               zoom: 15,
             }}
           />
-
+          {([startPlace, endPlace] as const).map((point, index) => point && <Marker key={`saved-endpoint-${index}`} id={`saved-endpoint-${index}`} lngLat={point.coordinate}>
+            <View collapsable={false} style={{ backgroundColor: colors.navy, borderRadius: 20, padding: 10 }}><Text style={{ color: colors.white, fontWeight: '700' }}>{index === 0 ? 'S' : 'D'}</Text></View>
+          </Marker>)}
           {issues.map((issue) => (
             <Marker
               key={issue.id}
