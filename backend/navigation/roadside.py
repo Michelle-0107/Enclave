@@ -1,7 +1,8 @@
-"""OSM pedestrian graph with separate road sides and explicit crossing connections.
+"""OSM pedestrian graph with separate road sides and classified crossings.
 
 Road-side geometry is an inferred offset from the surveyed OSM centerline, not a
-surveyed sidewalk. No spatial nearest-neighbor links or crossings are invented.
+surveyed sidewalk. Private local-road crossings follow the resident policy and
+remain distinct from mapped pedestrian facilities.
 """
 from collections import defaultdict
 from dataclasses import dataclass
@@ -22,6 +23,8 @@ from .zones import route_intersects_zone
 ROADS = {'residential', 'living_street', 'service', 'unclassified', 'tertiary', 'tertiary_link', 'secondary', 'secondary_link'}
 ALL_ROADS = ROADS | {'primary','primary_link','trunk','trunk_link','motorway','motorway_link','road'}
 PATHS = {'footway', 'path', 'steps', 'pedestrian', 'cycleway'}
+LOCAL_ROADS = {'residential', 'living_street', 'service', 'unclassified'}
+LOCAL_CROSSING_SPACING = 25.0
 OFFSET = 3.0
 SCALE = 111_195.08
 
@@ -56,6 +59,28 @@ def forbidden(tags, *, resident_access=False):
             or access in {'no', 'customers', 'destination'} and not permitted_foot
             or access == 'private' and not (permitted_foot or resident_access)
             or tags.get('barrier') in {'wall', 'fence', 'retaining_wall', 'hedge'})
+
+
+def private_local_crossing(tags):
+    """Product policy for unmarked crossings; not evidence of a mapped facility."""
+    if (tags.get('highway') not in LOCAL_ROADS
+            or not (tags.get('access') == 'private' or tags.get('foot') == 'private')
+            or forbidden(tags, resident_access=True) or tags.get('crossing') == 'no'
+            or tags.get('motorroad') == 'yes' or level(tags) != ('0', False, False)):
+        return False
+    # Missing measurements use the minor residential-road classification. Known
+    # high speed, multiple lanes, wide carriageways, or ambiguous values do not.
+    for key, limit in (('maxspeed', 30), ('lanes', 2), ('width', 8)):
+        value = tags.get(key)
+        if value is None: continue
+        try:
+            numeric = value.removesuffix(' m') if key == 'width' else value
+            number = float(numeric.removesuffix(' mph'))
+            if key == 'maxspeed' and value.endswith(' mph'): number *= 1.609344
+            if not math.isfinite(number) or number <= 0 or number > limit: return False
+        except ValueError:
+            return False
+    return True
 
 
 def level(tags):
@@ -100,6 +125,7 @@ class RoadsideGraph:
         self.edges = []
         self.carriageways = []
         self.private_way_ids = set()
+        local_segments = []
         roads, paths = defaultdict(list), defaultdict(list)
         ways = [(w.attrib['id'], [n.attrib['ref'] for n in w.findall('nd')], tags(w)) for w in root.findall('way')]
         for wid, refs, t in ways:
@@ -148,6 +174,9 @@ class RoadsideGraph:
                         self.add(na,nb,name,kind,wid,direction,grade)
                         roads[(a,grade)].append((math.atan2(pb[1]-pa[1],(pb[0]-pa[0])*math.cos(math.radians(pa[1]))), side, na, t, wid))
                         roads[(b,grade)].append((math.atan2(pa[1]-pb[1],(pa[0]-pb[0])*math.cos(math.radians(pb[1]))), -side, nb, t, wid))
+                    if (resident_access and private_local_crossing(t)
+                            and all(node_tags[n].get('crossing') != 'no' for n in (a,b))):
+                        local_segments.append((eid, wid, pa, pb, name, grade))
                 else:
                     # Each arm remains separate at road nodes until a permitted crossing is proven.
                     na, nb = f'p:{eid}:a', f'p:{eid}:b'
@@ -221,7 +250,10 @@ class RoadsideGraph:
             for i, start in enumerate(headings):
                 end = headings[(i+1)%len(headings)]
                 sweep = (end-start) % (2*math.pi)
-                if len(headings) == 1 or sweep > math.pi + 1e-5:
+                # The outer side of a bend has a sweep above 180 degrees, but
+                # still belongs to one continuous road side. The geometric
+                # carriageway check below rejects actual crossing shortcuts.
+                if len(headings) == 1:
                     continue
                 left = [port for angle,side,port,_,_ in arms if angle==start and side==1]
                 right = [port for angle,side,port,_,_ in arms if angle==end and side==-1]
@@ -240,6 +272,37 @@ class RoadsideGraph:
         # corner shortcuts that would cut a carriageway or leave the service area.
         self.edges = [Edge(e.a,e.b,(self.nodes[e.a],self.nodes[e.b]),e.name,e.kind,e.way_id,e.direction,e.grade) for e in self.edges]
         self.edges = [e for e in self.edges if all(self.inside(p) for p in e.points) and (e.kind != 'connection' or not any(e.grade==g and proper_intersection(*e.points,c,d) for c,d,g in self.nearby(*e.points)))]
+        self.add_local_crossings(local_segments)
+
+    def add_local_crossings(self, segments):
+        # Split paired sides of the SAME private road segment. There are no
+        # proximity joins to other streets, opposite carriageways or buildings.
+        by_start = {edge.a: edge for edge in self.edges if edge.kind in {'sidewalk','road_fallback'}}
+        replacements = {}
+        for eid, wid, pa, pb, name, grade in segments:
+            sides = [by_start.get(f'{eid}:a:{side}') for side in (1,-1)]
+            if any(edge is None for edge in sides): continue
+            cuts = [[], []]
+            count = max(1, math.ceil(distance(pa,pb)/LOCAL_CROSSING_SPACING))
+            for index in range(count):
+                fraction = (index+.5)/count
+                positions = [tuple(a+(b-a)*fraction for a,b in zip(*edge.points)) for edge in sides]
+                # Do not use a private lane crossing to cut any OTHER road.
+                if any(grade==g and (c,d) not in ((pa,pb),(pb,pa)) and proper_intersection(*positions,c,d)
+                       for c,d,g in self.nearby(*positions)):
+                    continue
+                for side in range(2):
+                    node = f'local-crossing:{eid}:{index}:{side}'
+                    self.nodes[node] = positions[side]
+                    cuts[side].append((fraction,node,positions[side]))
+                self.add(cuts[0][-1][1],cuts[1][-1][1],name,'unmarked_crossing',wid,grade=grade)
+            for edge, entries in zip(sides,cuts):
+                if not entries: continue
+                entries = [(0,edge.a,edge.points[0]),*entries,(1,edge.b,edge.points[1])]
+                replacements[edge] = [Edge(a[1],b[1],(a[2],b[2]),edge.name,edge.kind,
+                    edge.way_id,edge.direction,edge.grade) for a,b in zip(entries,entries[1:])]
+        self.edges = [part for edge in self.edges for part in replacements.get(edge,[edge])
+                      if all(self.inside(p) for p in part.points)]
 
     @staticmethod
     def cells(a,b):
@@ -262,7 +325,7 @@ class RoadsideGraph:
     def snap(self,point):
         p = xy(point); best = None
         for index, edge in enumerate(self.edges):
-            if edge.kind in {'connection','crossing'}: continue
+            if edge.kind in {'connection','crossing','unmarked_crossing'}: continue
             a,b = map(xy,edge.points); dx,dy = b[0]-a[0],b[1]-a[1]
             length2 = dx*dx+dy*dy
             if length2 < 0.0001: continue
@@ -315,7 +378,7 @@ class RoadsideGraph:
         start,end = self.snap(origin),self.snap(target)
         adjacency=defaultdict(list)
         def link(a,b,edge,pa,pb):
-            if edge.way_id in excluded_way_ids or (demo_mode and body.route_mode == 'accessible' and edge.kind == 'steps'): return
+            if edge.way_id in excluded_way_ids or (body.route_mode == 'accessible' and edge.kind in {'steps','unmarked_crossing'}): return
             length=distance(pa,pb)
             if any(route_intersects_zone([pa,pb],box) for box in boxes): return
             if edge.direction != -1: adjacency[a].append((b,length,edge,pa,pb))
@@ -337,23 +400,25 @@ class RoadsideGraph:
                     best[to]=candidate; previous[to]=(node,edge,pa,pb,length)
                     heapq.heappush(queue,(candidate,to))
         if '@end' not in previous:
-            raise NavigationRejected(422,'No connected walking route satisfies the mapped-crossing requirement. A zebra crossing, pedestrian signal, footbridge or underpass may be missing from the mapped network; choose another public access on the same side.')
+            raise NavigationRejected(422,'No connected walking route meets the road-crossing rules. Private local roads may be crossed under the resident policy; other roads require a mapped crossing, footbridge or underpass. Try another access point.')
         selected=[]; cursor='@end'
         while cursor in previous:
             before,edge,pa,pb,length=previous[cursor]; selected.append((edge,pa,pb,length)); cursor=before
         selected.reverse()
         geometry=[selected[0][1]]; maneuvers=[]; total=0.0
-        kinds=set(); crossing_ids=set()
+        kinds=set(); crossing_ids=set(); unmarked_ids=set()
         for edge,pa,pb,length in selected:
             if length < 0.01: continue
             kinds.add(edge.kind)
             if edge.kind=='crossing': crossing_ids.add(edge.way_id)
+            if edge.kind=='unmarked_crossing': unmarked_ids.add((edge.a,edge.b))
             begin=len(geometry)-1; geometry.append(pb)
             text=(f'Use the mapped pedestrian crossing at {edge.name}.' if edge.kind=='crossing' else
+                  f'Cross the private local road at {edge.name} when traffic is clear; this is an unmarked crossing.' if edge.kind=='unmarked_crossing' else
                   f'Walk along the road side of {edge.name} for {length:.0f} meters; a sidewalk is not recorded.' if edge.kind=='road_fallback' else
                   f'Continue along {edge.name} for {length:.0f} meters.')
             maneuver_type=1 if not maneuvers else 8
-            if len(geometry)>2 and edge.kind!='crossing':
+            if len(geometry)>2 and edge.kind not in {'crossing','unmarked_crossing'}:
                 a,b,c=map(xy,geometry[-3:]); v=(b[0]-a[0],b[1]-a[1]); w=(c[0]-b[0],c[1]-b[1])
                 turn=math.degrees(math.atan2(v[0]*w[1]-v[1]*w[0],v[0]*w[0]+v[1]*w[1]))
                 if abs(turn)>30:
@@ -370,13 +435,16 @@ class RoadsideGraph:
         return RouteResponse(route_id=uuid4(),generated_at=datetime.now(timezone.utc),area=area_id,route_mode=body.route_mode,
             routing_engine='osm_roadside',geometry=RouteGeometry(coordinates=geometry),distance_meters=total,duration_seconds=total/1.2,
             origin_snap_distance_meters=start[0],destination_snap_distance_meters=end[0],maneuvers=maneuvers,data_source='openstreetmap_unverified',
-            road_fallback_used='road_fallback' in kinds,crossing_policy='mapped_facilities_only',mapped_crossing_count=len(crossing_ids),
+            road_fallback_used='road_fallback' in kinds,
+            crossing_policy='resident_local_roads' if unmarked_ids else 'mapped_facilities_only',
+            mapped_crossing_count=len(crossing_ids),unmarked_crossing_count=len(unmarked_ids),
             accessibility_status='synthetic_network' if demo_mode and body.route_mode == 'accessible' else 'not_requested',
             community_issue_avoidance=('applied' if boxes else 'no_active_obstacles') if snapshot else 'not_applied',
             obstacle_snapshot_at=snapshot.checked_at if snapshot else None,obstacle_count=len(boxes),obstacle_source='community_reports' if snapshot else None,
             warnings=[
                 'Real OpenStreetMap walking coverage; road-side positions are inferred, not surveyed sidewalks.',
-                'Only recorded marked/signal crossings or grade-separated paths connect opposite road sides. Missing map data can prevent routing.',
+                ('Includes unmarked private local-road crossings under the resident policy; these are not mapped zebra crossings or verified step-free connections.'
+                 if unmarked_ids else 'This route uses only mapped pedestrian facilities when crossing roads. Missing map data can prevent routing.'),
                 'Road walking and endpoint approaches are not field verified or certified accessible. Check traffic and local access before proceeding.',
                 *(['Includes private residential ways under the app resident-access policy for verified residents of supported service areas.']
                   if any(edge.way_id in self.private_way_ids for edge,_,_,_ in selected) else []),

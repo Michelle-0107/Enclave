@@ -147,7 +147,7 @@ export type NavigationArea = {
   official_boundary: false;
   temporary_live?: boolean;
   community_issues_supported?: boolean;
-  crossing_policy?: 'provider_default' | 'mapped_facilities_only';
+  crossing_policy?: 'provider_default' | 'mapped_facilities_only' | 'resident_local_roads';
 };
 
 export type FacilityRecord = {
@@ -730,8 +730,9 @@ export type NavigationRouteResponse = {
   area: string;
   routing_engine: 'valhalla' | 'verified_network' | 'osm_roadside';
   road_fallback_used?: boolean;
-  crossing_policy?: 'provider_default' | 'mapped_facilities_only';
+  crossing_policy?: 'provider_default' | 'mapped_facilities_only' | 'resident_local_roads';
   mapped_crossing_count?: number;
+  unmarked_crossing_count?: number;
   route_mode: RouteMode;
   geometry: {
     type: 'LineString';

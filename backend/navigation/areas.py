@@ -23,7 +23,7 @@ class ServiceArea(BaseModel):
     resident_demo_supported: bool = Field(strict=True, description='A compatible server-owned resident-demo road graph exists for this area.')
     temporary_live: bool = False
     community_issues_supported: bool = True
-    crossing_policy: Literal['provider_default','mapped_facilities_only'] = 'mapped_facilities_only'
+    crossing_policy: Literal['provider_default','mapped_facilities_only','resident_local_roads'] = 'resident_local_roads'
     location_reference: str = Field(pattern=r'^https://www\.openstreetmap\.org/(node|way|relation)/[0-9]+$')
     boundary_type: Literal['development_window'] = 'development_window'
     official_boundary: Literal[False] = False

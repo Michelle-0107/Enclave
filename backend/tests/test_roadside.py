@@ -110,7 +110,7 @@ class RoadsideTests(unittest.TestCase):
         for tags in ({'foot':'no'},{'access':'private'},{'motorroad':'yes'},{'motorroad':'yes','maxspeed':'unknown'},{'maxspeed':'90'}):
             with self.subTest(tags=tags),self.assertRaises(NavigationRejected): self.straight(tags).route(body(p(-80,6),p(80,6)))
 
-    def test_resident_access_opens_private_ways_but_does_not_invent_crossings(self):
+    def test_resident_access_opens_private_ways_and_identifies_unmarked_crossings(self):
         for tags in ({'access':'private'},{'foot':'private'},{'access':'private','foot':'private'}):
             with self.subTest(tags=tags):
                 g=osm_graph({'a':(-100,0),'b':(100,0)},
@@ -118,7 +118,73 @@ class RoadsideTests(unittest.TestCase):
                 route=g.route(body(p(-80,6),p(80,6)))
                 self.assertAlmostEqual(route.distance_meters,160,places=2)
                 self.assertTrue(any('resident-access policy' in warning for warning in route.warnings))
+                crossing_route=g.route(body(p(-80,6),p(80,-6)))
+                self.assertEqual(crossing_route.crossing_policy,'resident_local_roads')
+                self.assertEqual(crossing_route.mapped_crossing_count,0)
+                self.assertEqual(crossing_route.unmarked_crossing_count,1)
+                self.assertTrue(any('unmarked crossing' in step.instruction for step in crossing_route.maneuvers))
+                self.assertFalse(crossing_route.field_verified)
+
+    def test_private_local_crossings_do_not_apply_to_major_wide_fast_or_prohibited_roads(self):
+        variants=({'highway':'secondary'},{'highway':'tertiary'},
+                  {'maxspeed':'50'},{'maxspeed':'30 mph'},{'maxspeed':'walk'},
+                  {'lanes':'4'},{'width':'10'},{'crossing':'no'},
+                  {'bridge':'yes'},{'tunnel':'yes'})
+        for tags in variants:
+            with self.subTest(tags=tags):
+                g=osm_graph({'a':(-100,0),'b':(100,0)},
+                    [(['a','b'],{'highway':'residential','access':'private',**tags})],resident_access=True)
+                self.assertFalse(any(e.kind=='unmarked_crossing' for e in g.edges))
                 with self.assertRaises(NavigationRejected): g.route(body(p(-80,6),p(80,-6)))
+
+    def test_explicit_no_crossing_at_node_still_blocks_private_crossing(self):
+        g=osm_graph({'a':(-100,0),'b':(100,0)},
+            [(['a','b'],{'highway':'residential','access':'private'})],
+            {'a':{'crossing':'no'}},resident_access=True)
+        with self.assertRaises(NavigationRejected): g.route(body(p(-80,6),p(80,-6)))
+
+    def test_unmarked_local_crossing_obeys_damage_and_step_free_constraints(self):
+        g=osm_graph({'a':(-100,0),'b':(100,0)},
+            [(['a','b'],{'highway':'residential','access':'private'})],resident_access=True)
+        for mode in ('shortest','avoid_damage'):
+            self.assertEqual(g.route(body(p(-80,6),p(80,-6),mode)).unmarked_crossing_count,1)
+        w,s=p(-110,-2);e,n=p(110,2)
+        with self.assertRaises(NavigationRejected):
+            g.route(body(p(-80,6),p(80,-6),'avoid_damage'),boxes=[(w,s,e,n)])
+        with self.assertRaises(NavigationRejected):
+            g.route(body(p(-80,6),p(80,-6),'accessible'),demo_mode=True)
+        with self.assertRaises(NavigationRejected):
+            g.validate_accessible_crossings([p(0,6),p(0,-6)])
+
+    def test_straight_walking_can_cross_a_private_side_street_but_not_public_main_road(self):
+        g=osm_graph({'w':(-100,0),'m':(0,0),'e':(100,0),'n':(0,100)},
+            [(['w','m','e'],{'highway':'secondary'}),
+             (['m','n'],{'highway':'residential','access':'private'})],resident_access=True)
+        route=g.route(body(p(-80,6),p(80,6)))
+        self.assertEqual(route.unmarked_crossing_count,1)
+        self.assertLess(route.distance_meters,210)
+        with self.assertRaises(NavigationRejected): g.route(body(p(-80,6),p(80,-6)))
+
+    def test_both_sides_of_a_bend_remain_connected_without_crossing(self):
+        g=osm_graph({'w':(-100,0),'m':(0,0),'n':(0,100)},
+            [(['w','m','n'],{'highway':'residential'})])
+        for a,b in ((p(-80,-6),p(6,80)),(p(-80,6),p(-6,80))):
+            with self.subTest(origin=a):
+                route=g.route(body(a,b))
+                self.assertEqual(route.unmarked_crossing_count,0)
+                self.assertEqual(route.mapped_crossing_count,0)
+                self.assertLess(route.distance_meters,170)
+
+    def test_prima_saujana_same_side_and_opposite_side_real_routes(self):
+        g=walking_graph('kajang-prima-saujana')
+        same_side=g.route(body((101.804041,3.0026522),(101.803397,3.0048052)),area_id='kajang-prima-saujana')
+        self.assertLess(same_side.distance_meters,260)
+        self.assertEqual(same_side.unmarked_crossing_count,0)
+        self.assertEqual(same_side.mapped_crossing_count,0)
+        opposite=g.route(body((101.804041,3.0026522),(101.803487,3.0048052)),area_id='kajang-prima-saujana')
+        self.assertGreater(opposite.unmarked_crossing_count,0)
+        self.assertEqual(opposite.mapped_crossing_count,0)
+        self.assertEqual(opposite.crossing_policy,'resident_local_roads')
 
     def test_resident_access_does_not_override_explicit_closures(self):
         for tags in ({'access':'private','foot':'no'},{'access':'no'},
@@ -235,12 +301,35 @@ class LiveAreaApiTests(unittest.TestCase):
             response=self.client.get('/api/v1/navigation/area',params={'area_id':area},headers=self.headers)
             self.assertEqual(response.status_code,200,response.text)
             self.assertEqual(response.json()['id'],area)
-            self.assertEqual(response.json()['crossing_policy'],'mapped_facilities_only')
+            self.assertEqual(response.json()['crossing_policy'],'resident_local_roads')
         data=response.json()
         self.assertTrue(data['temporary_live']); self.assertFalse(data['community_issues_supported'])
         self.assertEqual(data['supported_route_modes'],['shortest'])
         self.assertEqual(self.client.get('/api/v1/navigation/area?area_id=unknown-area',headers=self.headers).status_code,404)
         self.assertEqual(self.client.get('/api/v1/navigation/area?area_id=kajang-prima-saujana').status_code,401)
+
+    def test_live_and_demo_share_private_local_crossings_and_same_side_bend_fix(self):
+        start=(101.804041,3.0026522)
+        for end in ((101.803397,3.0048052),(101.803487,3.0048052)):
+            payload=body(start,end).model_dump()
+            live=self.client.post('/api/v1/navigation/routes',json=payload,headers=self.headers)
+            self.assertEqual(live.status_code,200,live.text)
+            data=live.json()
+            demo=self.client.post('/api/v1/navigation/areas/kajang-prima-saujana/demo-routes',
+                json={'origin':payload['origin'],'destination':payload['destination']},headers=self.headers)
+            self.assertEqual(demo.status_code,200,demo.text)
+            option=demo.json()['options'][0]['route']
+            self.assertIsNotNone(option)
+            self.assertEqual(data['geometry'],option['geometry'])
+            self.assertEqual(data['unmarked_crossing_count'],option['unmarked_crossing_count'])
+            self.assertEqual(data['mapped_crossing_count'],0)
+            self.assertFalse(data['field_verified'])
+            if end[0]<101.8034422:
+                self.assertEqual(data['unmarked_crossing_count'],0)
+                self.assertLess(data['distance_meters'],260)
+            else:
+                self.assertGreater(data['unmarked_crossing_count'],0)
+                self.assertEqual(data['crossing_policy'],'resident_local_roads')
 
     def test_resident_route_uses_shared_policy_without_contacting_car_engine(self):
         for area in ('kl-east-pilot','kajang-prima-saujana'):

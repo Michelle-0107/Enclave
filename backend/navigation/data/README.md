@@ -28,8 +28,22 @@ not marked locked. The original OSM tags and source checksums remain unchanged.
 
 This policy does not override explicit `foot=no`, `access=no`, locked gates,
 walls, fences, motorroads, high-speed road exclusions, or indoor restrictions.
-Opposite road sides still require a mapped pedestrian crossing, footbridge, or
-underpass. Private access does not confer verified wheelchair accessibility.
+Ordinary walking can cross private local roads without a mapped facility when
+their class is residential, living street, service, or unclassified. Known speed
+limits above 30 km/h, more than two lanes, width above 8 m, bridges/tunnels, or
+explicit `crossing=no` prevent this exception. Missing measurements use the
+private minor-road classification; this is a routing assumption, not a survey.
+Same-grade links join only the two sides of the same source segment and cannot
+cut another road. Crossing candidates are spaced at most 25 m apart. Other
+roads still require a mapped pedestrian crossing, footbridge, or underpass.
+
+Routes using these links return `crossing_policy=resident_local_roads` and
+`unmarked_crossing_count`, with explicit unmarked-crossing maneuvers. They never
+inflate `mapped_crossing_count`. The service-area catalog advertises this policy;
+routes without unmarked crossings retain `mapped_facilities_only`. Damage
+restrictions also block these links. Accessible routes, including the simulated
+step-free demo profile, do not use the unmarked-crossing exception. Private
+access does not confer verified wheelchair accessibility.
 Resident route endpoints continue to require an active verified account; the
 private-access option is not a caller-controlled request field. Route warnings
 identify use of private ways under this app policy.

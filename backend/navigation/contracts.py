@@ -74,8 +74,9 @@ class RouteResponse(BaseModel):
     route_mode: RouteMode = 'shortest'
     routing_engine: Literal['valhalla','verified_network','osm_roadside']='valhalla'
     road_fallback_used: bool = False
-    crossing_policy: Literal['provider_default','mapped_facilities_only'] = 'provider_default'
+    crossing_policy: Literal['provider_default','mapped_facilities_only','resident_local_roads'] = 'provider_default'
     mapped_crossing_count: int = Field(default=0,ge=0)
+    unmarked_crossing_count: int = Field(default=0,ge=0)
     geometry: RouteGeometry
     distance_meters: Meters
     duration_seconds: Seconds
@@ -109,7 +110,7 @@ class NavigationArea(BaseModel):
     supported_route_modes: list[str] = ['shortest','avoid_damage','accessible']
     temporary_live: bool = False
     community_issues_supported: bool = True
-    crossing_policy: Literal['provider_default','mapped_facilities_only'] = 'provider_default'
+    crossing_policy: Literal['provider_default','mapped_facilities_only','resident_local_roads'] = 'provider_default'
     accessible_network_available: bool = False
     verified_accessible_segments: int = 0
     community_issue_avoidance: Literal['two_resident_issue_points'] = 'two_resident_issue_points'
