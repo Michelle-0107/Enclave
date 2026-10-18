@@ -6,6 +6,7 @@ const network=compile('network.ts',()=>raw);const driving=compile('driving.ts',(
 function serverResponse(payload){const adjusted=Math.abs(payload.origin.longitude-101.7310841)<1e-7;const selected=adjusted?(payload.start_candidates[0]||payload.origin):payload.origin;const modes=payload.profile==='wheelchair'?['accessible']:['shortest','avoid_damage','accessible'];return{area_id:'kl-east-pilot',requested_origin:payload.origin,selected_origin:selected,start_adjustment_meters:adjusted?35:0,adjusted_start:adjusted,options:modes.map((mode,i)=>({mode,unavailable_reason:null,route:{route_id:`demo-${serverCalls.length}-${mode}`,generated_at:new Date().toISOString(),area:'kl-east-pilot',routing_engine:'osm_roadside',road_fallback_used:true,crossing_policy:'mapped_facilities_only',mapped_crossing_count:0,route_mode:mode,geometry:{type:'LineString',coordinates:[[selected.longitude,selected.latitude],[payload.destination.longitude,payload.destination.latitude]]},distance_meters:160+i*25,duration_seconds:160,origin_snap_distance_meters:0,destination_snap_distance_meters:0,maneuvers:[],community_issue_avoidance:'not_applied',obstacle_count:0,obstacle_snapshot_at:null,obstacle_source:null,confirmation_threshold:2,data_source:'openstreetmap_unverified',field_verified:false,accessibility_status:mode==='accessible'?'synthetic_network':'not_requested',warnings:['Demo-only route'],attribution:'OpenStreetMap contributors',attribution_url:'https://www.openstreetmap.org/copyright',demo_facility_ids:[raw.facilities[0].id]}}))};}
 const react={useEffect:()=>{},useCallback:fn=>fn,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return[states[i],next=>states[i]=typeof next==='function'?next(states[i]):next];},useMemo:fn=>fn(),useRef(initial){const i=cursor++;if(!(i in states))states[i]={current:initial===null?{fitBounds:(bounds,options)=>{assert.ok(Array.isArray(bounds)&&bounds.length===4&&bounds.every(Number.isFinite));assert.ok(options.padding);cameraCalls.push(bounds);},easeTo:x=>cameraCalls.push(x)}:initial};return states[i];}};
 const Screen=compile('DemoMapScreen.tsx',name=>{
+ if(name==='../navigation/PlaceSearch')return{__esModule:true,default:'PlaceSearch'};
  if(name==='../savedPlaces/SavedPlacesControl')return{__esModule:true,default:'SavedPlacesControl'};
  if(name==='../lib/api')return{demoAreasApi:{getRoutes:async(token,areaId,payload)=>{serverCalls.push({token,areaId,payload});return responder?responder(payload):serverResponse(payload);}}};
  if(name==='../lib/supabase')return{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'fixture-token'}},error:null})}}};
@@ -54,12 +55,13 @@ test('Editing an endpoint invalidates cached coordinates and the old route',asyn
 });
 test('Real-place search resolves coordinates only when a suggestion is selected',()=>{
  let t=tree();find(t,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='Starting point').props.onChangeText('KL East Mall');t=tree();
- assert.equal(all(t).filter(n=>n.type==='Marker').length,0);button(t,'Choose place: KL East Mall').props.onPress();t=tree();assert.equal(all(t).filter(n=>n.type==='Marker').length,1);
+ assert.equal(all(t).filter(n=>n.type==='Marker').length,0);const search=find(t,n=>n.type==='PlaceSearch');search.props.onChoose(search.props.local.find(p=>p.label==='KL East Mall'));t=tree();assert.equal(all(t).filter(n=>n.type==='Marker').length,1);
  assert.equal(find(t,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='Starting point').props.value,'KL East Mall');
 });
 test('Facility selection stops event propagation and does not silently choose endpoints',()=>{
  let t=tree(),stopped=false;const f=raw.facilities[0];find(t,n=>n.props?.id==='demo-facilities').props.onPress({stopPropagation:()=>stopped=true,nativeEvent:{features:[{properties:{id:f.id}}]}});t=tree();
- assert.ok(stopped);assert.ok(text(t).includes(f.name));assert.equal(all(t).filter(n=>n.type==='Marker').length,0);
+ assert.ok(stopped);assert.ok(text(t).includes(f.name));assert.equal(all(t).filter(n=>n.type==='Marker').length,1);
+ assert.deepEqual(find(t,n=>n.props?.id==='demo-selection-frame').props.lngLat,f.coordinate);
  button(t,'Use as start').props.onPress();t=tree();assert.equal(all(t).filter(n=>n.type==='Marker').length,1);
 });
 test('Invalid point is rejected instead of drawing a cross-area connector',()=>{

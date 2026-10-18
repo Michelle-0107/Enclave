@@ -63,9 +63,9 @@ check('Selection exposes snapping distance without extending road geometry throu
  const chosen=n.selectLocation('User choice',[101.7305,3.2249],d);assert.ok(chosen.snap.distance>0&&chosen.snap.distance<40);assert.equal(chosen.snap.coordinate[1],3.225);
  const route=n.calculateRoutes(chosen.coordinate,points[2],d)[0].route;assert.equal(route.coordinates[0][1],3.225);
 });
-check('Local search uses real POIs or explicitly entered coordinates',()=>{
+check('Local search uses real POIs and does not interpret typed coordinates',()=>{
  assert.ok(n.searchPlaces('KL East Mall').some(p=>p.name==='KL East Mall'));assert.equal(n.searchPlaces('unmapped invented landmark').length,0);
- const coord=n.searchPlaces('3.225, 101.730');assert.equal(coord[0].coordinate[0],101.730);assert.equal(n.searchPlaces('0,0').length,0);
+ assert.equal(n.searchPlaces('3.225, 101.730').length,0);assert.equal(n.searchPlaces('0,0').length,0);
 });
 check('Dataset and scenario are not mutated by requests',()=>{
  const before=JSON.stringify(d);n.calculateRoutes(points[2],points[1],d);assert.equal(JSON.stringify(d),before);

@@ -28,6 +28,7 @@ from .navigation.areas import ServiceAreas, DemoAreaDataset, service_areas, find
 from .navigation.provider import ValhallaProvider, NavigationRejected, NavigationUnavailable
 from .navigation.demo_routes import DemoRouteRequest, DemoRouteResponse, calculate_demo_routes
 from .navigation.roadside import walking_graph
+from .navigation.places import PlacesRepository, PlacesUnavailable, PlaceSearchResult
 from .navigation.service import NavigationService
 from .reports.issues import (CommunityIssues,FacilityCreate,Facility,FacilityList,OpenIssue,JoinIssue,
                              IssueLinked,IssueList,IssueMapResponse,CommunityObstacleSnapshot,IssueUnavailable,IssueRejected)
@@ -96,6 +97,7 @@ def create_app(
     accessibility_network: VerifiedNetwork | None = None,
     what_if_transport: httpx.AsyncBaseTransport | None = None,
     registration_service: RegistrationService | None = None,
+    places_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
 
     @asynccontextmanager
@@ -113,6 +115,7 @@ def create_app(
         application.state.residents = residents
         application.state.community_issues = CommunityIssues(configured,transport=community_transport if community_transport is not None else map_transport)
         application.state.notifications = notifications
+        application.state.places = PlacesRepository(configured, transport=places_transport)
         application.state.report_workflow = ReportWorkflow(configured, transport=workflow_transport)
         routing_provider = ValhallaProvider(navigation_settings or NavigationSettings(), transport=navigation_transport)
         application.state.accessibility = accessibility_network or VerifiedNetwork()
@@ -136,6 +139,7 @@ def create_app(
             await residents.close()
             await application.state.community_issues.close()
             await notifications.close()
+            await application.state.places.close()
             await application.state.report_workflow.close()
             await routing_provider.close()
             await application.state.what_if_repository.close()
@@ -475,6 +479,23 @@ def create_app(
     async def navigation_areas(response: Response, user: AuthenticatedUser = Depends(active_resident)):
         response.headers["Cache-Control"] = "private, no-store"
         return service_areas()
+
+    @application.get("/api/v1/navigation/areas/{area_id}/places", response_model=PlaceSearchResult, tags=["Navigation"],
+                     responses={**errors, 404: {"description": "Service area not found"}},
+                     description="Search stored OpenStreetMap names and addresses within the selected service area.")
+    async def navigation_places(request: Request, response: Response,
+            area_id: str = Path(pattern=r'^[a-z][a-z0-9-]{1,63}$'),
+            q: str = Query(min_length=2, max_length=160), user: AuthenticatedUser = Depends(active_resident)):
+        response.headers['Cache-Control'] = 'private, no-store'
+        area = find_area(area_id)
+        if area is None:
+            raise HTTPException(404, 'Service area not found')
+        if len(q.strip()) < 2:
+            raise HTTPException(422, 'Enter at least two characters of an address or place name')
+        try:
+            return await request.app.state.places.search(user.access_token, area, q.strip())
+        except PlacesUnavailable:
+            raise HTTPException(503, 'Place search is unavailable. Retry or choose a point on the map.') from None
 
     @application.get("/api/v1/navigation/areas/{area_id}/demo", response_model=DemoAreaDataset, tags=["Navigation"],
                      responses={**errors, 404: {"description": "Service area not found"}},
