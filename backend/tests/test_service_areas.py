@@ -29,7 +29,8 @@ class ServiceAreasTests(unittest.TestCase):
         self.assertEqual(set(areas), {'kl-east-pilot', 'kajang-prima-saujana'})
         self.assertEqual(areas['kl-east-pilot']['bbox'], list(PILOT_BBOX))
         self.assertTrue(areas['kajang-prima-saujana']['resident_demo_supported'])
-        self.assertFalse(areas['kajang-prima-saujana']['routing_supported'])
+        self.assertTrue(areas['kajang-prima-saujana']['routing_supported'])
+        self.assertTrue(areas['kajang-prima-saujana']['temporary_live'])
         for area in areas.values():
             west, south, east, north = area['bbox']
             self.assertFalse(west <= 101.77 <= east and south <= 3.11 <= north)
@@ -84,8 +85,8 @@ class ServiceAreasTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             demo_area_dataset('../service_areas')
 
-    def test_new_demo_does_not_silently_extend_live_routing(self):
-        self.fixture.body['origin'] = {'latitude': 3.008, 'longitude': 101.804}
+    def test_separate_live_regions_do_not_enable_inter_region_routes(self):
+        self.fixture.body['origin'] = {'latitude': 3.225, 'longitude': 101.730}
         self.fixture.body['destination'] = {'latitude': 3.009, 'longitude': 101.805}
         self.assertEqual(self.fixture.request(self.client).status_code, 422)
         self.assertEqual(self.fixture.requests, [])

@@ -489,10 +489,19 @@ def create_app(
             raise HTTPException(503, "Resident demo dataset unavailable for this service area") from None
 
     @application.get("/api/v1/navigation/area", response_model=NavigationArea, tags=["Navigation"],
-                     responses=errors, description="Development window for the KL East walking pilot; not an official township boundary or field-verified access map.")
-    async def navigation_area(request: Request, response: Response, user: AuthenticatedUser = Depends(active_resident)):
+                     responses=errors, description="Selected live service-area coverage; defaults to KL East for compatibility. Service rectangles are not official boundaries or field-verified access maps.")
+    async def navigation_area(request: Request, response: Response,
+            area_id: str | None = Query(default=None, pattern=r'^[a-z][a-z0-9-]{1,63}$'),
+            user: AuthenticatedUser = Depends(active_resident)):
         response.headers["Cache-Control"] = "private, no-store"
-        return NavigationArea(bbox=PILOT_BBOX, center=MAP_CENTER,**request.app.state.accessibility.coverage())
+        area = find_area(area_id or 'kl-east-pilot')
+        if area is None or not area.routing_supported:
+            raise HTTPException(404, "Live service area not found")
+        if area.temporary_live:
+            return NavigationArea(id=area.id, name=area.name, bbox=area.bbox, center=area.center,
+                supported_route_modes=['shortest'], temporary_live=True,
+                community_issues_supported=area.community_issues_supported, crossing_policy=area.crossing_policy)
+        return NavigationArea(bbox=PILOT_BBOX, center=MAP_CENTER,crossing_policy=area.crossing_policy,**request.app.state.accessibility.coverage())
 
     @application.post("/api/v1/navigation/routes", response_model=RouteResponse, tags=["Navigation"],
                       description="Select route_mode: shortest ignores damage; avoid_damage avoids two-resident road-facility issues; accessible uses only surveyed step-free connections and also avoids damage. SQL 009 is required for damage modes. No fallback to ordinary walking for accessible mode.",

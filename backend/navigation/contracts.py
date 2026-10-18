@@ -68,11 +68,14 @@ class Maneuver(BaseModel):
 class RouteResponse(BaseModel):
     route_id: UUID
     generated_at: datetime
-    area: Literal['kl-east-pilot'] = 'kl-east-pilot'
+    area: str = 'kl-east-pilot'
     profile: Literal['walking'] = 'walking'
     language: Literal['en'] = 'en'
     route_mode: RouteMode = 'shortest'
-    routing_engine: Literal['valhalla','verified_network']='valhalla'
+    routing_engine: Literal['valhalla','verified_network','osm_roadside']='valhalla'
+    road_fallback_used: bool = False
+    crossing_policy: Literal['provider_default','mapped_facilities_only'] = 'provider_default'
+    mapped_crossing_count: int = Field(default=0,ge=0)
     geometry: RouteGeometry
     distance_meters: Meters
     duration_seconds: Seconds
@@ -93,7 +96,7 @@ class RouteResponse(BaseModel):
 
 
 class NavigationArea(BaseModel):
-    id: Literal['kl-east-pilot'] = 'kl-east-pilot'
+    id: str = 'kl-east-pilot'
     name: str = 'KL East walking pilot'
     bbox: tuple[float,float,float,float]
     center: tuple[float,float]
@@ -103,6 +106,9 @@ class NavigationArea(BaseModel):
     supported_profiles: list[str] = ['walking']
     supported_languages: list[str] = ['en']
     supported_route_modes: list[str] = ['shortest','avoid_damage','accessible']
+    temporary_live: bool = False
+    community_issues_supported: bool = True
+    crossing_policy: Literal['provider_default','mapped_facilities_only'] = 'provider_default'
     accessible_network_available: bool = False
     verified_accessible_segments: int = 0
     community_issue_avoidance: Literal['two_resident_issue_points'] = 'two_resident_issue_points'

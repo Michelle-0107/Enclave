@@ -3,6 +3,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from dataclasses import replace
 import json
 from pathlib import Path
 import socket
@@ -64,6 +65,8 @@ class ContainerNavigationTests(unittest.TestCase):
     def test_engine_started_before_api_ready_and_real_private_http_comparison_works(self):
         app = self.make_app()
         with TestClient(app) as client:
+            # This fixture tests owned Valhalla HTTP lifecycle, not pedestrian policy.
+            app.state.navigation.provider.settings=replace(app.state.navigation.provider.settings,crossing_policy='provider_default')
             self.assertTrue(listening(self.port))
             self.assertEqual(client.get('/health').status_code, 200)
             self.assertEqual(client.get('/route').status_code, 404)
@@ -82,6 +85,8 @@ class ContainerNavigationTests(unittest.TestCase):
     def test_readiness_fails_if_private_engine_stops(self):
         app = self.make_app()
         with TestClient(app) as client:
+            # This fixture tests owned Valhalla HTTP lifecycle, not pedestrian policy.
+            app.state.navigation.provider.settings=replace(app.state.navigation.provider.settings,crossing_policy='provider_default')
             app.state.private_engine_server.should_exit = True
             response = client.get('/health')
             self.assertEqual(response.status_code, 503)
@@ -125,6 +130,8 @@ class ContainerNavigationTests(unittest.TestCase):
         from backend.what_if.demo import sample_request
         # The native road engine starts as a private server inside the API lifecycle.
         with TestClient(app) as client:
+            # This fixture tests owned Valhalla HTTP lifecycle, not pedestrian policy.
+            app.state.navigation.provider.settings=replace(app.state.navigation.provider.settings,crossing_policy='provider_default')
             engine = app.state.private_engine_server.config.app
             self.assertTrue(engine.state.actor)
             response = client.post('/api/v1/management/what-if/compare', json=sample_request(),

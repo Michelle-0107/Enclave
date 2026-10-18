@@ -10,6 +10,7 @@ from .config import EXTRACT_BBOX,MAX_SNAP_METERS,in_bounds
 from .contracts import Maneuver,RouteGeometry,RouteResponse
 from .provider import NavigationRejected,NavigationUnavailable,decode_polyline6
 from .zones import point_in_zone,route_intersects_zone
+from .areas import route_area
 
 
 def distance_meters(a,b):
@@ -38,7 +39,8 @@ class NavigationService:
         self.accessibility=accessibility
 
     async def route(self,body,actor_id=None):
-        self.validate_locations(body)
+        area=self.validate_locations(body)
+        self.validate_area_mode(area,body.route_mode)
         snapshot=None
         if body.route_mode!='shortest':
             if self.obstacles is None or actor_id is None:
@@ -50,14 +52,22 @@ class NavigationService:
     def validate_locations(body):
         origin=(body.origin.longitude,body.origin.latitude)
         destination=(body.destination.longitude,body.destination.latitude)
-        if not in_bounds(*origin) or not in_bounds(*destination):
-            raise NavigationRejected(422,'Origin and destination must be inside the KL East pilot window')
+        area=route_area(origin,destination)
+        if area is None:
+            raise NavigationRejected(422,'Origin and destination must be inside the same enabled live service area')
         if distance_meters(origin,destination)<5:
             raise NavigationRejected(422,'Choose locations at least 5 meters apart')
+        return area
+
+    @staticmethod
+    def validate_area_mode(area,route_mode):
+        if area.temporary_live and route_mode!='shortest':
+            raise NavigationRejected(422,'Temporary live coverage supports ordinary walking only; community damage coverage and verified step-free routes are not enabled here.')
 
     async def route_with_snapshot(self,body,snapshot=None):
         """Internal reuse with a trusted frozen snapshot; never exposed as request data."""
-        self.validate_locations(body)
+        area=self.validate_locations(body)
+        self.validate_area_mode(area,body.route_mode)
         origin=(body.origin.longitude,body.origin.latitude)
         destination=(body.destination.longitude,body.destination.latitude)
         boxes=[]
@@ -70,9 +80,24 @@ class NavigationService:
                 if point_in_zone(origin,bounds) or point_in_zone(destination,bounds):
                     raise NavigationRejected(409,'Origin or destination is inside a community-reported damaged area; choose another point')
                 boxes.append(bounds)
+        strict=(self.provider.settings.source!='synthetic_demo' and self.provider.settings.crossing_policy=='mapped_facilities_only')
+        graph=None
+        if strict:
+            from .roadside import walking_graph
+            from starlette.concurrency import run_in_threadpool
+            try:
+                graph=await run_in_threadpool(walking_graph,area.id)
+            except (OSError,ValueError):
+                raise NavigationUnavailable() from None
         if body.route_mode=='accessible':
             if self.accessibility is None: raise NavigationUnavailable()
-            return self.accessibility.route(body,snapshot,boxes)
+            result=self.accessibility.route(body,snapshot,boxes)
+            if graph is not None:
+                graph.validate_accessible_crossings(result.geometry.coordinates)
+                result.crossing_policy='mapped_facilities_only'
+            return result
+        if graph is not None:
+            return await run_in_threadpool(graph.route,body,snapshot,boxes,area.id,area.community_issues_supported)
         polygons=[item.exclusion_ring for item in snapshot.items] if snapshot else []
         options={'fixed_snap':True} if self.fixed_snap else {}
         data=await self.provider.route(body,exclude_polygons=polygons,**options)

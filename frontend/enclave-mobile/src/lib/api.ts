@@ -145,6 +145,9 @@ export type NavigationArea = {
   verified_accessible_segments: number;
   field_verified: false;
   official_boundary: false;
+  temporary_live?: boolean;
+  community_issues_supported?: boolean;
+  crossing_policy?: 'provider_default' | 'mapped_facilities_only';
 };
 
 export type FacilityRecord = {
@@ -725,7 +728,10 @@ export type NavigationRouteResponse = {
   route_id: string;
   generated_at: string;
   area: string;
-  routing_engine: 'valhalla' | 'verified_network';
+  routing_engine: 'valhalla' | 'verified_network' | 'osm_roadside';
+  road_fallback_used?: boolean;
+  crossing_policy?: 'provider_default' | 'mapped_facilities_only';
+  mapped_crossing_count?: number;
   route_mode: RouteMode;
   geometry: {
     type: 'LineString';
@@ -753,8 +759,9 @@ export type NavigationRouteResponse = {
 };
 
 export const navigationApi = {
-  getArea(accessToken: string): Promise<NavigationArea> {
-    return request<NavigationArea>('/api/v1/navigation/area', { accessToken });
+  getArea(accessToken: string, areaId?: string): Promise<NavigationArea> {
+    const query = areaId ? `?area_id=${encodeURIComponent(areaId)}` : '';
+    return request<NavigationArea>(`/api/v1/navigation/area${query}`, { accessToken });
   },
 
   getRoute(

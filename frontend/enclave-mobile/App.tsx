@@ -27,7 +27,8 @@ import SignUpSuccessScreen from './src/screens/SignUpSuccessScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 
 import HomeScreen from './src/screens/HomeScreen';
-import MapScreen, { type MapEndpoints } from './src/screens/MapScreen';
+import type { MapEndpoints } from './src/screens/MapScreen';
+import MapScreen from './src/navigation/LiveAreaMapScreen';
 import DemoMapScreen from './src/demo/ServiceAreaDemoScreen';
 import RouteOptionsScreen, {
   type RouteOption,
@@ -240,6 +241,7 @@ function ResidentApp({
             onMapTouchChange={setMapTouchActive}
             start={start}
             destination={destination}
+            navigationArea={mapFlow.points.area}
             initialOrigin={mapFlow.points.origin}
             initialDestination={mapFlow.points.destination}
             onBack={() => {

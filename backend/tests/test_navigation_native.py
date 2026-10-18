@@ -26,7 +26,7 @@ class NativeNavigationTests(unittest.TestCase):
 
     def run_route(self,start,end):
         async def request():
-            provider=ValhallaProvider(NavigationSettings(),transport=httpx.MockTransport(
+            provider=ValhallaProvider(NavigationSettings(crossing_policy='provider_default'),transport=httpx.MockTransport(
                 lambda r:httpx.Response(200,json=self.actor.route(json.loads(r.content)))))
             try:
                 return await NavigationService(provider).route(WalkingRouteRequest(

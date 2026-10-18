@@ -5,6 +5,7 @@ import httpx
 from fastapi.testclient import TestClient
 from backend.reports.community_demo import CommunityDemoState,create_community_demo_app,FACILITY,ISSUE,B
 from backend.navigation.demo import fixture_response
+from backend.navigation.config import NavigationSettings
 from backend.navigation.zones import segment_intersects_zone
 
 class ObstacleTests(unittest.TestCase):
@@ -16,7 +17,9 @@ class ObstacleTests(unittest.TestCase):
         if custom: self.state.rpc=custom
         def engine(r): self.payloads.append(json.loads(r.content)); return httpx.Response(200,json=fixture_response())
         c=TestClient(create_community_demo_app(state=self.state,navigation_transport=httpx.MockTransport(engine)))
-        c.__enter__(); self.addCleanup(c.__exit__,None,None,None); return c
+        c.__enter__(); self.addCleanup(c.__exit__,None,None,None)
+        c.app.state.navigation.provider.settings=NavigationSettings(crossing_policy='provider_default')
+        return c
     def route(self,c,mode='avoid_damage',**extra):
         return c.post('/api/v1/navigation/routes',headers=self.headers,json={**self.body,'route_mode':mode,**extra})
     def test_shortest_ignores_damage_and_does_not_read_restrictions(self):
