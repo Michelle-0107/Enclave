@@ -5,6 +5,7 @@ function compile(name,requires){const m={exports:{}};vm.runInNewContext(ts.trans
 const network=compile('network.ts',()=>raw);const driving=compile('driving.ts',()=>network);const access=compile('access.ts',()=>network);let states=[],cursor=0,exited=false,reported=false,cameraCalls=[],openedUrls=[];
 const react={useEffect:()=>{},useCallback:fn=>fn,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return[states[i],next=>states[i]=typeof next==='function'?next(states[i]):next];},useMemo:fn=>fn(),useRef:()=>({current:{fitBounds:(bounds,options)=>{assert.ok(Array.isArray(bounds)&&bounds.length===4&&bounds.every(Number.isFinite));assert.ok(options.padding);cameraCalls.push(bounds);},easeTo:x=>cameraCalls.push(x)}})};
 const Screen=compile('DemoMapScreen.tsx',name=>{
+ if(name==='../savedPlaces/SavedPlacesControl')return{__esModule:true,default:'SavedPlacesControl'};
  if(name==='expo-location')return {};
  if(name==='react')return react;
  if(name==='react/jsx-runtime')return{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};

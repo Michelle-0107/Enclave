@@ -1,0 +1,2 @@
+# Preserve original OSM bytes for provenance checksum verification.
+*.osm -text

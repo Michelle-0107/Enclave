@@ -9,7 +9,7 @@ export type AccessPlan = {
 export type JourneyPlan = { direct: ModeResult[]; adjustment: AccessPlan | null };
 
 export function planJourney(profile: TravelProfile, origin: Coordinate, destination: Coordinate, data: Dataset = dataset): JourneyPlan {
-  if (!insidePilot(origin, data) || !insidePilot(destination, data)) throw new Error('Select a point inside the KL East pilot area.');
+  if (!insidePilot(origin, data) || !insidePilot(destination, data)) throw new Error('Select a point inside the current service area.');
   if (meters(origin, destination) < 5) throw new Error('Choose locations at least 5 m apart.');
   let direct: ModeResult[] = [];
   try { direct = calculateProfileRoutes(profile, origin, destination, data); } catch { /* Preserve the pins and check mapped start candidates below. */ }

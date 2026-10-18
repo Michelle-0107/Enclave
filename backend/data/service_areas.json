@@ -1,0 +1,41 @@
+{
+  "default_area_id": "kl-east-pilot",
+  "items": [
+    {
+      "id": "kl-east-pilot",
+      "name": "KL East",
+      "bbox": [
+        101.721,
+        3.217,
+        101.741,
+        3.235
+      ],
+      "center": [
+        101.7308667,
+        3.2253785
+      ],
+      "enabled": true,
+      "routing_supported": true,
+      "resident_demo_supported": true,
+      "location_reference": "https://www.openstreetmap.org/node/9555390383"
+    },
+    {
+      "id": "kajang-prima-saujana",
+      "name": "Prima Saujana, Kajang",
+      "bbox": [
+        101.795,
+        2.999,
+        101.815,
+        3.018
+      ],
+      "center": [
+        101.804504,
+        3.0083238
+      ],
+      "enabled": true,
+      "routing_supported": false,
+      "resident_demo_supported": true,
+      "location_reference": "https://www.openstreetmap.org/way/25689860"
+    }
+  ]
+}

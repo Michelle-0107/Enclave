@@ -58,7 +58,9 @@ function project(point: Coordinate, a: Coordinate, b: Coordinate) {
 export function validateDataset(data: Dataset): Dataset {
   if (data.version !== 3 || data.source !== 'osm_roads_with_fictional_facilities' || data.fieldVerified !== false ||
       data.provenance.geometrySource !== 'OpenStreetMap' || data.provenance.license !== 'ODbL-1.0' || !/^[a-f0-9]{64}$/.test(data.provenance.sourceXmlSha256) ||
-      JSON.stringify(data.bbox) !== '[101.721,3.217,101.741,3.235]') throw new Error('Invalid pilot dataset provenance.');
+      !Array.isArray(data.bbox) || data.bbox.length !== 4 || !data.bbox.every(Number.isFinite) ||
+      data.bbox[0] < -180 || data.bbox[2] > 180 || data.bbox[1] < -90 || data.bbox[3] > 90 ||
+      data.bbox[0] >= data.bbox[2] || data.bbox[1] >= data.bbox[3] || !insidePilot(data.center, data)) throw new Error('Invalid pilot dataset provenance.');
   const nodes = new Map(data.nodes.map(n => [n.id, n]));
   const facilities = new Map(data.facilities.map(f => [f.id, f]));
   if (!data.edges.length || nodes.size !== data.nodes.length || facilities.size !== data.facilities.length || new Set(data.edges.map(e => e.id)).size !== data.edges.length) throw new Error('Invalid dataset identifiers.');
@@ -104,7 +106,7 @@ function nearestOnEdge(point: Coordinate, edge: Edge): Snap {
   return best!;
 }
 export function snapToRoad(point: Coordinate, data = dataset): Snap {
-  if (!insidePilot(point, data)) throw new Error('Select a point inside the KL East pilot area.');
+  if (!insidePilot(point, data)) throw new Error('Select a point inside the current service area.');
   let best: Snap | undefined;
   for (const e of data.edges) { const candidate = nearestOnEdge(point, e); if (!best || candidate.distance < best.distance - 0.000001) best = candidate; }
   if (!best || best.distance > 40) throw new Error('No mapped road access within 40 m. Please choose a nearby road or footpath.');
@@ -229,7 +231,7 @@ export function calculateProfileRoutes(profile: TravelProfile, origin: Coordinat
 
 // Explicit access planning keeps alternative anchors separate from the user's pins.
 export function nearbyAccessPoints(point: Coordinate, data = dataset, radius = 120, limit = 6): Snap[] {
-  if (!insidePilot(point, data)) throw new Error('Select a point inside the KL East pilot area.');
+  if (!insidePilot(point, data)) throw new Error('Select a point inside the current service area.');
   const sorted = data.edges.map(edge => nearestOnEdge(point, edge)).filter(snap => snap.distance <= radius)
     .sort((a, b) => a.distance - b.distance);
   const result: Snap[] = [];
