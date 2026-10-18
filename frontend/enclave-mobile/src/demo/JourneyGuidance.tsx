@@ -4,17 +4,20 @@ import * as Location from 'expo-location';
 import { colors } from '../theme';
 import { compassDirection } from './access';
 import { meters, type Coordinate, type Route } from './network';
-import { ARRIVAL_RADIUS_METERS, MAX_GUIDANCE_ACCURACY_METERS, matchPosition, navigationModel, nextInstruction,
-  offRouteEvidence, type OffRouteEvidence } from './navigationProgress';
+import { ARRIVAL_RADIUS_METERS, MAX_GUIDANCE_ACCURACY_METERS, matchPosition, navigationModel, advanceInstruction,
+  offRouteEvidence, type OffRouteEvidence, type TurnArrival } from './navigationProgress';
+import { createNavigationVoice, turnAnnouncement, voiceAvailable } from './navigationVoice';
+import NavigationView from './NavigationView';
 
 type Props = { route: Route; origin: Coordinate; destination: Coordinate; waitForStart?: boolean;
   onRouteReady?: (ready: boolean) => void; onPosition: (point: Coordinate | null) => void;
-  onTarget?: (point: Coordinate | null) => void; onReroute?: (point: Coordinate) => Promise<boolean>; onComplete?: () => void };
+  onTarget?: (point: Coordinate | null) => void; onReroute?: (point: Coordinate) => Promise<boolean>; onComplete?: () => void;
+  presentation?: { styleUrl: string; onClose: () => void } };
 type Fix = { point: Coordinate; accuracy: number | null; timestamp: number; receivedAt: number };
 type Stage = 'entry' | 'mapped' | 'exit' | 'complete';
 const symbols = { left: '↰', right: '↱', uturn: '↶', crossing: '↔', arrive: '⚑', continue: '↑' };
 
-export default function JourneyGuidance({ route, origin, destination, waitForStart = false, onRouteReady, onPosition, onTarget, onReroute, onComplete }: Props) {
+export default function JourneyGuidance({ route, origin, destination, waitForStart = false, onRouteReady, onPosition, onTarget, onReroute, onComplete, presentation }: Props) {
   const model = useMemo(() => navigationModel(route), [route]);
   const [stage, setStage] = useState<Stage>(waitForStart || meters(origin, route.originSnap.coordinate) > 3 ? 'entry' : 'mapped');
   const [tracking, setTracking] = useState(true);
@@ -23,6 +26,13 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
   const [status, setStatus] = useState('Starting GPS…');
   const [rerouting, setRerouting] = useState(false);
   const [rerouteError, setRerouteError] = useState('');
+  const [instructionIndex, setInstructionIndex] = useState(0);
+  const instructionRef = useRef(0), turnArrival = useRef<TurnArrival>({ index: 0, hits: 0, since: 0 });
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [voiceError, setVoiceError] = useState('');
+  const available = useMemo(() => voiceAvailable(), []);
+  const voice = useMemo(() => createNavigationVoice(), []);
+  useEffect(() => () => voice.stop(), [voice]);
   const alive = useRef(true), busy = useRef(false);
   const processedFix = useRef<Fix | null>(null);
   const progressRef = useRef(0), lastMatchTime = useRef<number | null>(null), lastTimestamp = useRef(0);
@@ -32,12 +42,14 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
   useEffect(() => { if (stage === 'complete') onComplete?.(); }, [stage, onComplete]);
   useEffect(() => {
     progressRef.current = 0; lastMatchTime.current = null; processedFix.current = null;
+    instructionRef.current = 0; setInstructionIndex(0); turnArrival.current = { index: 0, hits: 0, since: 0 };
+    voice.stop();
     evidence.current = { hits: 0, since: 0, lastAttempt: evidence.current.lastAttempt };
     const entry = waitForStart || meters(origin, route.originSnap.coordinate) > 3;
     setProgress(0); setStage(entry ? 'entry' : 'mapped'); setRerouteError(''); onRouteReady?.(!entry);
     if (previousRoute.current !== route) setStatus('Route updated. Continuing with your selected route type.');
     previousRoute.current = route;
-  }, [route, origin, waitForStart, onRouteReady]);
+  }, [route, origin, waitForStart, onRouteReady, voice]);
 
   useEffect(() => {
     if (!tracking) return;
@@ -47,7 +59,7 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
         const permission = await Location.requestForegroundPermissionsAsync();
         if (disposed) return;
         if (permission.status !== 'granted') { setStatus('Location permission denied. You can review instructions manually or enable location.'); setTracking(false); return; }
-        const watcher = await Location.watchPositionAsync({ accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 2000 }, value => {
+        const watcher = await Location.watchPositionAsync({ accuracy: Location.Accuracy.High, distanceInterval: 0, timeInterval: 1000 }, value => {
           if (disposed) return;
           const point: Coordinate = [value.coords.longitude, value.coords.latitude];
           if (!point.every(Number.isFinite)) return;
@@ -85,6 +97,7 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
     const reliable = fix.accuracy !== null && Number.isFinite(fix.accuracy) && fix.accuracy >= 0 && fix.accuracy <= MAX_GUIDANCE_ACCURACY_METERS;
     if (!reliable) {
       evidence.current = { ...evidence.current, hits: 0, since: 0 };
+      turnArrival.current.hits = 0;
       setStatus(`Waiting for more accurate GPS${fix.accuracy == null ? '' : ` (approximately ${Math.round(fix.accuracy)} m)`}. Route progress is paused.`);
       return;
     }
@@ -113,6 +126,8 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
     progressRef.current = Math.max(progressRef.current, match.along);
     lastMatchTime.current = fix.receivedAt;
     setProgress(progressRef.current);
+    const step = advanceInstruction(model, instructionRef.current, progressRef.current, fix.point, fix.accuracy!, fix.timestamp, turnArrival.current);
+    instructionRef.current = step.index; turnArrival.current = step.arrival; setInstructionIndex(step.index);
     setStatus(`Following route · GPS accuracy approximately ${Math.round(fix.accuracy!)} m.`);
     if (model.total - progressRef.current <= ARRIVAL_RADIUS_METERS && fix.accuracy! <= ARRIVAL_RADIUS_METERS
         && meters(fix.point, route.destinationSnap.coordinate) <= ARRIVAL_RADIUS_METERS) {
@@ -122,7 +137,7 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
     }
   }, [fix, tracking, stage, model, route, destination, onPosition, onRouteReady, recalculate]);
 
-  const instruction = nextInstruction(model, progress);
+  const instruction = model.instructions[instructionIndex] ?? model.instructions.at(-1)!;
   const target = stage === 'entry' ? route.originSnap.coordinate : stage === 'exit' ? destination : instruction.coordinate;
   const longitude = target[0], latitude = target[1];
   useEffect(() => { onTarget?.(stage === 'complete' ? null : [longitude, latitude]); return () => onTarget?.(null); }, [longitude, latitude, stage, onTarget]);
@@ -132,13 +147,38 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
   const remaining = Math.max(0, model.total - progress);
   const turnDistance = Math.max(0, instruction.at - progress);
   const reference = reliableFix ? fix.point : origin;
+  const announcement = turnAnnouncement(instruction.text, turnDistance);
+  const voiceText = !tracking && stage !== 'complete' ? 'GPS is paused. Resume location to continue guidance.'
+    : rerouting ? 'Off route. Recalculating your route.'
+    : stage === 'complete' ? 'You have reached your destination.'
+    : stage === 'entry' ? 'Go to the marked starting point. Navigation begins when you arrive.'
+    : stage === 'exit' ? 'Mapped route completed. Find the destination entrance.'
+    : !reliableFix ? 'Waiting for an accurate GPS location.' : announcement.text;
+  const voiceKey = `${stage}:${rerouting}:${tracking}:${reliableFix}:${instructionIndex}:${reliableFix ? announcement.phase : 'waiting'}`;
+  useEffect(() => {
+    if (!available || !voiceEnabled) { voice.stop(); return; }
+    void voice.say(voiceKey, voiceText, () => { if (alive.current) setVoiceError('Voice could not play. Check your phone volume and text-to-speech settings.'); });
+  }, [voice, available, voiceEnabled, voiceKey, voiceText, route]);
+  function toggleVoice() { voice.stop(); setVoiceError(''); setVoiceEnabled(value => !value); }
+  const voiceStatus = !available ? 'Voice needs an updated development APK. Visual GPS guidance is available.' : voiceError;
   function nextManually() {
     if (stage === 'entry') { setStage('mapped'); onRouteReady?.(true); }
     else if (stage === 'exit') { setStage('complete'); setTracking(false); }
     else if (instruction.kind === 'arrive') {
       setStage(meters(destination, route.destinationSnap.coordinate) > 3 ? 'exit' : 'complete'); setTracking(false);
-    } else { progressRef.current = instruction.at + 6; setProgress(progressRef.current); }
+    } else { instructionRef.current = Math.min(model.instructions.length - 1, instructionIndex + 1); setInstructionIndex(instructionRef.current); progressRef.current = instruction.at; setProgress(progressRef.current); }
   }
+  function toggleTracking() {
+    if (tracking) { setTracking(false); onPosition(null); setStatus('GPS paused. You can review instructions manually.'); }
+    else { setFix(null); processedFix.current = null; setTracking(true); setStatus('Starting GPS…'); }
+  }
+  if (presentation) return <NavigationView styleUrl={presentation.styleUrl} route={route} destination={destination}
+    stage={stage} position={reliableFix ? fix.point : null} instruction={instruction} next={model.instructions[instructionIndex + 1]}
+    turnDistance={turnDistance} remaining={remaining} total={model.total} status={status} error={rerouteError}
+    tracking={tracking} rerouting={rerouting} voiceEnabled={voiceEnabled && available} voiceStatus={voiceStatus}
+    onToggleVoice={toggleVoice} onRepeat={() => { voice.stop(); if (available && voiceEnabled) void voice.say('repeat', voiceText, () => setVoiceError('Voice could not play.')); }}
+    onToggleTracking={toggleTracking} onManualNext={nextManually} onClose={presentation.onClose}
+    onRetry={reliableFix && onReroute && stage === 'mapped' ? () => void recalculate(fix.point, Date.now()) : undefined} />;
   return <View style={styles.card}>
     <Text style={styles.title}>{stage === 'entry' ? waitForStart ? 'Go to your adjusted starting point' : 'Go to the route starting point' : stage === 'mapped' ? 'Enclave navigation' : stage === 'exit' ? 'Find the destination entrance' : 'Route completed'}</Text>
     {stage === 'mapped' && <View style={styles.turnCard}>
@@ -159,10 +199,12 @@ export default function JourneyGuidance({ route, origin, destination, waitForSta
     <Text style={styles.body}>{status}</Text>
     {rerouteError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{rerouteError}</Text> : null}
     {stage === 'mapped' && reliableFix && onReroute && <Pressable accessibilityRole="button" disabled={rerouting} onPress={() => void recalculate(fix.point, Date.now())} style={styles.button}><Text style={styles.action}>{rerouting ? 'Recalculating…' : 'Recalculate from my location'}</Text></Pressable>}
-    {stage !== 'complete' && <Pressable accessibilityRole="button" onPress={() => { if (tracking) { setTracking(false); onPosition(null); setStatus('GPS paused. You can review instructions manually.'); } else { setFix(null); processedFix.current = null; setTracking(true); setStatus('Starting GPS…'); } }} style={styles.button}>
+    {stage !== 'complete' && <Pressable accessibilityRole="button" onPress={toggleTracking} style={styles.button}>
       <Text style={styles.action}>{tracking ? 'Pause GPS' : 'Resume GPS'}</Text>
     </Pressable>}
-    <Text style={styles.body}>Keep Enclave open for GPS navigation. Foreground only; voice guidance is not enabled.</Text>
+    <Pressable accessibilityRole="button" onPress={toggleVoice} style={styles.button}><Text style={styles.action}>{voiceEnabled ? 'Mute voice' : 'Enable voice'}</Text></Pressable>
+    {voiceStatus ? <Text style={styles.error}>{voiceStatus}</Text> : null}
+    <Text style={styles.body}>Keep Enclave open for GPS navigation.</Text>
   </View>;
 }
 const styles = StyleSheet.create({

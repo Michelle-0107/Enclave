@@ -395,7 +395,10 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
     {originalOrigin && <View style={styles.selectedPanel}><Text style={styles.cardTitle}>Starting point updated</Text><Text style={styles.body}>Original point O stays on the map as a reference. The route now starts from S, the connected point you accepted.</Text><Text style={styles.hint}>The transfer between O and S is not a mapped or verified path.</Text></View>}
     {route && origin && destination && <>
       <Pressable accessibilityRole="button" onPress={toggleGuidance} style={styles.chooseButton}><Text style={styles.chooseButtonText}>{navigating ? 'Close route guidance' : waitForAdjustedStart ? 'Go to adjusted starting point' : 'Start Enclave guidance'}</Text></Pressable>
-      {navigating && <JourneyGuidance route={route} origin={origin.coordinate} destination={destination.coordinate} waitForStart={waitForAdjustedStart} onRouteReady={setRouteReady} onPosition={handleGuidancePosition} onTarget={setGuidanceTarget} onReroute={rerouteFromPosition} onComplete={handleGuidanceComplete} />}
+      {navigating && <Modal visible presentationStyle="fullScreen" animationType="slide" onRequestClose={toggleGuidance}>
+        <JourneyGuidance route={route} origin={origin.coordinate} destination={destination.coordinate} waitForStart={waitForAdjustedStart} onRouteReady={setRouteReady} onPosition={handleGuidancePosition} onTarget={setGuidanceTarget} onReroute={rerouteFromPosition} onComplete={handleGuidanceComplete}
+          presentation={{ styleUrl: dataset.styleUrl, onClose: toggleGuidance }} />
+      </Modal>}
     </>}
     {navigating && guidanceTarget && <Pressable accessibilityRole="button" onPress={() => camera.current?.easeTo({ center: guidanceTarget, zoom: 18, duration: 400 })} style={styles.textButton}><Text style={styles.link}>Focus next point</Text></Pressable>}
     {navigating && gpsPosition && <Pressable accessibilityRole="button" onPress={() => { followCamera.current = true; camera.current?.easeTo({ center: gpsPosition, zoom: 17, duration: 400 }); }} style={styles.textButton}><Text style={styles.link}>Follow my location</Text></Pressable>}

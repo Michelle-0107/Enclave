@@ -112,6 +112,15 @@ test('Backend maneuver text and type are retained by the navigation route',async
  assert.equal(guide.props.route.maneuvers[0].instruction,'Turn left onto Garden Road.');assert.equal(guide.props.route.maneuvers[0].type,15);assert.equal(guide.props.route.maneuvers[0].distanceFromStart,0);
 });
 
+test('Start opens a fullscreen navigation modal; Android back and Exit return to planning',async()=>{
+ let t=await chooseJourney();button(t,'Start Enclave guidance').props.onPress();t=tree();
+ const modal=find(t,n=>n.props?.presentationStyle==='fullScreen');assert.equal(modal.props.visible,true);
+ const guide=find(t,n=>n.type==='JourneyGuidance');assert.equal(typeof guide.props.presentation.styleUrl,'string');
+ guide.props.presentation.onClose();t=tree();assert.ok(!all(t).some(n=>n.type==='JourneyGuidance'));
+ button(t,'Start Enclave guidance').props.onPress();t=tree();find(t,n=>n.props?.presentationStyle==='fullScreen').props.onRequestClose();
+ assert.ok(!all(tree()).some(n=>n.type==='JourneyGuidance'));
+});
+
 test('GPS reroute keeps the selected avoid-damage mode and destination and uses no silent start adjustment',async()=>{
  let t=await chooseJourney();find(t,n=>n.props?.accessibilityRole==='radio'&&text(n).includes('Avoid damaged facilities')).props.onPress();t=tree();button(t,'Start Enclave guidance').props.onPress();t=tree();
  const destination=Array.from(find(t,n=>n.props?.id==='demo-endpoint-1').props.lngLat),gps=[101.7308,3.2257];

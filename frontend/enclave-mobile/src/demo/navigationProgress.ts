@@ -80,6 +80,28 @@ export function nextInstruction(model: NavigationModel, progress: number): Instr
   return model.instructions.find(step => step.at >= progress - 5) ?? model.instructions.at(-1)!;
 }
 
+export type TurnArrival = { index: number; hits: number; since: number };
+// A resident can stop at a junction. Do not require walking five metres past it
+// before showing the next instruction. Two precise fixes confirm arrival; an
+// unmarked crossing still stays active until progress passes the crossing start.
+export function advanceInstruction(model: NavigationModel, index: number, progress: number,
+  point: Coordinate, accuracy: number, time: number, previous: TurnArrival) {
+  let next = index;
+  while (next < model.instructions.length - 1 && progress > model.instructions[next].at + 5) next++;
+  const step = model.instructions[next];
+  const near = step.kind !== 'arrive' && step.kind !== 'crossing' && accuracy <= 15
+    && Math.abs(progress - step.at) <= 10 && meters(point, step.coordinate) <= 10;
+  let arrival: TurnArrival = { index: next, hits: 0, since: time };
+  if (near) {
+    arrival = { index: next, hits: previous.index === next ? previous.hits + 1 : 1,
+      since: previous.index === next && previous.hits ? previous.since : time };
+    if (arrival.hits >= 2 && time - arrival.since >= 2000) {
+      next++; arrival = { index: next, hits: 0, since: time };
+    }
+  }
+  return { index: next, arrival };
+}
+
 export type OffRouteEvidence = { hits: number; since: number; lastAttempt: number | null };
 export function offRouteEvidence(previous: OffRouteEvidence, deviation: number, accuracy: number | null, time: number) {
   const reliable = accuracy !== null && Number.isFinite(accuracy) && accuracy >= 0 && accuracy <= MAX_GUIDANCE_ACCURACY_METERS;
