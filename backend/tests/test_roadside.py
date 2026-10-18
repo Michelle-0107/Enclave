@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 
 from backend.navigation.config import NavigationSettings
 from backend.navigation.contracts import WalkingRouteRequest
+from backend.navigation.areas import find_area, demo_area_dataset
+from backend.navigation.demo_routes import DemoRouteRequest, calculate_demo_routes
 from backend.navigation.provider import NavigationRejected
 from backend.navigation.roadside import RoadsideGraph, walking_graph, coordinate, xy, distance
 from backend.tests import test_navigation as fixtures
@@ -134,6 +136,27 @@ class RoadsideTests(unittest.TestCase):
         self.assertEqual(Counter(e.kind for e in walking_graph('kajang-prima-saujana').edges)['crossing'],0)
 
 
+class DemoRouteCalculationTests(unittest.TestCase):
+    def test_demo_profiles_are_calculated_on_the_server_osm_graph(self):
+        area=find_area('kl-east-pilot'); graph=walking_graph(area.id); dataset=demo_area_dataset(area.id).dataset
+        edge=next(e for e in graph.edges if e.kind=='road_fallback' and e.direction==0 and distance(*e.points)>30)
+        a,b=edge.points; mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
+        start,end=mix(.2),mix(.8)
+        location=lambda point:{'longitude':point[0],'latitude':point[1]}
+        request=DemoRouteRequest(origin=location(start),destination=location(end))
+        result=calculate_demo_routes(area.id,area.bbox,request,dataset,graph)
+        self.assertEqual([item.mode for item in result.options],['shortest','avoid_damage','accessible'])
+        self.assertTrue(all(item.route is not None for item in result.options))
+        route=result.options[-1].route
+        self.assertEqual(route.routing_engine,'osm_roadside')
+        self.assertEqual(route.accessibility_status,'synthetic_network')
+        self.assertFalse(route.field_verified)
+        wheelchair=calculate_demo_routes(area.id,area.bbox,
+            DemoRouteRequest(origin=location(start),destination=location(end),profile='wheelchair'),dataset,graph)
+        self.assertEqual([item.mode for item in wheelchair.options],['accessible'])
+        self.assertTrue(any('Demo-only' in warning for warning in wheelchair.options[0].route.warnings))
+
+
 class LiveAreaApiTests(unittest.TestCase):
     def setUp(self):
         self.fixture=fixtures.NavigationTests(); self.fixture.setUp(); self.addCleanup(self.fixture.doCleanups)
@@ -164,6 +187,30 @@ class LiveAreaApiTests(unittest.TestCase):
             self.assertEqual(response.json()['routing_engine'],'osm_roadside')
             self.assertEqual(response.json()['crossing_policy'],'mapped_facilities_only')
         self.assertEqual(self.fixture.requests,[])
+
+    def test_resident_demo_routes_use_server_osm_graph_and_synthetic_access_profile(self):
+        area='kl-east-pilot'; graph=walking_graph(area)
+        edge=next(e for e in graph.edges if e.kind=='road_fallback' and e.direction==0 and distance(*e.points)>30)
+        a,b=edge.points; mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
+        start,end=mix(.2),mix(.8)
+        location=lambda point:{'longitude':point[0],'latitude':point[1]}
+        payload={'origin':location(start),'destination':location(end),'profile':'walking','start_candidates':[]}
+        response=self.client.post(f'/api/v1/navigation/areas/{area}/demo-routes',json=payload,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        result=response.json(); self.assertEqual(result['area_id'],area); self.assertFalse(result['adjusted_start'])
+        self.assertEqual([item['mode'] for item in result['options']],['shortest','avoid_damage','accessible'])
+        route=result['options'][0]['route']; self.assertEqual(route['routing_engine'],'osm_roadside')
+        self.assertEqual(route['crossing_policy'],'mapped_facilities_only')
+        self.assertFalse(route['field_verified']); self.assertEqual(route['data_source'],'openstreetmap_unverified')
+        self.assertTrue(any('Demo-only' in warning for warning in route['warnings']))
+        payload['profile']='wheelchair'
+        wheelchair=self.client.post(f'/api/v1/navigation/areas/{area}/demo-routes',json=payload,headers=self.headers)
+        self.assertEqual(wheelchair.status_code,200,wheelchair.text)
+        option=wheelchair.json()['options'][0]; self.assertEqual(option['mode'],'accessible')
+        if option['route'] is not None:
+            self.assertEqual(option['route']['accessibility_status'],'synthetic_network')
+            self.assertFalse(option['route']['field_verified'])
+        self.assertEqual(self.client.post(f'/api/v1/navigation/areas/{area}/demo-routes',json=payload).status_code,401)
 
     def test_inter_region_route_and_unsupported_new_region_modes_are_rejected(self):
         response=self.fixture.request(self.client,body((101.730,3.225),(101.805,3.008)).model_dump())

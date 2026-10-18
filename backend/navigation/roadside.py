@@ -143,7 +143,7 @@ class RoadsideGraph:
                     # Each arm remains separate at road nodes until a permitted crossing is proven.
                     na, nb = f'p:{eid}:a', f'p:{eid}:b'
                     self.nodes.update({na:pa, nb:pb})
-                    kind = 'crossing' if crossing(t) else 'footbridge' if grade[1] else 'underpass' if grade[2] else 'footpath'
+                    kind = 'steps' if highway == 'steps' else 'crossing' if crossing(t) else 'footbridge' if grade[1] else 'underpass' if grade[2] else 'footpath'
                     self.add(na,nb,name,kind,wid,direction,grade)
                     paths[(a,grade)].append((na,pb,t)); paths[(b,grade)].append((nb,pa,t))
         # Bounded spatial index keeps crossing checks local instead of comparing
@@ -299,13 +299,14 @@ class RoadsideGraph:
                            and (follows(before,p,edge) or follows(p,after,edge)) for edge in self.edges):
                     raise NavigationRejected(422,'This surveyed route crosses a road at an unmarked map node. A mapped pedestrian crossing, footbridge or underpass is required.')
 
-    def route(self,body,snapshot=None,boxes=(),area_id='kl-east-pilot',community_supported=True):
-        if body.route_mode == 'accessible':
+    def route(self,body,snapshot=None,boxes=(),area_id='kl-east-pilot',community_supported=True,*,demo_mode=False,excluded_way_ids=()):
+        if body.route_mode == 'accessible' and not demo_mode:
             raise NavigationRejected(422,'No field-verified step-free network is available in this service area. Ordinary road walking cannot be labelled wheelchair accessible.')
         origin=(body.origin.longitude,body.origin.latitude); target=(body.destination.longitude,body.destination.latitude)
         start,end = self.snap(origin),self.snap(target)
         adjacency=defaultdict(list)
         def link(a,b,edge,pa,pb):
+            if edge.way_id in excluded_way_ids or (demo_mode and body.route_mode == 'accessible' and edge.kind == 'steps'): return
             length=distance(pa,pb)
             if any(route_intersects_zone([pa,pb],box) for box in boxes): return
             if edge.direction != -1: adjacency[a].append((b,length,edge,pa,pb))
@@ -361,12 +362,14 @@ class RoadsideGraph:
             routing_engine='osm_roadside',geometry=RouteGeometry(coordinates=geometry),distance_meters=total,duration_seconds=total/1.2,
             origin_snap_distance_meters=start[0],destination_snap_distance_meters=end[0],maneuvers=maneuvers,data_source='openstreetmap_unverified',
             road_fallback_used='road_fallback' in kinds,crossing_policy='mapped_facilities_only',mapped_crossing_count=len(crossing_ids),
+            accessibility_status='synthetic_network' if demo_mode and body.route_mode == 'accessible' else 'not_requested',
             community_issue_avoidance=('applied' if boxes else 'no_active_obstacles') if snapshot else 'not_applied',
             obstacle_snapshot_at=snapshot.checked_at if snapshot else None,obstacle_count=len(boxes),obstacle_source='community_reports' if snapshot else None,
             warnings=[
                 'Real OpenStreetMap walking coverage; road-side positions are inferred, not surveyed sidewalks.',
                 'Only recorded marked/signal crossings or grade-separated paths connect opposite road sides. Missing map data can prevent routing.',
                 'Road walking and endpoint approaches are not field verified or certified accessible. Check traffic and local access before proceeding.',
+                *(['Demo-only route: facility damage and step-free annotations are simulated and not field verified.'] if demo_mode else []),
                 *(['Community damage coverage is not enabled in this temporary area.'] if not community_supported else [] )])
 
 

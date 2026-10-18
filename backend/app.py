@@ -26,6 +26,8 @@ from .navigation.config import NavigationSettings, PILOT_BBOX, MAP_CENTER
 from .navigation.contracts import NavigationArea, WalkingRouteRequest, RouteResponse
 from .navigation.areas import ServiceAreas, DemoAreaDataset, service_areas, find_area, demo_area_dataset
 from .navigation.provider import ValhallaProvider, NavigationRejected, NavigationUnavailable
+from .navigation.demo_routes import DemoRouteRequest, DemoRouteResponse, calculate_demo_routes
+from .navigation.roadside import walking_graph
 from .navigation.service import NavigationService
 from .reports.issues import (CommunityIssues,FacilityCreate,Facility,FacilityList,OpenIssue,JoinIssue,
                              IssueLinked,IssueList,IssueMapResponse,CommunityObstacleSnapshot,IssueUnavailable,IssueRejected)
@@ -487,6 +489,26 @@ def create_app(
             return demo_area_dataset(area.id)
         except (OSError, ValueError):
             raise HTTPException(503, "Resident demo dataset unavailable for this service area") from None
+
+    @application.post("/api/v1/navigation/areas/{area_id}/demo-routes", response_model=DemoRouteResponse,
+                      tags=["Navigation"], responses={**errors, 404: {"description": "Resident demo service area not found"},
+                          422: {"description": "Invalid endpoints or no route satisfies mapped crossing rules."},
+                          503: {"description": "Demo routing graph unavailable."}},
+                      description="Authenticated resident demo routing on the server-owned OSM roadside graph. Facility damage and step-free annotations are simulated; routes are not field verified.")
+    async def navigation_demo_routes(response: Response, body: DemoRouteRequest,
+            area_id: str = Path(pattern=r'^[a-z][a-z0-9-]{1,63}$'), user: AuthenticatedUser = Depends(active_resident)):
+        response.headers["Cache-Control"] = "private, no-store"
+        area = find_area(area_id)
+        if area is None or not area.resident_demo_supported or not area.routing_supported:
+            raise HTTPException(404, "Resident demo routes are not available for this service area")
+        try:
+            dataset = demo_area_dataset(area.id).dataset
+            graph = walking_graph(area.id)
+            return await run_in_threadpool(calculate_demo_routes, area.id, area.bbox, body, dataset, graph)
+        except NavigationRejected as failure:
+            raise HTTPException(failure.status, failure.message) from None
+        except (OSError, ValueError):
+            raise HTTPException(503, "Resident demo routing data unavailable") from None
 
     @application.get("/api/v1/navigation/area", response_model=NavigationArea, tags=["Navigation"],
                      responses=errors, description="Selected live service-area coverage; defaults to KL East for compatibility. Service rectangles are not official boundaries or field-verified access maps.")

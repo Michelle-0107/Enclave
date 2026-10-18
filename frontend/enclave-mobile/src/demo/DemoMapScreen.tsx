@@ -3,16 +3,18 @@ import { Keyboard, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View 
 import { Camera, GeoJSONSource, Layer, Map, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { demoAreasApi, type DemoRouteResponse } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
-import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, searchPlaces, selectLocation,
+import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, nearbyAccessPoints, searchPlaces, selectLocation,
   type Coordinate, type Dataset, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
 import { drivingDirectionsUrl } from './driving';
-import { MAX_START_ADJUSTMENT_METERS, planJourney, type AccessPlan } from './access';
+import { MAX_START_ADJUSTMENT_METERS, type AccessPlan } from './access';
 import JourneyGuidance from './JourneyGuidance';
 
 type Field = 'origin' | 'destination';
-type Props = { data?: Dataset; onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
+type Props = { areaId?: string; data?: Dataset; onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
 type Choice = { label: string; coordinate: Coordinate; snap?: Selection['snap'] };
 const transports: { id: Transport; name: string; icon: 'car-outline' | 'walk' | 'wheelchair-accessibility' }[] = [
   { id: 'driving', name: 'Car', icon: 'car-outline' }, { id: 'walking', name: 'Walking', icon: 'walk' }, { id: 'wheelchair', name: 'Wheelchair', icon: 'wheelchair-accessibility' },
@@ -21,7 +23,7 @@ const routeColors: Record<Mode, string> = { shortest: '#8147B4', avoid_damage: '
 const symbols: Record<string, string> = { stairs: 'ST', crossing: 'ZX', footbridge: 'FB', ramp: 'RP', path_surface: 'P', step_free_path: 'SF' };
 const formatDistance = (m: number) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`;
 
-export default function DemoMapScreen({ data = builtInSnapshot, onShowLiveMap, onReportPress, onMapTouchChange }: Props) {
+export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = builtInSnapshot, onShowLiveMap, onReportPress, onMapTouchChange }: Props) {
   const dataset = data;
   const state = useMemo(() => initialScenario(data), [data]);
   const [origin, setOrigin] = useState<Choice | null>(null);
@@ -34,6 +36,7 @@ export default function DemoMapScreen({ data = builtInSnapshot, onShowLiveMap, o
   const [mode, setMode] = useState<Mode>('shortest');
   const [selected, setSelected] = useState<{ type: 'facility' | 'place'; id: string } | null>(null);
   const [error, setError] = useState('');
+  const [calculating, setCalculating] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [mapKey, setMapKey] = useState(0);
   const [alternative, setAlternative] = useState<AccessPlan | null>(null);
@@ -50,7 +53,8 @@ export default function DemoMapScreen({ data = builtInSnapshot, onShowLiveMap, o
   const [lastLocation, setLastLocation] = useState<Coordinate | null>(null);
   const locationRequest = useRef(0);
   const locationBusy = useRef(false);
-  useEffect(() => () => { locationRequest.current += 1; onMapTouchChange?.(false); }, [onMapTouchChange]);
+  const routeRequest = useRef(0);
+  useEffect(() => () => { locationRequest.current += 1; routeRequest.current += 1; onMapTouchChange?.(false); }, [onMapTouchChange]);
   const approachCameraCentered = useRef(false);
   const camera = useRef<CameraRef>(null);
   const suggestions = searching ? searchPlaces(field === 'origin' ? startText : endText, dataset) : [];
@@ -67,7 +71,7 @@ export default function DemoMapScreen({ data = builtInSnapshot, onShowLiveMap, o
       geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), [dataset]);
   const bounds: [number, number, number, number] = dataset.bbox;
 
-  function clearRoute() { setResults([]); setSelected(null); setError(''); setAlternative(null); setAdjustmentVisible(false); setWaitForAdjustedStart(false); setRouteReady(true); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); approachCameraCentered.current = false; }
+  function clearRoute() { routeRequest.current += 1; setCalculating(false); setResults([]); setSelected(null); setError(''); setAlternative(null); setAdjustmentVisible(false); setWaitForAdjustedStart(false); setRouteReady(true); setNavigating(false); setGpsPosition(null); setGuidanceTarget(null); approachCameraCentered.current = false; }
   function changeTransport(next: Transport) {
     if (next === transport) return;
     setTransport(next); clearRoute(); setSearching(false); setMode(next === 'wheelchair' ? 'accessible' : 'shortest');
@@ -94,22 +98,69 @@ export default function DemoMapScreen({ data = builtInSnapshot, onShowLiveMap, o
       else { setDestination(selection); setEndText(label); }
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to select that location.'); }
   }
-  function showRoutes() {
+  function routeResults(response: DemoRouteResponse): ModeResult[] {
+    return response.options.map(option => {
+      const source = option.route;
+      if (!source) return { mode: option.mode, route: null, unavailableReason: option.unavailable_reason ?? undefined };
+      const coordinates = source.geometry.coordinates.map(point => [point[0], point[1]] as Coordinate);
+      const facilityIds = new Set(source.demo_facility_ids ?? []);
+      const snap = (coordinate: Coordinate, distance: number, id: string) => ({ edgeId: id, coordinate, distance, offset: 0 });
+      const route: Route = {
+        profile: transport === 'wheelchair' ? 'wheelchair' : 'walking', mode: option.mode,
+        distance: source.distance_meters, seconds: source.duration_seconds, coordinates, segments: [],
+        facilities: dataset.facilities.filter(item => facilityIds.has(item.id)),
+        originSnap: snap(coordinates[0], source.origin_snap_distance_meters, `${source.route_id}-start`),
+        destinationSnap: snap(coordinates[coordinates.length - 1], source.destination_snap_distance_meters, `${source.route_id}-end`),
+        dataSource: dataset.source, fieldVerified: false,
+      };
+      return { mode: option.mode, route };
+    });
+  }
+
+  async function showRoutes() {
     Keyboard.dismiss(); setSearching(false); clearRoute();
     if (!origin || !destination) { setError('Select both locations using the map or search results.'); return; }
+    const requestId = routeRequest.current;
     try {
       if (transport === 'driving') throw new Error('Use Open driving navigation for car travel.');
-      const plan = planJourney(transport, origin.coordinate, destination.coordinate, dataset);
-      const next = plan.direct; setResults(next);
-      const available = next.find(item => item.route); setMode(available?.mode ?? 'shortest');
-      if (plan.adjustment) {
-        setAlternative(plan.adjustment); setAdjustmentVisible(true);
-        const candidateRoute = plan.adjustment.results.find(item => item.mode === 'shortest')?.route;
-        if (candidateRoute) fitRoute(candidateRoute);
+      if (areaId === 'built-in-snapshot') throw new Error('Connect to a server-provided service area to calculate demo routes with the backend.');
+      setCalculating(true);
+      const { data: session, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.session?.access_token) throw new Error('Sign in again to calculate demo routes.');
+      const candidates = transport === 'wheelchair' ? [] : nearbyAccessPoints(origin.coordinate, dataset, MAX_START_ADJUSTMENT_METERS, 8)
+        .filter(point => meters(point.coordinate, origin.coordinate) > 3)
+        .map(point => ({ longitude: point.coordinate[0], latitude: point.coordinate[1] }));
+      const response = await demoAreasApi.getRoutes(session.session.access_token, areaId, {
+        origin: { longitude: origin.coordinate[0], latitude: origin.coordinate[1] },
+        destination: { longitude: destination.coordinate[0], latitude: destination.coordinate[1] },
+        profile: transport, start_candidates: candidates,
+      });
+      if (requestId !== routeRequest.current) return;
+      const next = routeResults(response);
+      if (response.adjusted_start) {
+        const candidateRoute = next.find(item => item.mode === 'shortest')?.route ?? next.find(item => item.route)?.route;
+        if (!candidateRoute) throw new Error('A nearby connected starting point was found, but no route is available from it.');
+        const selectedCoordinate: Coordinate = [response.selected_origin.longitude, response.selected_origin.latitude];
+        const from = { edgeId: `${candidateRoute.originSnap.edgeId}-adjusted`, coordinate: selectedCoordinate, distance: response.start_adjustment_meters, offset: 0 };
+        setAlternative({ from, to: candidateRoute.destinationSnap, results: next,
+          startGap: response.start_adjustment_meters, endGap: candidateRoute.destinationSnap.distance, connectorVerified: false });
+        setAdjustmentVisible(true);
+        fitRoute(candidateRoute);
         setError('A nearby connected starting point is available. Accept or choose another starting point.');
-      } else if (!available) setError(transport === 'wheelchair' ? 'No connected step-free path is recorded for these places. Keep the selected places and choose a known accessible entrance on the map.' : 'No connected mapped walking route was found within 100 m of the selected start. Choose another starting point.');
-      else if (available.route) fitRoute(available.route);
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to calculate routes.'); }
+      } else {
+        setResults(next);
+        const required = transport === 'wheelchair' ? 'accessible' : 'shortest';
+        const available = next.find(item => item.mode === required && item.route) ?? next.find(item => item.route);
+        setMode(available?.mode ?? required);
+        if (!available) setError(next.find(item => item.mode === required)?.unavailableReason ??
+          (transport === 'wheelchair' ? 'No connected step-free path is recorded for these places.' : 'No connected mapped walking route was found within 100 m of the selected start.'));
+        else if (available.route) fitRoute(available.route);
+      }
+    } catch (failure) {
+      if (requestId === routeRequest.current) setError(failure instanceof Error ? failure.message : 'Unable to calculate routes.');
+    } finally {
+      if (requestId === routeRequest.current) setCalculating(false);
+    }
   }
   function acceptStartAdjustment() {
     if (!alternative || !origin) return;
@@ -297,8 +348,9 @@ export default function DemoMapScreen({ data = builtInSnapshot, onShowLiveMap, o
         <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={styles.textButton}><Text style={styles.link}>Close</Text></Pressable></View>
     </View>}
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-    {(transport === 'driving' || results.length === 0) && <Pressable accessibilityRole="button" onPress={transport === 'driving' ? () => void openDriving() : showRoutes} style={styles.chooseButton}>
-      <Text style={styles.chooseButtonText}>{transport === 'driving' ? 'Open driving navigation' : 'Choose route'}</Text></Pressable>}
+    {(transport === 'driving' || (results.length === 0 && !adjustmentVisible)) && <Pressable accessibilityRole="button"
+      disabled={calculating} onPress={transport === 'driving' ? () => void openDriving() : showRoutes} style={styles.chooseButton}>
+      <Text style={styles.chooseButtonText}>{transport === 'driving' ? 'Open driving navigation' : calculating ? 'Calculating routes…' : 'Choose route'}</Text></Pressable>}
     {originalOrigin && <View style={styles.selectedPanel}><Text style={styles.cardTitle}>Starting point updated</Text><Text style={styles.body}>Original point O stays on the map as a reference. The route now starts from S, the connected point you accepted.</Text><Text style={styles.hint}>The transfer between O and S is not a mapped or verified path.</Text></View>}
     {route && origin && destination && <>
       <Pressable accessibilityRole="button" onPress={() => { if (navigating) { setNavigating(false); setRouteReady(!waitForAdjustedStart); setGpsPosition(null); setGuidanceTarget(null); } else { setNavigating(true); setRouteReady(!waitForAdjustedStart); } }} style={styles.chooseButton}><Text style={styles.chooseButtonText}>{navigating ? 'Close route guidance' : waitForAdjustedStart ? 'Go to adjusted starting point' : 'Start Enclave guidance'}</Text></Pressable>
@@ -312,7 +364,7 @@ export default function DemoMapScreen({ data = builtInSnapshot, onShowLiveMap, o
         <Text style={styles.cardTitle}>{labels[result.mode]} · {result.route ? formatDistance(result.route.distance) : 'Unavailable'}</Text>
         <Text style={styles.body}>{result.mode === 'shortest' ? 'Minimum mapped distance; may pass stairs or reported damage.' : result.mode === 'avoid_damage' ? 'Avoids confirmed damage; may use stairs.' : 'Avoids stairs and damage. Demo verification only; not field verified.'}</Text>
         {result.route ? <Text style={styles.body}>{Math.ceil(result.route.seconds / 60)} min estimate · {result.route.facilities.filter(f => isBlocked(f, state)).length} reported issues on route · {result.route.facilities.length} facilities</Text> :
-          <Text style={styles.body}>No eligible connected path for these selected road access points.</Text>}
+          <Text style={styles.body}>{result.unavailableReason ?? 'No eligible connected path for these selected road access points.'}</Text>}
       </Pressable>)}
       {route && <View style={styles.selectedPanel}>
         <Text style={styles.cardTitle}>Facilities on this route</Text>
