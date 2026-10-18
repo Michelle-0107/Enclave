@@ -22,7 +22,7 @@ def p(x,y):
 def body(a,b,mode='shortest'):
     return WalkingRouteRequest(origin={'longitude':a[0],'latitude':a[1]},destination={'longitude':b[0],'latitude':b[1]},route_mode=mode)
 
-def osm_graph(nodes,ways,node_tags=None):
+def osm_graph(nodes,ways,node_tags=None,*,resident_access=False):
     root=ET.Element('osm',version='0.6')
     for key,point in nodes.items():
         lon,lat=p(*point)
@@ -34,7 +34,7 @@ def osm_graph(nodes,ways,node_tags=None):
         for k,v in tags.items(): ET.SubElement(element,'tag',k=k,v=v)
     with tempfile.TemporaryDirectory() as folder:
         source=Path(folder)/'fixture.osm'; ET.ElementTree(root).write(source)
-        return RoadsideGraph(source,(101.795,2.999,101.815,3.018))
+        return RoadsideGraph(source,(101.795,2.999,101.815,3.018),resident_access=resident_access)
 
 class RoadsideTests(unittest.TestCase):
     def straight(self,tags=None,marked=None):
@@ -110,6 +110,47 @@ class RoadsideTests(unittest.TestCase):
         for tags in ({'foot':'no'},{'access':'private'},{'motorroad':'yes'},{'motorroad':'yes','maxspeed':'unknown'},{'maxspeed':'90'}):
             with self.subTest(tags=tags),self.assertRaises(NavigationRejected): self.straight(tags).route(body(p(-80,6),p(80,6)))
 
+    def test_resident_access_opens_private_ways_but_does_not_invent_crossings(self):
+        for tags in ({'access':'private'},{'foot':'private'},{'access':'private','foot':'private'}):
+            with self.subTest(tags=tags):
+                g=osm_graph({'a':(-100,0),'b':(100,0)},
+                    [(['a','b'],{'highway':'residential',**tags})],resident_access=True)
+                route=g.route(body(p(-80,6),p(80,6)))
+                self.assertAlmostEqual(route.distance_meters,160,places=2)
+                self.assertTrue(any('resident-access policy' in warning for warning in route.warnings))
+                with self.assertRaises(NavigationRejected): g.route(body(p(-80,6),p(80,-6)))
+
+    def test_resident_access_does_not_override_explicit_closures(self):
+        for tags in ({'access':'private','foot':'no'},{'access':'no'},
+                     {'foot':'private','access':'no'},{'access':'private','locked':'yes'},
+                     {'access':'private','barrier':'fence'},{'access':'private','motorroad':'yes'},
+                     {'access':'private','maxspeed':'90'}):
+            with self.subTest(tags=tags):
+                g=osm_graph({'a':(-100,0),'b':(100,0)},
+                    [(['a','b'],{'highway':'residential',**tags})],resident_access=True)
+                with self.assertRaises(NavigationRejected): g.route(body(p(-80,6),p(80,6)))
+
+    def test_resident_gate_can_be_passed_but_locked_gate_cannot(self):
+        for locked in ('no','yes'):
+            g=osm_graph({'a':(-100,0),'m':(0,0),'b':(100,0)},
+                [(['a','m','b'],{'highway':'residential','access':'private'})],
+                {'m':{'barrier':'gate','access':'private','locked':locked}},resident_access=True)
+            if locked=='yes':
+                with self.assertRaises(NavigationRejected): g.route(body(p(-80,6),p(80,6)))
+            else:
+                self.assertAlmostEqual(g.route(body(p(-80,6),p(80,6))).distance_meters,160,places=2)
+
+    def test_prima_saujana_private_streets_are_in_shared_resident_graph(self):
+        g=walking_graph('kajang-prima-saujana')
+        for way_id in ('494811513','494811517','494811519'):
+            with self.subTest(way_id=way_id):
+                edge=next(e for e in g.edges if e.way_id==way_id and distance(*e.points)>20)
+                a,b=edge.points
+                mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
+                route=g.route(body(mix(.2),mix(.8)),area_id='kajang-prima-saujana')
+                self.assertAlmostEqual(route.distance_meters,distance(a,b)*.6,places=2)
+                self.assertTrue(any('resident-access policy' in warning for warning in route.warnings))
+
     def test_damage_blocks_the_crossing_instead_of_removing_crossing_rule(self):
         g=self.straight(marked={'crossing':'marked'})
         w,s=p(-2,-2); e,n=p(2,2)
@@ -162,6 +203,32 @@ class LiveAreaApiTests(unittest.TestCase):
         self.fixture=fixtures.NavigationTests(); self.fixture.setUp(); self.addCleanup(self.fixture.doCleanups)
         self.client=self.fixture.client(); self.client.app.state.navigation.provider.settings=NavigationSettings()
         self.headers={'Authorization':'Bearer fixture-resident'}
+
+    def test_private_street_routes_still_require_active_verified_resident(self):
+        g=walking_graph('kajang-prima-saujana')
+        edge=next(e for e in g.edges if e.way_id=='494811519' and distance(*e.points)>20)
+        a,b=edge.points
+        mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
+        payload=body(mix(.2),mix(.8)).model_dump()
+        path='/api/v1/navigation/routes'
+        self.assertEqual(self.client.post(path,json=payload).status_code,401)
+        for rows in ([],[{'profile_id':fixtures.RESIDENT,'status':'inactive','verified_at':'2026-10-16T00:00:00Z'}],
+                     [{'profile_id':fixtures.RESIDENT,'status':'active','verified_at':None}]):
+            self.fixture.rows=rows
+            self.assertEqual(self.client.post(path,json=payload,headers=self.headers).status_code,403)
+        self.fixture.rows=[{'profile_id':fixtures.RESIDENT,'status':'active','verified_at':'2026-10-16T00:00:00Z'}]
+        response=self.client.post(path,json=payload,headers=self.headers)
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()['crossing_policy'],'mapped_facilities_only')
+        demo_payload={'origin':payload['origin'],'destination':payload['destination']}
+        demo_path='/api/v1/navigation/areas/kajang-prima-saujana/demo-routes'
+        self.assertEqual(self.client.post(demo_path,json=demo_payload).status_code,401)
+        self.fixture.rows=[]
+        self.assertEqual(self.client.post(demo_path,json=demo_payload,headers=self.headers).status_code,403)
+        self.fixture.rows=[{'profile_id':fixtures.RESIDENT,'status':'active','verified_at':'2026-10-16T00:00:00Z'}]
+        demo=self.client.post(demo_path,json=demo_payload,headers=self.headers)
+        self.assertEqual(demo.status_code,200,demo.text)
+        self.assertIsNotNone(demo.json()['options'][0]['route'])
 
     def test_region_details_modes_and_crossing_policy(self):
         for area in ('kl-east-pilot','kajang-prima-saujana'):
