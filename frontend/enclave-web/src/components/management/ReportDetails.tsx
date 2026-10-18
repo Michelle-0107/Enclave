@@ -109,10 +109,10 @@ export default function ReportDetails({ report: initialReport }: Props) {
         {reportStatusLabels[report.status]}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <section aria-label="Report evidence" className="flex min-w-0 flex-col gap-4">
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+        <section aria-label="Report evidence" className="flex min-w-0 flex-col">
           {report.imageUrl ? (
-            <div className="relative h-[240px] overflow-hidden rounded-3xl bg-enclave-lavender p-3">
+            <div className="relative min-h-[240px] flex-1 overflow-hidden rounded-3xl bg-enclave-lavender p-3">
               <Image src={report.imageUrl} alt={`Resident evidence for ${report.title}`} fill unoptimized sizes="(max-width: 1024px) 100vw, 50vw" className="object-contain p-3" />
               <button type="button" onClick={() => setPhotoExpanded(true)} className="absolute right-4 bottom-4 z-10 min-h-10 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow" aria-label="Expand report photo">Expand photo</button>
             </div>
@@ -123,13 +123,13 @@ export default function ReportDetails({ report: initialReport }: Props) {
           )}
         </section>
 
-        <section aria-label="Backend report data" className="flex flex-col gap-4 self-start rounded-3xl bg-enclave-lavender p-5 lg:min-h-[240px]">
+        <section aria-label="Backend report data" className="flex flex-col gap-4 rounded-3xl bg-enclave-lavender p-5">
           <h2 className="text-lg font-semibold text-primary">Report details</h2>
           <dl className="grid gap-4 text-sm">
             <div><dt className="font-semibold text-primary">Category</dt><dd className="mt-1 text-muted-foreground">{report.category}</dd></div>
             <div><dt className="font-semibold text-primary">Priority</dt><dd className="mt-1 text-muted-foreground">{report.priority}</dd></div>
             <div>
-              <dt className="font-semibold text-primary">Resident description</dt>
+              <dt className="font-semibold text-primary">Description</dt>
               <dd className="mt-1 whitespace-pre-wrap leading-relaxed text-muted-foreground">
                 {report.description || 'No description provided.'}
               </dd>
