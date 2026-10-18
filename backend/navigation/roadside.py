@@ -48,10 +48,14 @@ def crossing(tags):
             or tags.get('crossing:signals') == 'yes')
 
 
-def forbidden(tags):
-    return (tags.get('foot') in {'no', 'private', 'use_sidepath'} or tags.get('locked') == 'yes'
-            or tags.get('access') in {'no', 'private', 'customers', 'destination'} and tags.get('foot') not in {'yes', 'designated', 'permissive'}
-            or tags.get('barrier') in {'wall', 'fence', 'retaining_wall', 'hedge'} )
+def forbidden(tags, *, resident_access=False):
+    foot, access = tags.get('foot'), tags.get('access')
+    permitted_foot = foot in {'yes', 'designated', 'permissive'}
+    return (foot in {'no', 'use_sidepath'} or foot == 'private' and not resident_access
+            or tags.get('locked') == 'yes'
+            or access in {'no', 'customers', 'destination'} and not permitted_foot
+            or access == 'private' and not (permitted_foot or resident_access)
+            or tags.get('barrier') in {'wall', 'fence', 'retaining_wall', 'hedge'})
 
 
 def level(tags):
@@ -86,7 +90,7 @@ class Edge:
 
 
 class RoadsideGraph:
-    def __init__(self, source, bounds):
+    def __init__(self, source, bounds, *, resident_access=False):
         root = ET.parse(source).getroot()
         tags = lambda e: {t.attrib['k']: t.attrib['v'] for t in e.findall('tag')}
         points = {n.attrib['id']: (float(n.attrib['lon']), float(n.attrib['lat'])) for n in root.findall('node')}
@@ -95,6 +99,7 @@ class RoadsideGraph:
         self.nodes = {}
         self.edges = []
         self.carriageways = []
+        self.private_way_ids = set()
         roads, paths = defaultdict(list), defaultdict(list)
         ways = [(w.attrib['id'], [n.attrib['ref'] for n in w.findall('nd')], tags(w)) for w in root.findall('way')]
         for wid, refs, t in ways:
@@ -110,8 +115,10 @@ class RoadsideGraph:
                     self.carriageways.append((pa,pb,grade))
                     roads[(a,grade)].append((math.atan2(pb[1]-pa[1],(pb[0]-pa[0])*math.cos(math.radians(pa[1]))),0,None,t,wid))
                     roads[(b,grade)].append((math.atan2(pa[1]-pb[1],(pa[0]-pb[0])*math.cos(math.radians(pb[1]))),0,None,t,wid))
-            if highway not in ROADS | PATHS or forbidden(t) or t.get('area') == 'yes' or t.get('indoor') == 'yes':
+            if highway not in ROADS | PATHS or forbidden(t, resident_access=resident_access) or t.get('area') == 'yes' or t.get('indoor') == 'yes':
                 continue
+            if t.get('access') == 'private' or t.get('foot') == 'private':
+                self.private_way_ids.add(wid)
             # Traffic speed/road class is not evidence of pedestrian permission on highways.
             high_speed = t.get('maxspeed', '0').isdigit() and float(t.get('maxspeed', '0')) > 60
             if highway in ROADS and (t.get('motorroad') == 'yes' or high_speed):
@@ -119,7 +126,9 @@ class RoadsideGraph:
             grade = level(t)
             direction = 1 if t.get('oneway:foot') in {'yes','1','true'} or t.get('foot:backward') == 'no' else -1 if t.get('oneway:foot') == '-1' or t.get('foot:forward') == 'no' else 0
             for index, (a,b) in enumerate(zip(refs, refs[1:])):
-                if a not in points or b not in points or a == b or forbidden(node_tags[a]) or forbidden(node_tags[b]):
+                if (a not in points or b not in points or a == b
+                        or forbidden(node_tags[a], resident_access=resident_access)
+                        or forbidden(node_tags[b], resident_access=resident_access)):
                     continue
                 pa, pb = points[a], points[b]
                 if not self.inside(pa) or not self.inside(pb) or distance(pa,pb) < 0.05:
@@ -369,12 +378,20 @@ class RoadsideGraph:
                 'Real OpenStreetMap walking coverage; road-side positions are inferred, not surveyed sidewalks.',
                 'Only recorded marked/signal crossings or grade-separated paths connect opposite road sides. Missing map data can prevent routing.',
                 'Road walking and endpoint approaches are not field verified or certified accessible. Check traffic and local access before proceeding.',
+                *(['Includes private residential ways under the app resident-access policy for verified residents of supported service areas.']
+                  if any(edge.way_id in self.private_way_ids for edge,_,_,_ in selected) else []),
                 *(['Demo-only route: facility damage and step-free annotations are simulated and not field verified.'] if demo_mode else []),
                 *(['Community damage coverage is not enabled in this temporary area.'] if not community_supported else [] )])
 
 
 @lru_cache(maxsize=4)
 def walking_graph(area_id):
+    """Resident/staff routing only; callers enforce authenticated API access.
+
+    Active verified residents are treated as residents of every enabled service
+    area. Private ways are included under that product policy; accounts currently
+    have no per-township membership mapping.
+    """
     from .areas import find_area
     root=Path(__file__).resolve().parents[1]/'data/demo_areas'
     area=find_area(area_id)
@@ -384,4 +401,4 @@ def walking_graph(area_id):
     metadata=json.loads((root/(area.id+'-source.json')).read_text(encoding='utf-8'))
     if hashlib.sha256(source.read_bytes()).hexdigest() != metadata['source_xml_sha256']:
         raise ValueError('Road source checksum mismatch')
-    return RoadsideGraph(source,area.bbox)
+    return RoadsideGraph(source,area.bbox,resident_access=True)
