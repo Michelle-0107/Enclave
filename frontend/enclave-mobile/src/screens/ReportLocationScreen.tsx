@@ -16,6 +16,7 @@ import {
 } from '@maplibre/maplibre-react-native';
 
 import { colors } from '../theme';
+import { ReportFacilityMarkers, ReportFacilityHint, useReportFacilityPoints } from '../facilities/ReportFacilityPoints';
 
 export type ReportLocationDetails = {
   location: string;
@@ -68,6 +69,7 @@ export default function ReportLocationScreen({
   onBack,
   onContinue,
 }: Props) {
+  const facilityPoints = useReportFacilityPoints();
   const cameraRef = useRef<CameraRef>(null);
   const locationLock = useRef(false);
 
@@ -305,6 +307,12 @@ export default function ReportLocationScreen({
             }}
           />
 
+          <ReportFacilityMarkers facilities={facilityPoints.facilities} onSelect={facility => {
+            if (locationLock.current) return;
+            selectMapLocation(facility.longitude, facility.latitude);
+            setLocation(facility.name);
+          }} />
+
           {coordinates && isInsidePilot(coordinates) && (
             <Marker
               id="report-location"
@@ -348,6 +356,9 @@ export default function ReportLocationScreen({
           </View>
         )}
       </View>
+
+      <ReportFacilityHint loading={facilityPoints.loading} error={facilityPoints.error}
+        count={facilityPoints.facilities.length} onRetry={facilityPoints.reload} />
 
       <Text style={styles.helper}>
         {coordinates && isInsidePilot(coordinates)

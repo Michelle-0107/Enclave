@@ -11,6 +11,8 @@ import {
   type WhatIfResult,
 } from "@/lib/api";
 
+import RepairPlanRoutes from "./RepairPlanRoutes";
+
 import WhatIfPathMap, {
   parseMapPoint,
   pathDistance,
@@ -46,10 +48,6 @@ const routeModes = [
   { id: "avoid_damage" as const, label: "Avoid reported damage" },
   { id: "accessible" as const, label: "Accessible route" },
 ];
-
-function outcomeLabel(state: string) {
-  return state.replaceAll("_", " ");
-}
 
 export default function WhatIfPlanner() {
   const [pickTargets, setPickTargets] = useState<Record<number, PickTarget>>(
@@ -227,7 +225,7 @@ export default function WhatIfPlanner() {
           plans: requestPlans,
           route_modes: modes,
           budget_myr: budget.trim() || null,
-          include_geometry: false,
+          include_geometry: true,
         }),
       );
     } catch (reason) {
@@ -726,7 +724,7 @@ export default function WhatIfPlanner() {
                   >
                     <h4 className="text-sm font-semibold text-primary">
                       {summary.route_mode === "accessible"
-                        ? "Accessible"
+                        ? "Accessible routes (excludes walking references)"
                         : "Avoid damage"}
                     </h4>
                     <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
@@ -745,35 +743,7 @@ export default function WhatIfPlanner() {
                   </div>
                 ))}
               </div>
-              <ul className="flex flex-col gap-2">
-                {plan.paths.map((path) => (
-                  <li
-                    key={`${path.path_id}-${path.route_mode}`}
-                    className="border-t border-border pt-3 text-sm"
-                  >
-                    <div className="flex flex-wrap justify-between gap-2">
-                      <span className="font-semibold text-primary">
-                        {path.path_name} ·{" "}
-                        {path.route_mode === "accessible"
-                          ? "Accessible"
-                          : "Avoid damage"}
-                      </span>
-                      <span className="capitalize text-primary">
-                        {path.effect.replaceAll("_", " ")}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      After repairs: {outcomeLabel(path.after.state)}
-                      {path.after.distance_meters != null
-                        ? ` · ${Math.round(path.after.distance_meters)} m`
-                        : ""}
-                      {path.distance_saved_meters != null
-                        ? ` · ${Math.round(path.distance_saved_meters)} m saved`
-                        : ""}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <RepairPlanRoutes key={`${result.simulation_id}-${plan.id}`} baseline={result.baseline} plan={plan} restrictions={result.routing_restrictions} candidates={issues} />
             </article>
           ))}
         </section>

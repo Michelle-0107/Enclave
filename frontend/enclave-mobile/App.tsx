@@ -143,6 +143,7 @@ function ResidentApp({
 
   const [showFacilityDemo, setShowFacilityDemo] = useState(true);
 
+  const [mapTouchActive, setMapTouchActive] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
 
@@ -202,7 +203,7 @@ function ResidentApp({
 
   function renderMapScreen() {
     if (mapFlow.page === 'map' && showFacilityDemo) {
-      return <DemoMapScreen onShowLiveMap={() => setShowFacilityDemo(false)} onReportPress={() => changeTab('Report')} />;
+      return <DemoMapScreen onMapTouchChange={setMapTouchActive} onShowLiveMap={() => setShowFacilityDemo(false)} onReportPress={() => changeTab('Report')} />;
     }
     switch (mapFlow.page) {
       case 'map':
@@ -427,6 +428,7 @@ function ResidentApp({
 
       <ScrollView
         ref={scrollRef}
+        scrollEnabled={!mapTouchActive}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"

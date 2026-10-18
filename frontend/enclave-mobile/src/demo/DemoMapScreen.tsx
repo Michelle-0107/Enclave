@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { colors } from '../theme';
 import { dataset, initialScenario, insidePilot, isBlocked, labels, meters, searchPlaces, selectLocation,
   type Coordinate, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
@@ -10,7 +11,7 @@ import { MAX_START_ADJUSTMENT_METERS, planJourney, type AccessPlan } from './acc
 import JourneyGuidance from './JourneyGuidance';
 
 type Field = 'origin' | 'destination';
-type Props = { onShowLiveMap: () => void; onReportPress?: () => void };
+type Props = { onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
 type Choice = { label: string; coordinate: Coordinate; snap?: Selection['snap'] };
 const transports: { id: Transport; name: string; icon: 'car-outline' | 'walk' | 'wheelchair-accessibility' }[] = [
   { id: 'driving', name: 'Car', icon: 'car-outline' }, { id: 'walking', name: 'Walking', icon: 'walk' }, { id: 'wheelchair', name: 'Wheelchair', icon: 'wheelchair-accessibility' },
@@ -20,7 +21,7 @@ const symbols: Record<string, string> = { stairs: 'ST', crossing: 'ZX', footbrid
 const state = initialScenario(); // Read-only resident view. No management controls or writes.
 const formatDistance = (m: number) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`;
 
-export default function DemoMapScreen({ onShowLiveMap, onReportPress }: Props) {
+export default function DemoMapScreen({ onShowLiveMap, onReportPress, onMapTouchChange }: Props) {
   const [origin, setOrigin] = useState<Choice | null>(null);
   const [destination, setDestination] = useState<Choice | null>(null);
   const [startText, setStartText] = useState('');
@@ -42,6 +43,12 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress }: Props) {
   const [guidanceTarget, setGuidanceTarget] = useState<Coordinate | null>(null);
   const [gpsPosition, setGpsPosition] = useState<Coordinate | null>(null);
   const [transport, setTransport] = useState<Transport>('walking');
+  const [locating, setLocating] = useState(false);
+  const [locationStatus, setLocationStatus] = useState('');
+  const [lastLocation, setLastLocation] = useState<Coordinate | null>(null);
+  const locationRequest = useRef(0);
+  const locationBusy = useRef(false);
+  useEffect(() => () => { locationRequest.current += 1; onMapTouchChange?.(false); }, [onMapTouchChange]);
   const approachCameraCentered = useRef(false);
   const camera = useRef<CameraRef>(null);
   const suggestions = searching ? searchPlaces(field === 'origin' ? startText : endText) : [];
@@ -127,10 +134,10 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress }: Props) {
     try { await Linking.openURL(drivingDirectionsUrl(origin.coordinate, destination.coordinate)); }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to open driving directions.'); }
   }
-  function handleGuidancePosition(point: Coordinate | null) {
+  const handleGuidancePosition = useCallback((point: Coordinate | null) => {
     setGpsPosition(point);
     if (!point) approachCameraCentered.current = false;
-  }
+  }, []);
   useEffect(() => {
     if (!navigating || !waitForAdjustedStart || routeReady || !gpsPosition || !origin || approachCameraCentered.current) return;
     const points = [gpsPosition, origin.coordinate];
@@ -138,6 +145,43 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress }: Props) {
       Math.max(...points.map(p => p[0])), Math.max(...points.map(p => p[1]))], { padding: { top: 60, right: 60, bottom: 60, left: 60 }, duration: 350 });
     approachCameraCentered.current = true;
   }, [gpsPosition, navigating, waitForAdjustedStart, routeReady, origin]);
+
+  async function locate(useAsStart: boolean) {
+    if (locationBusy.current) return;
+    locationBusy.current = true;
+    const request = ++locationRequest.current;
+    setLocating(true); setLocationStatus('Finding your location…');
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (request !== locationRequest.current) return;
+      if (permission.status !== 'granted') throw new Error('Allow location permission in your phone settings, or choose a point on the map.');
+      if (!await Location.hasServicesEnabledAsync()) throw new Error('Turn on your phone location services and try again.');
+      if (request !== locationRequest.current) return;
+      const value = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error('Location took too long. Try again outdoors or select a point on the map.')), 20000); }),
+      ]);
+      if (request !== locationRequest.current) return;
+      const point: Coordinate = [value.coords.longitude, value.coords.latitude];
+      setLastLocation(point);
+      camera.current?.easeTo({ center: point, zoom: 16, duration: 400 });
+      if (useAsStart && insidePilot(point, dataset)) choose(point, 'Current location', 'origin');
+      setLocationStatus(!insidePilot(point, dataset)
+        ? 'You are outside the KL East pilot area. Your starting point is unchanged; use Show area to plan a demo route.'
+        : `Location updated${value.coords.accuracy == null ? '' : ` · accuracy approximately ${Math.round(value.coords.accuracy)} m`}.`);
+    } catch (failure) {
+      if (request === locationRequest.current) setLocationStatus(failure instanceof Error ? failure.message : 'Could not get your location. Try again.');
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      locationBusy.current = false;
+      if (request === locationRequest.current) setLocating(false);
+    }
+  }
+  function recentre() {
+    if (gpsPosition) camera.current?.easeTo({ center: gpsPosition, zoom: 16, duration: 400 });
+    else void locate(false);
+  }
 
   return <View style={styles.container}>
     <Text style={styles.title}>Around your neighbourhood.</Text>
@@ -185,8 +229,17 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress }: Props) {
         <Text style={styles.body}>{field === which ? 'Tap map to choose' : 'Tap to select'}</Text>
       </Pressable>)}
     </View>
-    <View style={styles.mapContainer}>
-      <Map key={mapKey} style={styles.map} mapStyle={dataset.styleUrl} androidView="texture" compass attribution
+    <View style={styles.row}>
+      <Pressable accessibilityRole="button" disabled={locating || navigating} onPress={() => void locate(true)} style={styles.textButton}>
+        <Text style={styles.link}>{locating ? 'Locating…' : 'Use current location as start'}</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" disabled={locating} onPress={recentre} style={styles.textButton}><Text style={styles.link}>Recentre</Text></Pressable>
+    </View>
+    {locationStatus ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{locationStatus}</Text> : null}
+    <View style={styles.mapContainer} onTouchStart={() => onMapTouchChange?.(true)}
+      onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
+      onTouchCancel={() => onMapTouchChange?.(false)}>
+      <Map key={mapKey} style={styles.map} mapStyle={dataset.styleUrl} androidView="texture" compass attribution dragPan touchZoom doubleTapZoom
         onPress={event => { const p = event.nativeEvent.lngLat; choose(p, `Map pin · ${p[1].toFixed(5)}, ${p[0].toFixed(5)}`); }}
         onDidFailLoadingMap={() => setMapError(true)} onDidFinishLoadingMap={() => setMapError(false)}>
         <Camera ref={camera} initialViewState={{ bounds, padding: { top: 15, right: 15, bottom: 15, left: 15 } }} />
@@ -206,7 +259,7 @@ export default function DemoMapScreen({ onShowLiveMap, onReportPress }: Props) {
           <View collapsable={false} style={[styles.marker, styles.suggestedPin]}><Text style={styles.pinText}>N</Text></View>
         </Marker>}
         {guidanceTarget && <Marker id="demo-guidance-target" lngLat={guidanceTarget}><View collapsable={false} style={[styles.marker, styles.accessPin]}><Text style={styles.pinText}>Next</Text></View></Marker>}
-        {gpsPosition && <Marker id="demo-gps" lngLat={gpsPosition}><View collapsable={false} style={[styles.marker, styles.accessPin]}><Text style={styles.pinText}>Me</Text></View></Marker>}
+        {(gpsPosition || lastLocation) && <Marker id="demo-gps" lngLat={(gpsPosition || lastLocation)!}><View collapsable={false} style={[styles.marker, styles.accessPin]}><Text style={styles.pinText}>Me</Text></View></Marker>}
         <GeoJSONSource id="demo-places" data={placeData} hitbox={{ top: 8, right: 8, bottom: 8, left: 8 }}
           onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'place', id }); setSearching(false); Keyboard.dismiss(); } }}>
           <Layer id="demo-place-points" type="circle" minzoom={15} paint={{ 'circle-radius': 4, 'circle-color': '#175CD3', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 1 }} />

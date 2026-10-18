@@ -67,6 +67,7 @@ class WhatIfTests(unittest.TestCase):
         self.rpc_requests, self.engine_requests = [], []
         self.no_detour = False
         self.provider_failure = False
+        self.engine_override = None
         self.snapshot_override = None
 
     def client(self, *, network=None, rpc_handler=None):
@@ -90,6 +91,8 @@ class WhatIfTests(unittest.TestCase):
             self.assertNotIn(MANAGER, request.content.decode())
             if self.provider_failure:
                 return httpx.Response(503, json={'secret': 'private-provider-fixture'})
+            if self.engine_override is not None:
+                return self.engine_override(data)
             squares = [(ring[0][0], ring[0][1], ring[2][0], ring[2][1]) for ring in data.get('exclude_polygons', [])]
             blocked = any(route_intersects_zone([A, D], bounds) for bounds in squares)
             if blocked and self.no_detour:
@@ -232,7 +235,11 @@ class WhatIfTests(unittest.TestCase):
         self.assertEqual(row['effect'], 'restored')
         self.assertEqual(len(row['after']['geometry']['coordinates']), 4)
         self.assertFalse(row['after']['field_verified'])
-        self.assertEqual(self.engine_requests, [])
+        self.assertIsNone(row['after']['fallback'])
+        reference = data['baseline'][0]['current']['fallback']
+        self.assertEqual(reference['route_mode'], 'avoid_damage')
+        self.assertFalse(reference['accessibility_verified'])
+        self.assertEqual(len(self.engine_requests), 2)  # Walking reference for the unavailable before case.
 
     def test_same_path_is_not_double_counted_across_modes(self):
         payload = body(); payload['route_modes'] = ['avoid_damage', 'accessible']
@@ -298,6 +305,93 @@ class WhatIfTests(unittest.TestCase):
         self.assertEqual(len(data['plans'][0]['paths'][0]['after']['geometry']['coordinates']), 2)
         self.assertIsNotNone(data['baseline'][0]['current']['geometry'])
         self.assertEqual(len(self.rpc_requests), 1)
+
+    def test_longer_recomputed_route_reuses_the_real_feasible_before_geometry(self):
+        longer = [A, (A[0], A[1] + 0.0004), (D[0], D[1] + 0.0004), D]
+        self.engine_override = lambda data: httpx.Response(200, json=directions(
+            [A, B, C, D] if data.get('exclude_polygons') else longer))
+        payload = body(); payload['include_geometry'] = True
+        data = self.compare(self.client(), payload).json()
+        before = data['baseline'][0]['current']
+        after = data['plans'][0]['paths'][0]
+        self.assertEqual(after['effect'], 'unchanged')
+        self.assertEqual(after['distance_saved_meters'], 0)
+        self.assertEqual(after['after']['distance_meters'], before['distance_meters'])
+        self.assertEqual(after['after']['geometry'], before['geometry'])
+        self.assertEqual(len(after['after']['geometry']['coordinates']), 4)
+
+    def test_more_repairs_cannot_discard_a_shorter_valid_route_from_another_plan(self):
+        self.issues.append(issue(id=I2, facility_id=F2, latitude=3.2251, facility_name='South fixture'))
+        longer = [A, (A[0], A[1] + 0.0004), (D[0], D[1] + 0.0004), D]
+        def provider(data):
+            count = len(data.get('exclude_polygons', []))
+            return httpx.Response(200, json=directions([A, B, C, D] if count == 2 else [A, D] if count == 1 else longer))
+        self.engine_override = provider
+        payload=body(); payload['include_geometry']=True
+        payload['plans'].append({'id':'both','name':'Repair both','repairs':[{'facility_id':F1},{'facility_id':F2}]})
+        data=self.compare(self.client(),payload).json()
+        one,two=(plan['paths'][0] for plan in data['plans'])
+        self.assertGreater(one['distance_saved_meters'],0)
+        self.assertEqual(two['after']['geometry'],one['after']['geometry'])
+        self.assertLessEqual(two['after']['distance_meters'],one['after']['distance_meters'])
+
+    def test_shorter_candidate_crossing_unrepaired_damage_is_never_reused(self):
+        self.issues.append(issue(id=I2, facility_id=F2, facility_name='Overlapping fixture'))
+        payload=body(); payload['include_geometry']=True
+        payload['plans'].append({'id':'both','name':'Repair both','repairs':[{'facility_id':F1},{'facility_id':F2}]})
+        data=self.compare(self.client(),payload).json()
+        unrepaired,repaired=(plan['paths'][0]['after'] for plan in data['plans'])
+        box=zone_bounds(self.issues[1]['latitude'],self.issues[1]['longitude'],5)
+        self.assertFalse(route_intersects_zone(unrepaired['geometry']['coordinates'],box))
+        self.assertTrue(route_intersects_zone(repaired['geometry']['coordinates'],box))
+        self.assertGreater(unrepaired['distance_meters'],repaired['distance_meters'])
+
+    def test_accessible_only_returns_walking_reference_without_claiming_accessibility(self):
+        payload=body();payload['route_modes']=['accessible'];payload['include_geometry']=True
+        data=self.compare(self.client(),payload).json()
+        self.assertEqual(len(data['baseline']),1)
+        plan=data['plans'][0]; row=plan['paths'][0]
+        self.assertEqual(row['after']['state'],'not_assessable')
+        self.assertEqual(row['effect'],'not_assessable')
+        self.assertIsNone(row['distance_saved_meters'])
+        for outcome in (data['baseline'][0]['current'],row['after']):
+            self.assertEqual(outcome['fallback']['route_mode'],'avoid_damage')
+            self.assertTrue(outcome['fallback']['reference_only'])
+            self.assertFalse(outcome['fallback']['accessibility_verified'])
+            self.assertIsNotNone(outcome['fallback']['geometry'])
+        self.assertEqual(plan['summaries'][0]['after_available_path_count'],0)
+        self.assertEqual(plan['improved_major_path_count'],0)
+
+    def test_fixed_reference_endpoints_are_used_for_every_comparison(self):
+        data = self.compare(self.client(), body()).json()
+        baseline = data['baseline'][0]
+        self.assertEqual(baseline['comparison_origin'], {'longitude': A[0], 'latitude': A[1]})
+        self.assertEqual(baseline['comparison_destination'], {'longitude': D[0], 'latitude': D[1]})
+        for request in self.engine_requests:
+            locations = json.loads(request.content)['locations']
+            self.assertTrue(all(i['radius'] == 0 and i['node_snap_tolerance'] == 0 for i in locations))
+            self.assertEqual([(i['lon'],i['lat']) for i in locations], [A,D])
+
+    def test_endpoint_drift_is_not_claimed_as_a_restored_route(self):
+        shifted = (D[0]+0.00004,D[1])
+        self.engine_override = lambda data: httpx.Response(200,json=directions(
+            [A,B,C,shifted] if data.get('exclude_polygons') else [A,D]))
+        result = self.compare(self.client(),body()).json()
+        self.assertEqual(result['baseline'][0]['current']['state'], 'not_assessable')
+        self.assertEqual(result['baseline'][0]['current']['reason'], 'comparison_endpoint_changed')
+        self.assertEqual(result['plans'][0]['paths'][0]['effect'], 'not_assessable')
+        self.assertEqual(result['plans'][0]['summaries'][0]['restored_path_count'], 0)
+
+    def test_unchanged_has_an_explanation_and_exact_displayed_restrictions(self):
+        self.issues[0]['latitude'] = 3.2251
+        data = self.compare(self.client(),body()).json()
+        restriction = data['routing_restrictions'][0]
+        self.assertEqual(restriction['binding_source'], 'point_only')
+        self.assertEqual(restriction['facility_id'], F1)
+        self.assertEqual(len(restriction['exclusion_rings']), 1)
+        row = data['plans'][0]['paths'][0]
+        self.assertEqual(row['effect'], 'unchanged')
+        self.assertIn('do not intersect', row['explanation'])
 
     def test_demo_exposes_only_safe_synthetic_endpoints_and_complete_swagger_example(self):
         demo = create_demo_app(navigation_transport=httpx.MockTransport(lambda r: httpx.Response(200, json=directions([A, D]))))

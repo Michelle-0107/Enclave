@@ -95,6 +95,18 @@ class RepairCandidates(BaseModel):
     persistence: Literal['not_saved'] = 'not_saved'
 
 
+class WalkingReference(BaseModel):
+    state: Literal['available'] = 'available'
+    route_mode: Literal['avoid_damage'] = 'avoid_damage'
+    reference_only: Literal[True] = True
+    accessibility_verified: Literal[False] = False
+    warning: str = 'Walking reference only; accessibility has not been verified.'
+    distance_meters: float
+    duration_seconds: float
+    geometry: RouteGeometry | None = None
+    data_source: str
+
+
 class RouteOutcome(BaseModel):
     state: Literal['available', 'no_route', 'not_assessable']
     reason: str | None = None
@@ -103,12 +115,26 @@ class RouteOutcome(BaseModel):
     geometry: RouteGeometry | None = None
     data_source: str | None = None
     field_verified: bool | None = None
+    fallback: WalkingReference | None = None
+
+
+class RoutingRestriction(BaseModel):
+    issue_id: UUID
+    facility_id: UUID
+    facility_name: str
+    latitude: float
+    longitude: float
+    binding_source: Literal['mapped_demo_segment', 'point_only']
+    affected_segment: RouteGeometry | None = None
+    exclusion_rings: list[list[tuple[float,float]]]
 
 
 class BaselinePath(BaseModel):
     path_id: str
     path_name: str
     route_mode: SimulationMode
+    comparison_origin: Location | None = None
+    comparison_destination: Location | None = None
     current: RouteOutcome
     reference_without_damage: RouteOutcome
 
@@ -119,6 +145,7 @@ class PathImpact(BaseModel):
     route_mode: SimulationMode
     after: RouteOutcome
     effect: Literal['restored', 'shortened', 'unchanged', 'longer', 'lost_route', 'still_unavailable', 'not_assessable']
+    explanation: str | None = None
     distance_saved_meters: float | None
     duration_saved_seconds: float | None
     reference_intersects_selected_repairs: bool | None
@@ -174,6 +201,7 @@ class CompareResponse(BaseModel):
     currency: Literal['MYR'] = 'MYR'
     budget_myr: Decimal | None
     baseline_road_obstacle_count: int
+    routing_restrictions: list[RoutingRestriction] = Field(default_factory=list)
     baseline: list[BaselinePath]
     plans: list[PlanResult]
     warnings: list[str]

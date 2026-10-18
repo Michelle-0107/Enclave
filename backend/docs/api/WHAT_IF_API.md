@@ -218,3 +218,101 @@ Frontend scenario forms/charts, saving management path templates/scenarios, surv
 accessible coverage, quote/catalog management and future consent-based aggregate
 user-journey weighting are separate follow-ups. Current comparisons already work
 with management-supplied paths and optional cost estimates without those additions.
+
+## Repair-plan route maps and walking references
+
+Request `include_geometry: true` to render before/after maps. Match each plan path
+with `baseline` by both `path_id` and `route_mode`. Before geometry and distance
+come from `baseline[].current`; after values come from `plans[].paths[].after`.
+Each plan map supports selecting a path/mode. Orange dashed lines mean before
+repairs; teal solid lines mean after repairs. Distance labels use the corresponding
+route distance returned by the API. Missing geometry must not be replaced with a
+straight origin-to-destination line.
+
+The comparison reuses validated candidate routes for the same journey and mode,
+after checking their complete geometry against every remaining obstacle. Removing
+restrictions therefore does not discard a shorter route that is still feasible.
+The selected route retains its real geometry, distance and duration; distances are
+not clamped to hide a longer engine result.
+
+When an accessible before/after outcome is unavailable, it may contain `fallback`:
+
+```json
+{
+  "state": "not_assessable",
+  "fallback": {
+    "state": "available",
+    "route_mode": "avoid_damage",
+    "reference_only": true,
+    "accessibility_verified": false,
+    "warning": "Walking reference only; accessibility has not been verified.",
+    "distance_meters": 192,
+    "duration_seconds": 145,
+    "geometry": null,
+    "data_source": "routing engine"
+  }
+}
+```
+
+`geometry` above is illustrative; it contains the actual LineString when requested
+and available. The walking reference may include stairs. Display it as an
+unverified Avoid damage reference, never as an accessible route. The accessible
+state, effect, available/restored/shortened counts and savings remain based on the
+actual accessible result. Accessible-only requests can also receive this reference
+without adding walking rows to their summaries. If walking is unavailable too,
+`fallback` is null.
+
+## Fixed endpoints and explicit facility restrictions
+
+Comparisons now use nearest-edge correlation (`radius: 0`, node snapping disabled)
+for a no-damage reference, then freeze its matched origin and destination for all
+before/after calculations of that journey and mode. A returned endpoint more than
+1 m from its frozen anchor is not assessable and cannot be counted as a restored
+route. The shared feasible-route pool also rejects candidates with different
+endpoints. Public resident navigation requests retain their existing correlation
+settings; this internal comparison option cannot be supplied by API callers.
+
+`baseline[].comparison_origin` and `comparison_destination` expose those anchors.
+`plans[].paths[].explanation` explains unchanged results. `routing_restrictions`
+contains the actual before-repair exclusion rings and facility IDs used in the
+calculation. Match them against `plan.facility_impacts[].facility_id` to distinguish
+simulated repairs from remaining restrictions. The map uses red for remaining
+zones, green for cleared zones, and purple for authored road segments. Marker
+popups identify each facility and its binding source.
+
+The eight demo facility records retain their exact authored OSM source segment
+in `affected_segment`. For matching IDs, types and coordinates, both resident
+avoid-damage navigation and What-if cover that complete segment with local 5 m
+half-width squares at most 5 m apart. No nearest-road guessing or database writes
+are performed. Restriction and capacity counts remain bounded; road-issue summary
+counts deduplicate the same issue's multiple squares.
+
+Other facilities, including the older TEST-KL-East-Walkway-01 fixture, remain
+`point_only`. Their existing local zone is explicitly shown and the UI warns that
+no confirmed affected road segment is available. This change does not invent a
+road association for those records. A future management-maintained binding is
+still required to describe their intended full closure.
+
+Unchanged can be correct: it does not mean the repair was ignored. The supplied
+Path 3 coordinates (3.226307,101.730720) to (3.226325,101.729904) yield 157 m before
+and after with frozen endpoints in the bundled real road graph. The selected
+north pavement source segment is a different footpath from the viable reference
+route. A separate native integration fixture still demonstrates a genuine repair
+benefit (445 m to 382 m); regression tests cover both outcomes without manufacturing
+shorter routes or hiding endpoint changes.
+
+### Selected repairs stay visible during API rollout
+
+Each plan map receives the candidate facility snapshot as well as comparison
+restriction geometry. The plan's returned `facility_impacts` determine selection;
+editing or refreshing inputs clears stale results. Selected facilities have green
+R1, R2, ... markers and a matching name list with click-to-focus controls. Initial
+bounds include both the route and every selected facility with known coordinates.
+The reset control restores this combined view after zooming or focusing a marker.
+
+Comparison restriction coordinates take precedence over candidate coordinates.
+When an older API omits restriction geometry, markers still use available
+candidate coordinates, and the UI clearly labels them as facility locations only.
+No affected area is fabricated. Multiple incidents at one facility are deduplicated;
+selected non-road facilities are still marked. A facility lacking coordinates is
+listed as location unavailable, without creating a fake map position.

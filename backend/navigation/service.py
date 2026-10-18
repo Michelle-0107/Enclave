@@ -31,8 +31,9 @@ def integer(value):
 
 
 class NavigationService:
-    def __init__(self,provider,obstacles=None,accessibility=None):
+    def __init__(self,provider,obstacles=None,accessibility=None,*,fixed_snap=False):
         self.provider=provider
+        self.fixed_snap=fixed_snap
         self.obstacles=obstacles
         self.accessibility=accessibility
 
@@ -73,7 +74,8 @@ class NavigationService:
             if self.accessibility is None: raise NavigationUnavailable()
             return self.accessibility.route(body,snapshot,boxes)
         polygons=[item.exclusion_ring for item in snapshot.items] if snapshot else []
-        data=await self.provider.route(body,exclude_polygons=polygons)
+        options={'fixed_snap':True} if self.fixed_snap else {}
+        data=await self.provider.route(body,exclude_polygons=polygons,**options)
         try:
             trip=data['trip']
             if (integer(trip['status']) != 0 or trip['units'] != 'kilometers' or trip['language'] != 'en-US'
