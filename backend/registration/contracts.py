@@ -64,6 +64,26 @@ class ResidentInput(RegistrationInput):
         return str(value).strip().lower()
 
 
+class ResidentUpdate(ResidentInput):
+    status: Literal["active", "inactive"]
+
+
+class ManagementResident(BaseModel):
+    resident_id: UUID
+    resident_reference: str
+    full_name: str
+    unit_number: str
+    registered_email: EmailStr
+    status: Literal["active", "inactive"]
+    account_linked: bool
+    verified_at: datetime | None
+    created_at: datetime
+
+
+class ManagementResidentList(BaseModel):
+    residents: list[ManagementResident]
+
+
 class Residency(BaseModel):
     resident_id: UUID
     full_name: str | None = None

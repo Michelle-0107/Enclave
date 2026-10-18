@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -28,9 +28,10 @@ export type ReportLocationDetails = {
 
 type Props = {
   initialDetails?: ReportLocationDetails;
+  children?: ReactNode;
   onDescriptionFocus?: () => void;
   onBack: () => void;
-  onContinue: (details: ReportLocationDetails) => void;
+  onDetailsChange: (details: ReportLocationDetails) => void;
 };
 
 type Coordinates = NonNullable<
@@ -66,9 +67,10 @@ function coordinateLabel(value: Coordinates): string {
 
 export default function ReportLocationScreen({
   initialDetails,
+  children,
   onDescriptionFocus,
   onBack,
-  onContinue,
+  onDetailsChange,
 }: Props) {
   const facilityPoints = useReportFacilityPoints();
   const cameraRef = useRef<CameraRef>(null);
@@ -116,6 +118,7 @@ export default function ReportLocationScreen({
     }
 
     setCoordinates(next);
+    onDetailsChange({ description: description.trim(), coordinates: next });
 
     setError('');
   }
@@ -168,6 +171,7 @@ export default function ReportLocationScreen({
       }
 
       setCoordinates(next);
+      onDetailsChange({ description: description.trim(), coordinates: next });
 
       cameraRef.current?.easeTo({
         center: [next.longitude, next.latitude],
@@ -193,31 +197,6 @@ export default function ReportLocationScreen({
     }
   }
 
-  function handleContinue() {
-    if (locationLock.current) {
-      return;
-    }
-
-    if (!coordinates || !isInsidePilot(coordinates)) {
-      setError(
-        'Select the actual issue location inside KL East on the map first.',
-      );
-      return;
-    }
-
-    if (!description.trim()) {
-      setError('Please add a short description.');
-      return;
-    }
-
-    setError('');
-
-    onContinue({
-      description: description.trim(),
-      coordinates,
-    });
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.navigation}>
@@ -230,7 +209,7 @@ export default function ReportLocationScreen({
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
 
-        <Text style={styles.step}>STEP 02 OF 03</Text>
+        <Text style={styles.step}>STEP 02 OF 02</Text>
       </View>
 
       <View style={styles.introduction}>
@@ -239,7 +218,7 @@ export default function ReportLocationScreen({
         </Text>
 
         <Text style={styles.subtitle}>
-          Tap the actual issue location on the map, then describe what needs attention.
+          Tap the actual issue location, add a description, then choose a nearby facility below.
         </Text>
       </View>
 
@@ -358,7 +337,10 @@ export default function ReportLocationScreen({
           accessibilityLabel="Issue description"
           onFocus={onDescriptionFocus}
           value={description}
-          onChangeText={setDescription}
+          onChangeText={(value) => {
+            setDescription(value);
+            onDetailsChange({ description: value.trim(), coordinates });
+          }}
           editable={!locating}
           placeholder="Describe the damage or obstruction and how it affects residents."
           placeholderTextColor={colors.muted}
@@ -381,20 +363,7 @@ export default function ReportLocationScreen({
         </Text>
       )}
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={handleContinue}
-        disabled={locating}
-        style={({ pressed }) => [
-          styles.continueButton,
-          locating && styles.disabled,
-          pressed && styles.pressed,
-        ]}
-      >
-        <Text style={styles.continueText}>
-          Continue
-        </Text>
-      </Pressable>
+      {children}
     </View>
   );
 }
@@ -523,21 +492,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 19,
     color: '#A63E37',
-  },
-  continueButton: {
-    minHeight: 54,
-    borderRadius: 16,
-    backgroundColor: colors.navy,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    paddingHorizontal: 16,
-  },
-  continueText: {
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '600',
-    color: colors.white,
   },
   disabled: {
     opacity: 0.5,

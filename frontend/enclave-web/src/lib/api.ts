@@ -85,6 +85,26 @@ export type CreateResidentResult = {
   resident_id: string;
 };
 
+export type ManagementResident = {
+  resident_id: string;
+  resident_reference: string;
+  full_name: string;
+  unit_number: string;
+  registered_email: string;
+  status: 'active' | 'inactive';
+  account_linked: boolean;
+  verified_at: string | null;
+  created_at: string;
+};
+
+export type ManagementResidentList = {
+  residents: ManagementResident[];
+};
+
+export type UpdateResidentInput = CreateResidentInput & {
+  status: 'active' | 'inactive';
+};
+
 export type InvitationResult = {
   invitation_id: string;
   resident_id: string;
@@ -273,7 +293,7 @@ async function readError(response: Response) {
 }
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
 };
 
@@ -407,6 +427,23 @@ export function createResident(input: CreateResidentInput) {
   return apiRequest<CreateResidentResult>('/api/v1/management/residents', {
     method: 'POST',
     body: input,
+  });
+}
+
+export function getManagementResidents() {
+  return apiRequest<ManagementResidentList>('/api/v1/management/residents');
+}
+
+export function updateResident(residentId: string, input: UpdateResidentInput) {
+  return apiRequest<{ resident_id: string }>(
+    `/api/v1/management/residents/${encodeURIComponent(residentId)}`,
+    { method: 'PATCH', body: input },
+  );
+}
+
+export function deleteResident(residentId: string) {
+  return apiRequest<void>(`/api/v1/management/residents/${encodeURIComponent(residentId)}`, {
+    method: 'DELETE',
   });
 }
 

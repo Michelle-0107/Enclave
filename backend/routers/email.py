@@ -6,7 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from ..core.auth import AuthUnavailable, InvalidCredentials
 from ..registration import RegistrationRejected
 from ..registration.contracts import (InvitationResult, OTPAccepted, RequestOTP, ResidentInput,
-                                    Residency, SignupResult, VerifySignup)
+                                    ManagementResidentList, Residency, ResidentUpdate, SignupResult, VerifySignup)
 
 router = APIRouter(tags=["Registration"])
 bearer = HTTPBearer(scheme_name="SupabaseAccessToken", auto_error=False,
@@ -69,6 +69,33 @@ def my_residency(response: Response, identity=Depends(user), registration=Depend
 @router.post("/api/v1/management/residents", status_code=201, tags=["Management"])
 def create_resident(data: ResidentInput, identity=Depends(user), registration=Depends(service)):
     return registration.create_resident(identity.user_id, data)
+
+
+@router.get("/api/v1/management/residents", response_model=ManagementResidentList, tags=["Management"])
+def management_residents(response: Response, identity=Depends(user), registration=Depends(service)):
+    response.headers["Cache-Control"] = "no-store"
+    return registration.management_residents(identity.user_id)
+
+
+@router.patch("/api/v1/management/residents/{resident_id}", tags=["Management"])
+def update_resident(resident_id: UUID, data: ResidentUpdate,
+                    identity=Depends(user), registration=Depends(service)):
+    return registration.update_resident(identity.user_id, resident_id, data)
+
+
+@router.delete("/api/v1/management/residents/{resident_id}", status_code=204, tags=["Management"])
+def delete_resident(resident_id: UUID, request: Request, response: Response,
+                    identity=Depends(user), registration=Depends(service)):
+    response.headers["Cache-Control"] = "no-store"
+    deletion = registration.prepare_resident_deletion(identity.user_id, resident_id)
+    if deletion["auth_user_id"] is not None:
+        registration.delete_auth_user(deletion["auth_user_id"])
+    if deletion["image_urls"]:
+        media = getattr(request.app.state, "media", None)
+        if media is None or not media.delete_report_images(deletion["image_urls"]):
+            raise RegistrationRejected(503, "Account and report records are removed; photo cleanup is pending. Retry deletion to finish cleanup")
+    registration.finalize_resident_deletion(identity.user_id, resident_id)
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/api/v1/management/residents/{resident_id}/invitations", response_model=InvitationResult,

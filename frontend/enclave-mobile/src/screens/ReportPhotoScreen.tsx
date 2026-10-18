@@ -145,7 +145,7 @@ export default function ReportPhotoScreen({
           <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
 
-        <Text style={styles.step}>STEP 01 OF 03</Text>
+        <Text style={styles.step}>STEP 01 OF 02</Text>
       </View>
 
       <View style={styles.introduction}>

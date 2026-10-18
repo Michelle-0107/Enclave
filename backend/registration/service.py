@@ -9,7 +9,8 @@ from uuid import UUID, uuid4
 
 from .clients import AccountRejected, RegistrationStore, RegistrationUnavailable, SupabaseSignup
 from .settings import RegistrationSettings
-from .contracts import OTPAccepted, SignupResult, InvitationResult, Residency, VerifySignup
+from .contracts import (ManagementResidentList, OTPAccepted, SignupResult,
+                        InvitationResult, Residency, ResidentUpdate, VerifySignup)
 from ..services.email_service import EmailUnavailable, ResendDelivery
 
 
@@ -156,6 +157,71 @@ class RegistrationService:
         self._management_result(result)
         return InvitationResult(invitation_id=result["invitation_id"], resident_id=resident_id,
                                 invitation_token=token, expires_at=result["expires_at"])
+
+    def management_residents(self, user_id):
+        result = self.store.management_call("list", actor_id=str(user_id))
+        if result.get("state") == "forbidden":
+            raise RegistrationRejected(403, "Management access required")
+        if result.get("state") != "listed" or not isinstance(result.get("residents"), list):
+            raise RegistrationRejected(503, "Resident directory is unavailable")
+        return ManagementResidentList.model_validate(result)
+
+    def update_resident(self, user_id, resident_id, data: ResidentUpdate):
+        result = self.store.management_call(
+            "update",
+            actor_id=str(user_id),
+            resident_id=str(resident_id),
+            **data.model_dump(mode="json"),
+        )
+        state = result.get("state")
+        if state == "forbidden":
+            raise RegistrationRejected(403, "Management access required")
+        if state == "not_found":
+            raise RegistrationRejected(404, "Resident not found")
+        if state == "conflict":
+            raise RegistrationRejected(409, "Resident email cannot be changed after account registration, or the record conflicts with an existing resident")
+        if state != "updated":
+            raise RegistrationRejected(503, "Resident record could not be updated")
+        return {"resident_id": UUID(result["resident_id"])}
+
+    def prepare_resident_deletion(self, user_id, resident_id):
+        result = self.store.management_purge(
+            "prepare", actor_id=str(user_id), resident_id=str(resident_id)
+        )
+        state = result.get("state")
+        if state == "forbidden":
+            raise RegistrationRejected(403, "Management access required")
+        if state == "not_found":
+            raise RegistrationRejected(404, "Resident not found")
+        if state == "blocked":
+            raise RegistrationRejected(409, "This resident has related records that prevent safe deletion")
+        if state != "prepared":
+            raise RegistrationRejected(503, "Resident deletion could not be prepared")
+        try:
+            auth_user_id = UUID(result["auth_user_id"]) if result.get("auth_user_id") else None
+            image_urls = result["image_urls"]
+            if not isinstance(image_urls, list) or not all(isinstance(url, str) for url in image_urls):
+                raise ValueError()
+        except (ValueError, TypeError, KeyError):
+            raise RegistrationRejected(503, "Resident deletion could not be prepared") from None
+        return {"auth_user_id": auth_user_id, "image_urls": image_urls}
+
+    def delete_auth_user(self, user_id):
+        self.accounts.delete_user(user_id)
+
+    def finalize_resident_deletion(self, user_id, resident_id):
+        result = self.store.management_purge(
+            "finalize", actor_id=str(user_id), resident_id=str(resident_id)
+        )
+        state = result.get("state")
+        if state == "forbidden":
+            raise RegistrationRejected(403, "Management access required")
+        if state == "not_found":
+            raise RegistrationRejected(404, "Resident deletion could not be finalized")
+        if state == "blocked":
+            raise RegistrationRejected(409, "Related database records prevent safe deletion")
+        if state != "deleted":
+            raise RegistrationRejected(503, "Resident deletion is still pending; retry it")
 
     @staticmethod
     def _management_result(result):

@@ -27,14 +27,77 @@ class MemoryStore:
         self.invitation_id = str(uuid4())
         self.invitation_digest = hashlib.sha256(DEMO_INVITATION.encode()).hexdigest()
         self.email = "resident@example.com"
+        self.resident_reference = "DEMO-1"
+        self.full_name = "Demo Resident"
+        self.unit_number = "DEMO-101"
+        self.created_at = datetime.now(timezone.utc)
         self.challenges = {}
         self.rates = {}
         self.profile_id = None
         self.fail_finish_once = False
         self.active = True
+        self.deletion_jobs = {}
 
     def close(self):
         pass
+
+    def management_call(self, action, **a):
+        with self.lock:
+            if a.get("actor_id") != str(MANAGER):
+                return {"state": "forbidden"}
+            if action == "list":
+                return {
+                    "state": "listed",
+                    "residents": [] if self.resident_id is None else [{
+                        "resident_id": self.resident_id,
+                        "resident_reference": self.resident_reference,
+                        "full_name": self.full_name,
+                        "unit_number": self.unit_number,
+                        "registered_email": self.email,
+                        "status": "active" if self.active else "inactive",
+                        "account_linked": self.profile_id is not None,
+                        "verified_at": self.created_at.isoformat() if self.profile_id else None,
+                        "created_at": self.created_at.isoformat(),
+                    }],
+                }
+            if action == "update":
+                if self.resident_id is None or a.get("resident_id") != self.resident_id:
+                    return {"state": "not_found"}
+                if self.profile_id and a["registered_email"] != self.email:
+                    return {"state": "conflict"}
+                self.resident_reference = a["resident_reference"]
+                self.full_name = a["full_name"]
+                self.unit_number = a["unit_number"]
+                self.email = a["registered_email"]
+                self.active = a["status"] == "active"
+                return {"state": "updated", "resident_id": self.resident_id}
+            raise AssertionError("Unexpected management resident action")
+
+    def management_purge(self, action, **a):
+        with self.lock:
+            if a.get("actor_id") != str(MANAGER):
+                return {"state": "forbidden"}
+            resident_id = a.get("resident_id")
+            if action == "prepare":
+                if resident_id in self.deletion_jobs:
+                    return {"state": "prepared", **self.deletion_jobs[resident_id]}
+                if self.resident_id is None or resident_id != self.resident_id:
+                    return {"state": "not_found"}
+                self.deletion_jobs[resident_id] = {
+                    "auth_user_id": self.profile_id,
+                    "image_urls": [],
+                }
+                self.profile_id = None
+                self.active = False
+                self.challenges.clear()
+                return {"state": "prepared", **self.deletion_jobs[resident_id]}
+            if action == "finalize":
+                if resident_id not in self.deletion_jobs:
+                    return {"state": "not_found"}
+                self.resident_id = None
+                self.deletion_jobs.pop(resident_id)
+                return {"state": "deleted"}
+            raise AssertionError("Unexpected resident purge action")
 
     def call(self, action, **a):
         with self.lock:
@@ -120,6 +183,9 @@ class MemoryStore:
                     if self.profile_id:
                         return {"state": "conflict"}
                     self.email = a["registered_email"]
+                    self.resident_reference = a["resident_reference"]
+                    self.full_name = a["full_name"]
+                    self.unit_number = a["unit_number"]
                     return {"state": "created", "resident_id": self.resident_id}
                 self.invitation_digest = a["token_digest"]
                 return {"state": "created", "invitation_id": self.invitation_id,
@@ -164,6 +230,10 @@ class FakeAccounts:
         if self.password is None or password != self.password:
             return None
         return RESIDENT, AuthSession(access_token="demo-resident-token", refresh_token="demo-refresh-token", expires_in=3600)
+
+    def delete_user(self, user_id):
+        if user_id == RESIDENT:
+            self.password = None
 
 
 class DemoVerifier:

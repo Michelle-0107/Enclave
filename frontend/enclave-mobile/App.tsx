@@ -351,7 +351,6 @@ function ResidentApp({
         return (
           <ReportDetailsScreen
             report={report}
-            onBack={openMyReports}
             onMapTouchChange={setMapTouchActive}
           />
         );
@@ -446,6 +445,19 @@ function ResidentApp({
           Your community, connected.
         </Text>
       </View>
+
+      {activeTab === 'My Account' && accountFlow.page === 'details' && (
+        <View style={styles.detailsBackBar}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={openMyReports}
+            hitSlop={8}
+            style={styles.detailsBackButton}
+          >
+            <Text style={styles.detailsBackText}>‹ My reports</Text>
+          </Pressable>
+        </View>
+      )}
 
       <ScrollView
         ref={scrollRef}
@@ -586,6 +598,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 28,
     gap: 6,
+  },
+  detailsBackBar: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+    backgroundColor: colors.background,
+    zIndex: 2,
+  },
+  detailsBackButton: {
+    minHeight: 40,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  detailsBackText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.navy,
   },
   brand: {
     fontSize: 23,

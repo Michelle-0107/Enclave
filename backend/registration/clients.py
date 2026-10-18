@@ -19,6 +19,8 @@ class RegistrationStore:
     def __init__(self, settings: RegistrationSettings, *, transport=None):
         self.settings = settings
         self.url = settings.cloud.project_url + "/rest/v1/rpc/enclave_registration_transition"
+        self.management_url = settings.cloud.project_url + "/rest/v1/rpc/enclave_management_resident_directory"
+        self.purge_url = settings.cloud.project_url + "/rest/v1/rpc/enclave_management_resident_purge"
         self.client = httpx.Client(timeout=10, follow_redirects=False, transport=transport, trust_env=False)
 
     def close(self):
@@ -34,6 +36,38 @@ class RegistrationStore:
             if payload is not None and not isinstance(payload, dict):
                 raise RegistrationUnavailable()
             if payload is None and action not in ("lookup_invitation", "challenge", "residency"):
+                raise RegistrationUnavailable()
+            return payload
+        except (httpx.HTTPError, ValueError):
+            raise RegistrationUnavailable() from None
+
+    def management_call(self, action: str, **args):
+        try:
+            response = self.client.post(
+                self.management_url,
+                json={"p_action": action, "p_args": args},
+                headers={**self.settings.admin_headers(), "Content-Profile": "public"},
+            )
+            if response.status_code != 200:
+                raise RegistrationUnavailable()
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise RegistrationUnavailable()
+            return payload
+        except (httpx.HTTPError, ValueError):
+            raise RegistrationUnavailable() from None
+
+    def management_purge(self, action: str, **args):
+        try:
+            response = self.client.post(
+                self.purge_url,
+                json={"p_action": action, "p_args": args},
+                headers={**self.settings.admin_headers(), "Content-Profile": "public"},
+            )
+            if response.status_code != 200:
+                raise RegistrationUnavailable()
+            payload = response.json()
+            if not isinstance(payload, dict):
                 raise RegistrationUnavailable()
             return payload
         except (httpx.HTTPError, ValueError):
@@ -94,4 +128,16 @@ class SupabaseSignup:
                 raise RegistrationUnavailable()
             return UUID(user["id"])
         except (httpx.HTTPError, ValueError, TypeError, KeyError):
+            raise RegistrationUnavailable() from None
+
+    def delete_user(self, user_id: UUID):
+        try:
+            response = self.client.delete(
+                self.base + "/admin/users/" + str(user_id),
+                headers=self.settings.admin_headers(),
+            )
+            if response.status_code in (200, 204, 404):
+                return
+            raise RegistrationUnavailable()
+        except httpx.HTTPError:
             raise RegistrationUnavailable() from None
