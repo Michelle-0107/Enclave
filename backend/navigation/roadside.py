@@ -25,6 +25,9 @@ ALL_ROADS = ROADS | {'primary','primary_link','trunk','trunk_link','motorway','m
 PATHS = {'footway', 'path', 'steps', 'pedestrian', 'cycleway'}
 LOCAL_ROADS = {'residential', 'living_street', 'service', 'unclassified'}
 LOCAL_CROSSING_SPACING = 25.0
+OPEN_ACCESS_METERS = 40.0
+ENDPOINT_ACCESS_METERS = 100.0
+BUILDING_ACCESS_METERS = 350.0
 OFFSET = 3.0
 SCALE = 111_195.08
 
@@ -290,6 +293,95 @@ class RoadsideGraph:
         self.edges = [Edge(e.a,e.b,(self.nodes[e.a],self.nodes[e.b]),e.name,e.kind,e.way_id,e.direction,e.grade) for e in self.edges]
         self.edges = [e for e in self.edges if all(self.inside(p) for p in e.points) and (e.kind != 'connection' or not any(e.grade==g and proper_intersection(*e.points,c,d) for c,d,g in self.nearby(*e.points)))]
         self.add_local_crossings(local_segments)
+        from .land_access import LandAccess
+        self.land_access = LandAccess(root,points,node_tags,ways,resident_access=resident_access)
+        self.add_open_access()
+        self.components = self.connected_components()
+        self.edge_index = BoundsIndex([(min(e.points[0][0],e.points[1][0]),min(e.points[0][1],e.points[1][1]),
+                                       max(e.points[0][0],e.points[1][0]),max(e.points[0][1],e.points[1][1])) for e in self.edges])
+
+    def connected_components(self):
+        adjacency=defaultdict(list)
+        for edge in self.edges:
+            adjacency[edge.a].append(edge.b); adjacency[edge.b].append(edge.a)
+        result={}
+        for node in adjacency:
+            if node in result: continue
+            group=len(result); result[node]=group; pending=[node]
+            while pending:
+                for other in adjacency[pending.pop()]:
+                    if other not in result: result[other]=group; pending.append(other)
+        return result
+
+    @staticmethod
+    def project(point,edge):
+        p,a,b=map(xy,(point,*edge.points)); dx,dy=b[0]-a[0],b[1]-a[1]
+        length2=dx*dx+dy*dy
+        f=max(0,min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/length2)) if length2 else 0
+        q=coordinate((a[0]+f*dx,a[1]+f*dy))
+        return distance(point,q),f,q
+
+    def access_clear(self,a,b,*,own_buildings=frozenset(),allow_road_endpoint=False):
+        from .land_access import intersection
+        if not self.land_access.clear(a,b,own_buildings=own_buildings): return False
+        for c,d,grade in self.nearby(a,b):
+            if grade != ('0',False,False): continue
+            hit=intersection(a,b,c,d)
+            if hit is None: continue
+            at=(a[0]+(b[0]-a[0])*hit[0],a[1]+(b[1]-a[1])*hit[0])
+            # A selected point may lie exactly on a road centreline. Contact
+            # there does not authorize crossing a road farther along the link.
+            if not allow_road_endpoint or min(distance(a,at),distance(b,at))>.01: return False
+            middle=((a[0]+b[0])/2,(a[1]+b[1])/2)
+            if self.land_access.segment_distance(middle,c,d)<.01 and distance(a,b)>.1: return False
+        return True
+
+    def add_open_access(self):
+        """Connect nearby disconnected ground approaches across clear open land.
+
+        Only dangling ports need repair. Indexed endpoint-to-segment projections
+        handle a long target path without requiring a nearby OSM vertex. Every
+        inferred link remains an explicit edge, including for damage checks.
+        """
+        components=self.connected_components()
+        degree=defaultdict(int); ports={}
+        for edge in self.edges:
+            for node in (edge.a,edge.b):
+                degree[node]+=1
+                if edge.grade==('0',False,False) and edge.kind in {'footpath','sidewalk','road_fallback','steps'}:
+                    ports[node]=edge
+        candidates=[(i,e) for i,e in enumerate(self.edges)
+                    if e.grade==('0',False,False) and e.kind in {'footpath','sidewalk','road_fallback'}]
+        from .land_access import bounds
+        index=BoundsIndex([bounds(e.points) for _,e in candidates])
+        cuts=defaultdict(list); links=[]; pairs=set()
+        for node in sorted(ports):
+            if degree[node]!=1: continue
+            point=self.nodes[node]; delta=OPEN_ACCESS_METERS/SCALE
+            nearby=index.candidates((point[0]-delta/math.cos(math.radians(3)),point[1]-delta),
+                                    (point[0]+delta/math.cos(math.radians(3)),point[1]+delta))
+            best={}
+            for j in nearby:
+                i,edge=candidates[j]; group=components[edge.a]
+                if group==components[node]: continue
+                gap,f,q=self.project(point,edge)
+                if not .05<gap<=OPEN_ACCESS_METERS: continue
+                if group not in best or gap<best[group][0]:
+                    if self.access_clear(point,q): best[group]=(gap,i,f,q)
+            for gap,i,f,q in sorted(best.values())[:3]:
+                edge=self.edges[i]
+                target=edge.a if f<1e-8 else edge.b if f>1-1e-8 else f'open-access:{i}:{f:.9f}'
+                pair=tuple(sorted((node,target)))
+                if pair in pairs: continue
+                pairs.add(pair); self.nodes[target]=q
+                if target not in (edge.a,edge.b): cuts[i].append((f,target,q))
+                links.append(Edge(node,target,(point,q),'inferred outdoor connection','open_access',''))
+        rebuilt=[]
+        for i,edge in enumerate(self.edges):
+            entries=sorted(set([(0,edge.a,edge.points[0]),*cuts[i],(1,edge.b,edge.points[1])]))
+            rebuilt.extend(Edge(a[1],b[1],(a[2],b[2]),edge.name,edge.kind,edge.way_id,edge.direction,edge.grade)
+                           for a,b in zip(entries,entries[1:]))
+        self.edges=[*rebuilt,*links]
 
     def join_corner(self,a,b,ports,grade):
         """Meet offset road sides at their intersection, rather than a backtrack.
@@ -366,21 +458,46 @@ class RoadsideGraph:
     def add(self,a,b,name,kind,way_id,direction=0,grade=('0',False,False)):
         self.edges.append(Edge(a,b,(self.nodes[a],self.nodes[b]),name,kind,way_id,direction,grade))
 
+    def snap_candidates(self,point):
+        buildings=self.land_access.buildings_at(point)
+        radius=BUILDING_ACCESS_METERS if buildings else ENDPOINT_ACCESS_METERS
+        delta=radius/SCALE; dx=delta/math.cos(math.radians(3))
+        best={}
+        for index in self.edge_index.candidates((point[0]-dx,point[1]-delta),(point[0]+dx,point[1]+delta)):
+            edge=self.edges[index]
+            if edge.kind in {'connection','crossing','unmarked_crossing','open_access'}: continue
+            if distance(*edge.points)<.01: continue
+            projections=[self.project(point,edge),
+                         *[(distance(point,q),f,q) for f,q in ((0,edge.points[0]),(1,edge.points[1]))]]
+            if edge.grade!=('0',False,False):
+                # Elevated entrances can serve an endpoint in the building
+                # they actually touch; proximity cannot raise an outdoor user
+                # onto a bridge, tunnel or an unrelated floor.
+                if edge.kind not in {'footbridge','underpass'}: continue
+                projections=([self.project(point,edge)] if self.project(point,edge)[0]<.25 else [])+[
+                    (distance(point,q),f,q) for f,q in ((0,edge.points[0]),(1,edge.points[1]))
+                    if buildings and self.land_access.on_building_boundary(q,buildings)]
+            for gap,fraction,q in projections:
+                if gap>radius or not self.access_clear(point,q,own_buildings=buildings,allow_road_endpoint=True): continue
+                candidate=(gap,index,fraction,q); group=self.components[edge.a]
+                if group not in best or candidate[:2]<best[group][:2]: best[group]=candidate
+        if not best:
+            raise NavigationRejected(422,'No nearby walking access can be connected without crossing a mapped barrier or road. Choose another access point.')
+        return sorted(best.values())
+
     def snap(self,point):
-        p = xy(point); best = None
-        for index, edge in enumerate(self.edges):
-            if edge.kind in {'connection','crossing','unmarked_crossing'}: continue
-            a,b = map(xy,edge.points); dx,dy = b[0]-a[0],b[1]-a[1]
-            length2 = dx*dx+dy*dy
-            if length2 < 0.0001: continue
-            fraction = max(0,min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/length2))
-            q = coordinate((a[0]+fraction*dx,a[1]+fraction*dy))
-            gap = distance(point,q)
-            if gap > 50 or any(edge.grade==g and proper_intersection(point,q,c,d) for c,d,g in self.nearby(point,q)): continue
-            candidate = (gap,index,fraction,q)
-            if best is None or candidate[:2] < best[:2]: best = candidate
-        if best is None: raise NavigationRejected(422,'Choose a nearby mapped walking access on the same side of the road; no unchecked road crossing can be added.')
-        return best
+        return self.snap_candidates(point)[0]
+
+    def matched_snaps(self,origin,target):
+        starts=self.snap_candidates(origin); ends=self.snap_candidates(target)
+        by_group={self.components[self.edges[e[1]].a]:e for e in ends}
+        pairs=[(start,by_group[self.components[self.edges[start[1]].a]]) for start in starts
+               if self.components[self.edges[start[1]].a] in by_group]
+        if not pairs:
+            raise NavigationRejected(422,'No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations.')
+        # Select access independently of repairs and route mode. A damage zone
+        # must not move the endpoints or silently pick an entrance beyond it.
+        return min(pairs,key=lambda pair:(pair[0][0]+pair[1][0],pair[0][1],pair[1][1]))
 
     def validate_accessible_crossings(self,geometry):
         def follows(a,b,edge):
@@ -419,11 +536,16 @@ class RoadsideGraph:
         if body.route_mode == 'accessible' and not demo_mode:
             raise NavigationRejected(422,'No field-verified step-free network is available in this service area. Ordinary road walking cannot be labelled wheelchair accessible.')
         origin=(body.origin.longitude,body.origin.latitude); target=(body.destination.longitude,body.destination.latitude)
-        start,end = self.snap(origin),self.snap(target)
+        start,end = self.matched_snaps(origin,target)
+        origin_building=bool(self.land_access.buildings_at(origin))
+        target_building=bool(self.land_access.buildings_at(target))
+        buildings=origin_building or target_building
+        if body.route_mode=='accessible' and (buildings or max(start[0],end[0])>5):
+            raise NavigationRejected(422,'The building exit or open-land approach is assumed, not verified step-free access.')
         adjacency=defaultdict(list)
         zone_index=BoundsIndex(boxes)
         def link(a,b,edge,pa,pb):
-            if edge.way_id in excluded_way_ids or (body.route_mode == 'accessible' and edge.kind in {'steps','unmarked_crossing'}): return
+            if edge.way_id in excluded_way_ids or (body.route_mode == 'accessible' and edge.kind in {'steps','unmarked_crossing','open_access'}): return
             length=distance(pa,pb)
             if zone_index.intersects(pa,pb): return
             if edge.direction != -1: adjacency[a].append((b,length,edge,pa,pb))
@@ -434,6 +556,8 @@ class RoadsideGraph:
             if i==end[1]: cuts.append((end[2],'@end',end[3]))
             cuts.sort(key=lambda row:row[0])
             for a,b in zip(cuts,cuts[1:]): link(a[1],b[1],edge,a[2],b[2])
+        if zone_index.intersects(origin,start[3]) or zone_index.intersects(end[3],target):
+            raise NavigationRejected(422,'A walking approach intersects a reported damaged area; choose another access point.')
         queue=[(0.0,'@start')]; best={'@start':0.0}; previous={}
         while queue:
             cost,node=heapq.heappop(queue)
@@ -450,6 +574,15 @@ class RoadsideGraph:
         while cursor in previous:
             before,edge,pa,pb,length=previous[cursor]; selected.append((edge,pa,pb,length)); cursor=before
         selected.reverse()
+        # Show and count outdoor approaches rather than silently teleporting a
+        # user from open land to the path. Indoor travel remains an association
+        # to the entrance: we have no surveyed floor plan or exit directions.
+        start_approach=start[0]>5 and not origin_building
+        end_approach=end[0]>5 and not target_building
+        if start_approach:
+            selected.insert(0,(Edge('@origin','@start',(origin,start[3]),'outdoor approach','open_access',''),origin,start[3],start[0]))
+        if end_approach:
+            selected.append((Edge('@end','@target',(end[3],target),'outdoor approach','open_access',''),end[3],target,end[0]))
         geometry=[selected[0][1]]; maneuvers=[]; total=0.0
         kinds=set(); crossing_ids=set(); unmarked_ids=set()
         for edge,pa,pb,length in selected:
@@ -462,6 +595,7 @@ class RoadsideGraph:
             text=(f'Use the mapped pedestrian crossing at {edge.name}.' if edge.kind=='crossing' else
                   f'Cross the private local road at {edge.name} when traffic is clear; this is an unmarked crossing.' if edge.kind=='unmarked_crossing' else
                   f'Walk along the road side of {edge.name}{travel}; a sidewalk is not recorded.' if edge.kind=='road_fallback' else
+                  f'Walk across the open area{travel}; this connection is inferred.' if edge.kind=='open_access' else
                   'Continue along the path.' if edge.kind=='connection' else
                   f'Continue along {edge.name}{travel}.')
             maneuver_type=1 if not maneuvers else 8
@@ -481,7 +615,7 @@ class RoadsideGraph:
             distance_meters=0,duration_seconds=0,begin_shape_index=len(geometry)-1,end_shape_index=len(geometry)-1,distance_from_start_meters=total,coordinate=geometry[-1]))
         return RouteResponse(route_id=uuid4(),generated_at=datetime.now(timezone.utc),area=area_id,route_mode=body.route_mode,
             routing_engine='osm_roadside',geometry=RouteGeometry(coordinates=geometry),distance_meters=total,duration_seconds=total/1.2,
-            origin_snap_distance_meters=start[0],destination_snap_distance_meters=end[0],maneuvers=maneuvers,data_source='openstreetmap_unverified',
+            origin_snap_distance_meters=0 if start_approach else start[0],destination_snap_distance_meters=0 if end_approach else end[0],maneuvers=maneuvers,data_source='openstreetmap_unverified',
             road_fallback_used='road_fallback' in kinds,
             crossing_policy='resident_local_roads' if unmarked_ids else 'mapped_facilities_only',
             mapped_crossing_count=len(crossing_ids),unmarked_crossing_count=len(unmarked_ids),
@@ -493,6 +627,12 @@ class RoadsideGraph:
                 ('Includes unmarked private local-road crossings under the resident policy; these are not mapped zebra crossings or verified step-free connections.'
                  if unmarked_ids else 'This route uses only mapped pedestrian facilities when crossing roads. Missing map data can prevent routing.'),
                 'Road walking and endpoint approaches are not field verified or certified accessible. Check traffic and local access before proceeding.',
+                *(['Includes inferred outdoor connections across open land; these are not mapped or field-verified footpaths.']
+                  if 'open_access' in kinds else []),
+                *(['Building endpoint access is assumed. The route begins or ends at the associated outdoor path or mapped building entrance; indoor directions are not provided.']
+                  if buildings else []),
+                *(['Indoor travel to or from the associated entrance is not included in the route distance.']
+                  if buildings else []),
                 *(['Includes private residential ways under the app resident-access policy for verified residents of supported service areas.']
                   if any(edge.way_id in self.private_way_ids for edge,_,_,_ in selected) else []),
                 *(['Demo-only route: facility damage and step-free annotations are simulated and not field verified.'] if demo_mode else []),
