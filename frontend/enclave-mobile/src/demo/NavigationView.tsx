@@ -1,8 +1,9 @@
+import { NativeMap as Map } from '../navigation/NativeMap';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Camera, GeoJSONSource, Layer, Map, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
+import { Camera, GeoJSONSource, Layer, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
 import { meters, type Coordinate, type Route } from './network';
 import type { Instruction } from './navigationProgress';
 import { markerRotation, movementHeading, type HeadingState, type MotionFix } from './navigationHeading';

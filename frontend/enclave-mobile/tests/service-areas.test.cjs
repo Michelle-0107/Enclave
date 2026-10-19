@@ -42,7 +42,7 @@ async function main(){let count=0;async function test(name,fn){await fn();count+
  });
  await test('Demo screen passes the supplied graph to place search, endpoint selection and route calculation',()=>{
   const hooks=runtime(false);const Screen=compile('src/demo/DemoMapScreen.tsx',{
-   react:hooks.react,'react/jsx-runtime':jsx,'react-native':native,'@maplibre/maplibre-react-native':native,
+   react:hooks.react,'react/jsx-runtime':jsx,'react-native':native,'../navigation/NativeMap':{NativeMap:'Map'},'@maplibre/maplibre-react-native':native,
    '@expo/vector-icons':{MaterialCommunityIcons:'Icon'},'expo-location':{},'../theme':{colors:{}},'./network':network,'./access':access,'./driving':driving,
    './JourneyGuidance':{__esModule:true,default:'JourneyGuidance'},'../savedPlaces/SavedPlacesControl':{__esModule:true,default:'SavedPlacesControl'},
   }).default;

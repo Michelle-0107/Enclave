@@ -1,3 +1,4 @@
+import { NativeMap as Map } from '../navigation/NativeMap';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,7 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
+import { Camera, Marker } from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { reportsApi, type ApiError, type ReportHistoryEvent, type ReportRecord } from '../lib/api';
