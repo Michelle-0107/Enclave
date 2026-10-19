@@ -537,10 +537,14 @@ def create_app(
         area = find_area(area_id)
         if area is None or not area.resident_demo_supported or not area.routing_supported:
             raise HTTPException(404, "Resident demo routes are not available for this service area")
-        try:
+        def calculate():
+            # Cold graph construction is CPU-heavy too; keep it off the event loop.
             dataset = demo_area_dataset(area.id).dataset
             graph = walking_graph(area.id)
-            return await run_in_threadpool(calculate_demo_routes, area.id, area.bbox, body, dataset, graph)
+            return calculate_demo_routes(area.id, area.bbox, body, dataset, graph)
+
+        try:
+            return await run_in_threadpool(calculate)
         except NavigationRejected as failure:
             raise HTTPException(failure.status, failure.message) from None
         except (OSError, ValueError):

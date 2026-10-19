@@ -249,6 +249,7 @@ export class ApiError extends Error {
 
 type RequestOptions = {
   timeoutMs?: number;
+  timeoutMessage?: string;
   method?: 'GET' | 'POST';
   accessToken?: string;
   body?: FormData | Record<string, unknown>;
@@ -400,7 +401,7 @@ async function request<T>(
       throw new ApiError(
         isFormData
           ? 'The request timed out. Check My Reports before submitting again.'
-          : 'The request timed out. Please check your connection and try again.',
+          : options.timeoutMessage ?? 'The request timed out. Please check your connection and try again.',
         0,
       );
     }
@@ -834,7 +835,9 @@ export const demoAreasApi = {
   },
   getRoutes(accessToken: string, areaId: string, payload: DemoRouteRequest): Promise<DemoRouteResponse> {
     return request(`/api/v1/navigation/areas/${encodeURIComponent(areaId)}/demo-routes`, {
-      method: 'POST', accessToken, body: payload, timeoutMs: 30000,
+      // Allow for a cold service and its first server-side road graph build.
+      method: 'POST', accessToken, body: payload, timeoutMs: 90000,
+      timeoutMessage: 'Route calculation took too long. Please try Choose route again in a moment.',
     });
   },
 };
