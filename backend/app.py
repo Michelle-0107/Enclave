@@ -2,6 +2,8 @@
 
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+import logging
+import time
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -52,6 +54,7 @@ MAX_PHOTO_BYTES = 10 * 1024 * 1024
 PHOTO_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
 bearer = HTTPBearer(scheme_name="SupabaseAccessToken", auto_error=False,
                     description="Paste the Supabase Auth access_token, without the Bearer prefix.")
+route_logger = logging.getLogger('uvicorn.error')
 
 
 @dataclass(frozen=True)
@@ -166,6 +169,27 @@ def create_app(
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
     )
+
+    @application.middleware('http')
+    async def trace_demo_route(request, call_next):
+        if request.method != 'POST' or not (request.url.path.startswith('/api/v1/navigation/areas/')
+                                            and request.url.path.endswith('/demo-routes')):
+            return await call_next(request)
+        trace = uuid4().hex
+        request.state.demo_route_trace = trace
+        started = time.monotonic()
+        # No request body, coordinates, credentials, or exception text in logs.
+        route_logger.info('enclave_route received trace=%s', trace)
+        try:
+            response = await call_next(request)
+        except Exception as error:
+            route_logger.error('enclave_route failed trace=%s elapsed_ms=%d error_type=%s',
+                trace, (time.monotonic()-started)*1000, type(error).__name__)
+            raise
+        route_logger.info('enclave_route response trace=%s status=%d elapsed_ms=%d',
+            trace, response.status_code, (time.monotonic()-started)*1000)
+        return response
+
     application.include_router(registration_router)
     application.include_router(maintenance_router(current_user))
 
@@ -531,17 +555,29 @@ def create_app(
                           422: {"description": "Invalid endpoints or no route satisfies mapped crossing rules."},
                           503: {"description": "Demo routing graph unavailable."}},
                       description="Authenticated resident demo routing on the server-owned OSM roadside graph. Facility damage and step-free annotations are simulated; routes are not field verified.")
-    async def navigation_demo_routes(response: Response, body: DemoRouteRequest,
+    async def navigation_demo_routes(request: Request, response: Response, body: DemoRouteRequest,
             area_id: str = Path(pattern=r'^[a-z][a-z0-9-]{1,63}$'), user: AuthenticatedUser = Depends(active_resident)):
         response.headers["Cache-Control"] = "private, no-store"
         area = find_area(area_id)
         if area is None or not area.resident_demo_supported or not area.routing_supported:
             raise HTTPException(404, "Resident demo routes are not available for this service area")
+        trace = request.state.demo_route_trace
+        route_logger.info('enclave_route authenticated trace=%s area=%s', trace, area.id)
         def calculate():
             # Cold graph construction is CPU-heavy too; keep it off the event loop.
+            started = time.monotonic()
             dataset = demo_area_dataset(area.id).dataset
+            route_logger.info('enclave_route dataset_ready trace=%s elapsed_ms=%d',
+                trace, (time.monotonic()-started)*1000)
+            started = time.monotonic()
             graph = walking_graph(area.id)
-            return calculate_demo_routes(area.id, area.bbox, body, dataset, graph)
+            route_logger.info('enclave_route graph_ready trace=%s elapsed_ms=%d',
+                trace, (time.monotonic()-started)*1000)
+            started = time.monotonic()
+            result = calculate_demo_routes(area.id, area.bbox, body, dataset, graph)
+            route_logger.info('enclave_route calculated trace=%s elapsed_ms=%d',
+                trace, (time.monotonic()-started)*1000)
+            return result
 
         try:
             return await run_in_threadpool(calculate)

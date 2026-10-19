@@ -60,9 +60,32 @@ class DemoRoutingStartupTests(unittest.TestCase):
                 self.assertEqual(set(threads), {'dataset', 'graph', 'calculate'})
                 self.assertTrue(all(thread != loop_thread for thread in threads.values()))
 
-        with patch('backend.app.demo_area_dataset', dataset), patch('backend.app.walking_graph', graph), \
+        with self.assertLogs('uvicorn.error', level='INFO') as logs, \
+                patch('backend.app.demo_area_dataset', dataset), patch('backend.app.walking_graph', graph), \
                 patch('backend.app.calculate_demo_routes', calculate):
             asyncio.run(check())
+        output = '\n'.join(logs.output)
+        for stage in ('received', 'authenticated', 'dataset_ready', 'graph_ready', 'calculated', 'response'):
+            self.assertIn('enclave_route '+stage, output)
+        for private in ('fixture-resident', fixtures.RESIDENT, '101.7304', '3.2254'):
+            self.assertNotIn(private, output)
+
+    def test_rejected_auth_is_logged_without_starting_the_graph(self):
+        fixture = fixtures.NavigationTests()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        client = fixture.client()
+        with self.assertLogs('uvicorn.error', level='INFO') as logs, patch('backend.app.walking_graph') as graph:
+            response = client.post('/api/v1/navigation/areas/kl-east-pilot/demo-routes', json={
+                'origin': {'longitude': 101.7304, 'latitude': 3.2254},
+                'destination': {'longitude': 101.7312, 'latitude': 3.2260},
+            })
+        self.assertEqual(response.status_code, 401)
+        graph.assert_not_called()
+        output = '\n'.join(logs.output)
+        self.assertIn('enclave_route received', output)
+        self.assertIn('status=401', output)
+        self.assertNotIn('authenticated', output)
 
 
 if __name__ == '__main__':

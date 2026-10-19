@@ -70,8 +70,9 @@ def _demo_constraints(dataset, mode):
     return boxes, excluded_way_ids
 
 
-def _options(area_id, dataset, graph, origin, destination, profile):
-    modes: tuple[RouteMode, ...] = ('accessible',) if profile == 'wheelchair' else ('shortest', 'avoid_damage', 'accessible')
+def _options(area_id, dataset, graph, origin, destination, profile, *, modes=None):
+    if modes is None:
+        modes = ('accessible',) if profile == 'wheelchair' else ('shortest', 'avoid_damage', 'accessible')
     result = []
     for mode in modes:
         boxes, excluded = _demo_constraints(dataset, mode)
@@ -122,10 +123,16 @@ def calculate_demo_routes(area_id, bounds, request, dataset, graph):
     direct_options = None
     required_mode = 'accessible' if request.profile == 'wheelchair' else 'shortest'
     for gap, selected in attempts:
-        options = _options(area_id, dataset, graph, selected, destination, request.profile)
+        # Failed alternate starts need only the required mode. Calculate the
+        # other modes once, after a connected start has actually been found.
+        options = _options(area_id, dataset, graph, selected, destination, request.profile,
+                           modes=None if direct_options is None else (required_mode,))
         if direct_options is None:
             direct_options = options
         if any(item.mode == required_mode and item.route is not None for item in options):
+            if gap > 3 and request.profile == 'walking':
+                options.extend(_options(area_id, dataset, graph, selected, destination, request.profile,
+                                        modes=('avoid_damage', 'accessible')))
             return DemoRouteResponse(
                 area_id=area_id,
                 requested_origin=request.origin,

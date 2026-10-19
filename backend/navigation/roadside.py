@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 
 from .contracts import Maneuver, RouteGeometry, RouteResponse
 from .provider import NavigationRejected
-from .zones import route_intersects_zone
+from .zones import BoundsIndex
 
 ROADS = {'residential', 'living_street', 'service', 'unclassified', 'tertiary', 'tertiary_link', 'secondary', 'secondary_link'}
 ALL_ROADS = ROADS | {'primary','primary_link','trunk','trunk_link','motorway','motorway_link','road'}
@@ -197,11 +197,23 @@ class RoadsideGraph:
         # fallback over the same section. This preserves a distance objective;
         # the displayed shortest route is not secretly optimized for a penalty.
         pedestrian_edges=[e for e in self.edges if e.kind in {'footpath','footbridge','underpass'}]
+        prepared_paths=[]
+        path_bounds=[]
+        for path in pedestrian_edges:
+            c,d=map(xy,path.points); ex,ey=d[0]-c[0],d[1]-c[1]
+            prepared_paths.append((path,c,ex,ey,ex*ex+ey*ey))
+            # The existing rule permits 1% extension and up to 10 m offset.
+            # Index that whole envelope so no potentially matching path is lost.
+            margin_x,margin_y=abs(ex)*0.01+10,abs(ey)*0.01+10
+            west,south=coordinate((min(c[0],d[0])-margin_x,min(c[1],d[1])-margin_y))
+            east,north=coordinate((max(c[0],d[0])+margin_x,max(c[1],d[1])+margin_y))
+            path_bounds.append((west,south,east,north))
+        path_index=BoundsIndex(path_bounds)
         def parallel_path(edge):
             a,b=map(xy,edge.points); dx,dy=b[0]-a[0],b[1]-a[1]
-            for path in pedestrian_edges:
+            for index in path_index.candidates(*edge.points):
+                path,c,ex,ey,length2=prepared_paths[index]
                 if path.grade != edge.grade: continue
-                c,d=map(xy,path.points); ex,ey=d[0]-c[0],d[1]-c[1]; length2=ex*ex+ey*ey
                 if length2<0.01 or abs(dx*ex+dy*ey)<0.95*math.hypot(dx,dy)*math.sqrt(length2): continue
                 fractions=[((p[0]-c[0])*ex+(p[1]-c[1])*ey)/length2 for p in (a,b)]
                 if all(-0.01<=f<=1.01 for f in fractions) and all(math.hypot(p[0]-c[0]-f*ex,p[1]-c[1]-f*ey)<10 for p,f in zip((a,b),fractions)):
@@ -409,10 +421,11 @@ class RoadsideGraph:
         origin=(body.origin.longitude,body.origin.latitude); target=(body.destination.longitude,body.destination.latitude)
         start,end = self.snap(origin),self.snap(target)
         adjacency=defaultdict(list)
+        zone_index=BoundsIndex(boxes)
         def link(a,b,edge,pa,pb):
             if edge.way_id in excluded_way_ids or (body.route_mode == 'accessible' and edge.kind in {'steps','unmarked_crossing'}): return
             length=distance(pa,pb)
-            if any(route_intersects_zone([pa,pb],box) for box in boxes): return
+            if zone_index.intersects(pa,pb): return
             if edge.direction != -1: adjacency[a].append((b,length,edge,pa,pb))
             if edge.direction != 1: adjacency[b].append((a,length,edge,pb,pa))
         for i,edge in enumerate(self.edges):
