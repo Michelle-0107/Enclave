@@ -297,6 +297,7 @@ const styles = StyleSheet.create({
   },
 
   logo: {
+    tintColor: colors.brand,
     width: 22,
     height: 26,
   },

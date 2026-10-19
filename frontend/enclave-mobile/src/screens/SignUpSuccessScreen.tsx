@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: '700',
     letterSpacing: 5,
-    color: colors.navy,
+    color: colors.brand,
   },
   introduction: {
     marginTop: 36,

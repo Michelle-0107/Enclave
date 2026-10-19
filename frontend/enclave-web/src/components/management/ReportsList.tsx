@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import { Input } from '@/components/ui/input';
+import { ReportStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
 import { Label } from '@/components/ui/label';
 import { getManagementReports, type ManagementReport } from '@/lib/api';
 
@@ -23,18 +24,6 @@ const statusOptions: ManagementReportStatus[] = [
   'in_progress',
   'resolved',
 ];
-
-function getStatusColor(status: ManagementReportStatus) {
-  if (status === 'approved' || status === 'resolved') {
-    return 'text-status-green';
-  }
-
-  if (status === 'rejected') {
-    return 'text-status-red';
-  }
-
-  return 'text-status-orange';
-}
 
 export default function ReportsList({
   initialStatus = 'all',
@@ -108,7 +97,7 @@ export default function ReportsList({
       </h1>
 
       <p className="text-sm text-muted-foreground">
-        Review reports and manage the backend-supported status workflow.
+        Review incoming issues and follow their repair progress.
       </p>
 
       <div className="flex flex-col gap-2">
@@ -207,22 +196,15 @@ export default function ReportsList({
           filteredReports.map((report) => (
             <Link
               key={report.id}
-              href={`/management/reports/${report.id}`}
+              href={`/management/reports/${encodeURIComponent(report.id)}`}
               className="flex flex-col gap-2 border-b py-7 first:pt-0 transition-colors hover:bg-secondary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
-                <h2 className="text-lg font-semibold">
+              <div className="flex min-w-0 items-center justify-between gap-4">
+                <h2 className="min-w-0 flex-1 text-lg font-semibold">
                   {report.title}
                 </h2>
 
-                <p
-                  className={[
-                    'text-xs sm:w-[218px] sm:shrink-0',
-                    getStatusColor(report.status),
-                  ].join(' ')}
-                >
-                  {reportStatusLabels[report.status]}
-                </p>
+                <div className="report-row-badges"><ReportStatusBadge status={report.status} /><PriorityBadge priority={report.priority} /></div>
               </div>
 
               <p className="text-xs text-muted-foreground">

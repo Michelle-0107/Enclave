@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Photo, control } from '@/components/maintenance/Common';
+import { TaskStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
+import { toMaintenanceTask } from '@/lib/maintenance/api';
 import WorkflowGuide from '@/components/ui/WorkflowGuide';
 import TaskHistory from '@/components/maintenance/TaskHistory';
 
@@ -102,7 +104,7 @@ export default function MaintenanceTaskPanel({ report, onChange }: { report: Man
     </form>}
     {!loading && loaded && !task && report.status === 'resolved' && <p>No maintenance task is linked to this report.</p>}
     {!loading && loaded && task && <>
-      <p className="text-sm font-semibold capitalize">{task.status.replaceAll('_', ' ')}</p>
+      <div className="flex flex-wrap gap-2"><TaskStatusBadge status={toMaintenanceTask(task).status} /><PriorityBadge priority={toMaintenanceTask(task).priority} /></div>
       <p className="text-sm">{teams.find(team => team.id === task.assigned_team_id)?.name ?? staff.find(person => person.profile_id === task.assigned_staff_id)?.display_name ?? 'Previously assigned staff'} · Due {task.target_date}</p>
       <p className="whitespace-pre-wrap text-sm">{task.instructions}</p>
       {task.work_notes && <div><h3 className="font-semibold">Work notes</h3><p className="whitespace-pre-wrap text-sm">{task.work_notes}</p></div>}

@@ -1,67 +1,151 @@
 'use client';
 
-import { useState } from 'react';
-import { createNotification, type NotificationResult } from '@/lib/api';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { Mail, Plus } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getReceivedMessages, getSentAnnouncements, publishAnnouncement, readMessage, type ReceivedMessage } from '@/lib/message-centre';
+import type { NotificationResult } from '@/lib/api';
 
-export default function ManagementNotificationsPage() {
+function dateLabel(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleString();
+}
+
+export default function MessageCentre() {
+  const { user } = useAuth();
+  // Changing staff accounts remounts all private message/draft state.
+  return user ? <MessageCentreSession key={user.user_id} userId={user.user_id} /> : null;
+}
+
+function MessageCentreSession({ userId }: { userId: string }) {
+  const router = useRouter();
+  const [tab, setTab] = useState<'received' | 'sent'>('received');
+  const [received, setReceived] = useState<ReceivedMessage[]>([]);
+  const [sent, setSent] = useState<NotificationResult[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [opening, setOpening] = useState<string | null>(null);
+  const [compose, setCompose] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState('');
-  const [sent, setSent] = useState<NotificationResult | null>(null);
+  const [sendError, setSendError] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const sequence = useRef(0);
+  const alive = useRef(true);
+  const publishLock = useRef(false);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSending(true);
-    setError('');
-    setSent(null);
+  const refresh = useCallback(async () => {
+    const request = ++sequence.current;
+    setLoading(true); setError('');
     try {
-      const result = await createNotification({
-        title: title.trim(),
-        message: message.trim(),
-        ...(expiresAt ? { expires_at: new Date(expiresAt).toISOString() } : {}),
-      });
-      setSent(result);
-      setTitle('');
-      setMessage('');
-      setExpiresAt('');
+      const [result, history] = await Promise.allSettled([getReceivedMessages(), getSentAnnouncements(userId)]);
+      if (alive.current && request === sequence.current) {
+        if (history.status === 'fulfilled') setSent(history.value);
+        if (result.status === 'fulfilled') { setReceived(result.value.items); setWarnings(result.value.warnings); }
+        else setError(result.reason instanceof Error ? result.reason.message : 'Unable to load messages.');
+      }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to publish notification.');
+      if (alive.current && request === sequence.current) setError(reason instanceof Error ? reason.message : 'Unable to load messages.');
     } finally {
-      setSending(false);
+      if (alive.current && request === sequence.current) setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    alive.current = true;
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) void refresh(); });
+    return () => { cancelled = true; alive.current = false; };
+  }, [refresh]);
+
+  async function openMessage(item: ReceivedMessage) {
+    if (opening !== null) return;
+    setOpening(item.id); setError('');
+    try {
+      await readMessage(item);
+      if (!alive.current) return;
+      sequence.current++; setLoading(false);
+      setReceived(items => items.map(current => current.id === item.id ? { ...current, unread: false } : current));
+      if (item.href) router.push(item.href);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to open this message.');
+    } finally { setOpening(null); }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (publishLock.current) return;
+    setSendError('');
+    if (!title.trim() || !message.trim()) { setSendError('Enter a title and message.'); return; }
+    const expiry = expiresAt ? new Date(expiresAt) : null;
+    if (expiry && (!Number.isFinite(expiry.getTime()) || expiry.getTime() <= Date.now())) {
+      setSendError('Choose an expiry time in the future.'); return;
+    }
+    publishLock.current = true; setSending(true);
+    try {
+      const { items } = await publishAnnouncement(userId, {
+        title: title.trim(), message: message.trim(), ...(expiry ? { expires_at: expiry.toISOString() } : {}),
+      });
+      if (!alive.current) return;
+      // Ignore any older refresh that would replace this successful result.
+      sequence.current++; setLoading(false); setSent(items); setTab('sent'); setCompose(false);
+      setTitle(''); setMessage(''); setExpiresAt(''); setConfirmation('Announcement sent to resident app notifications.');
+    } catch (reason) {
+      if (alive.current) setSendError(reason instanceof Error ? reason.message : 'Unable to send. Please try again.');
+    } finally {
+      publishLock.current = false;
+      if (alive.current) setSending(false);
     }
   }
 
-  return (
-    <div className="flex flex-col gap-7">
-      <h1 className="text-[30px] font-semibold leading-[1.45] text-primary lg:text-[36px]">Notifications.</h1>
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        Publish a broadcast to resident notification feeds. The backend does not provide a management notification history endpoint.
-      </p>
-      <form onSubmit={submit} className="flex max-w-2xl flex-col gap-5 rounded-3xl border border-border bg-card p-5 sm:p-7">
-        <label className="flex flex-col gap-2 text-sm font-semibold text-primary">
-          Title
-          <input required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} className="min-h-12 rounded-xl border border-border bg-white px-4 font-normal" />
-        </label>
-        <label className="flex flex-col gap-2 text-sm font-semibold text-primary">
-          Message
-          <textarea required maxLength={2000} rows={5} value={message} onChange={(event) => setMessage(event.target.value)} className="rounded-xl border border-border bg-white p-4 font-normal" />
-        </label>
-        <label className="flex flex-col gap-2 text-sm font-semibold text-primary">
-          Optional expiry
-          <input type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} className="min-h-12 rounded-xl border border-border bg-white px-4 font-normal" />
-        </label>
-        <button disabled={sending} className="min-h-12 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
-          {sending ? 'Publishing…' : 'Publish to residents'}
-        </button>
-        {error && <p role="alert" className="text-sm text-status-red">{error}</p>}
-        {sent && <div role="status" className="rounded-xl bg-white p-4 text-sm text-primary">
-          <p className="font-semibold">Broadcast published.</p>
-          <p className="mt-1">Notification #{sent.id} · {new Date(sent.created_at).toLocaleString()}</p>
-          <p className="mt-1 text-muted-foreground">Residents see this in their app notification feed. This endpoint does not send email or push notifications.</p>
-        </div>}
-      </form>
+  return <section className="flex min-w-0 flex-col gap-6">
+    <div className="flex items-center justify-between gap-3">
+      <h1 className="font-semibold">Message Centre.</h1>
+      <button type="button" onClick={() => { setSendError(''); setCompose(true); }} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
+        <Plus size={17} aria-hidden="true" /><span className="hidden sm:inline">Send notification</span><span className="sm:hidden">Send</span>
+      </button>
     </div>
-  );
+    <p className="text-sm text-muted-foreground">Community reports, repair updates and announcements.</p>
+    {confirmation && <p role="status" className="rounded-xl bg-status-green-bg p-4 text-sm text-status-green">{confirmation}</p>}
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex gap-2" aria-label="Message folders">
+        {(['received', 'sent'] as const).map(folder => <button key={folder} type="button" aria-pressed={tab === folder} onClick={() => setTab(folder)} className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${tab === folder ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'}`}>{folder === 'received' ? 'Received' : 'Sent'}</button>)}
+      </div>
+      <button type="button" disabled={loading} onClick={() => void refresh()} className="min-h-11 text-sm font-semibold underline disabled:opacity-50">Refresh</button>
+    </div>
+    {error && <p role="alert" className="text-sm text-status-red">{error}</p>}
+    {tab === 'received' ? <div aria-label="Received messages">
+      {warnings.map(warning => <p key={warning} role="status" className="mb-3 text-sm text-status-orange">{warning}</p>)}
+      {loading ? <p role="status" className="py-6 text-sm text-muted-foreground">Loading messages…</p> : !received.length && !error ? <p className="py-6 text-sm text-muted-foreground">You’re all caught up. New reports and repair updates will appear here.</p> : <div className="divide-y">
+        {received.map(item => <article key={item.id} className="flex min-w-0 gap-3 py-6">
+          <span className="mt-2 size-2 shrink-0 rounded-full" style={{ backgroundColor: item.unread ? '#526B8A' : 'transparent' }} aria-label={item.unread ? 'Unread' : undefined} />
+          <div className="min-w-0 flex-1"><h2 className="font-semibold">{item.title}</h2><p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{item.message}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{item.source} · {dateLabel(item.createdAt)}</p>
+            {(item.href || item.unread) && <button type="button" disabled={opening !== null} onClick={() => void openMessage(item)} className="mt-2 min-h-11 text-sm font-semibold underline disabled:opacity-50">{opening === item.id ? 'Opening…' : item.href ? 'Open report' : 'Mark as read'}</button>}
+          </div>
+        </article>)}
+      </div>}
+    </div> : <div aria-label="Sent announcements">
+      <p className="mb-3 text-xs text-muted-foreground">Announcements sent from this browser session.</p>
+      {!sent.length ? <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground"><Mail size={20} aria-hidden="true" />No announcements sent in this session yet.</div> : <div className="divide-y">{sent.map(item => <article key={item.id} className="py-6"><h2 className="font-semibold">{item.title}</h2><p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{item.message}</p><p className="mt-2 text-xs text-muted-foreground">Sent to all residents · {dateLabel(item.created_at)}</p></article>)}</div>}
+    </div>}
+    <Dialog open={compose} onOpenChange={open => { if (!sending) setCompose(open); }}>
+      <DialogContent className="message-composer" showCloseButton={!sending}>
+        <DialogHeader><DialogTitle className="text-2xl font-semibold">Send notification.</DialogTitle><DialogDescription>To all residents · In-app announcement</DialogDescription></DialogHeader>
+        <form onSubmit={submit} aria-busy={sending} className="mt-3 flex flex-col gap-5">
+          <label className="flex flex-col gap-2 text-sm font-semibold">Title<input required maxLength={200} disabled={sending} value={title} onChange={event => setTitle(event.target.value)} className="min-h-12 w-full rounded-xl border bg-white px-4 font-normal" /></label>
+          <label className="flex flex-col gap-2 text-sm font-semibold">Message<textarea required maxLength={2000} rows={5} disabled={sending} value={message} onChange={event => setMessage(event.target.value)} className="w-full rounded-xl border bg-white p-4 font-normal" /></label>
+          <label className="flex flex-col gap-2 text-sm font-semibold">Expiry · optional<input type="datetime-local" disabled={sending} value={expiresAt} onChange={event => setExpiresAt(event.target.value)} className="min-h-12 w-full rounded-xl border bg-white px-4 font-normal" /></label>
+          {sendError && <p role="alert" className="text-sm text-status-red">{sendError}</p>}
+          <button type="submit" disabled={sending} className="min-h-12 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? 'Sending…' : 'Publish to residents'}</button>
+          <button type="button" disabled={sending} onClick={() => setCompose(false)} className="min-h-11 text-sm font-semibold disabled:opacity-50">Cancel</button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </section>;
 }

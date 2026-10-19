@@ -1,11 +1,11 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import Image from 'next/image';
+import EnclaveLogo from '@/components/ui/EnclaveLogo';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Bell,
+  Mail,
   ClipboardList,
   ChevronLeft,
   House,
@@ -36,9 +36,9 @@ const navigation = [
     icon: Route,
   },
   {
-    label: 'Notifications',
+    label: 'Message Centre',
     href: '/management/notifications',
-    icon: Bell,
+    icon: Mail,
   },
   {
     label: 'Residents',
@@ -118,15 +118,9 @@ export default function PortalLayout({ children }: Props) {
           className="flex min-h-11 items-center gap-3"
           aria-label="Enclave management dashboard"
         >
-          <Image
-            src="/images/enclave-logo.png"
-            alt=""
-            width={24}
-            height={29}
-            className="h-[29px] w-6 object-contain"
-          />
+          <EnclaveLogo className="h-[29px] w-6" />
 
-          <span className="text-[23px] font-bold tracking-[5px]">
+          <span className="text-[23px] font-bold tracking-[5px] text-[#526B8A]">
             ENCLAVE
           </span>
         </Link>

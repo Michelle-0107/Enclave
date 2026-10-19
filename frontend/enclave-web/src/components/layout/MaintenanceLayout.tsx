@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useMaintenance } from "@/components/maintenance/MaintenanceProvider";
-import Image from "next/image";
+import EnclaveLogo from '@/components/ui/EnclaveLogo';
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ClipboardList, LogOut, UserRound } from "lucide-react";
@@ -85,15 +85,9 @@ export default function MaintenanceLayout({ children }: Props) {
           className="flex min-h-11 items-center gap-3"
           aria-label="Enclave maintenance dashboard"
         >
-          <Image
-            src="/images/enclave-logo.png"
-            alt=""
-            width={24}
-            height={29}
-            className="h-[29px] w-6 object-contain"
-          />
+          <EnclaveLogo className="h-[29px] w-6" />
 
-          <span className="text-[23px] font-bold tracking-[5px]">ENCLAVE</span>
+          <span className="text-[23px] font-bold tracking-[5px] text-[#526B8A]">ENCLAVE</span>
         </Link>
 
         <Link href="/maintenance/account" className="mt-8 block rounded-xl focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="maintenance" name={displayName} /></Link>

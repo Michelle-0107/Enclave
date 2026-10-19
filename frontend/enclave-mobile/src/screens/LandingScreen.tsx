@@ -60,6 +60,7 @@ export default function LandingScreen({
           <Image
             source={require('../../assets/enclave-logo.png')}
             style={{
+              tintColor: colors.brand,
               position: 'absolute',
               top: 86 * scale,
               left: 167 * scale,
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     fontWeight: '700',
-    color: colors.navy,
+    color: colors.brand,
     textAlign: 'center',
   },
 

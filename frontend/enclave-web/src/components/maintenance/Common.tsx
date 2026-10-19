@@ -1,7 +1,8 @@
+import { TaskStatusBadge } from '@/components/ui/ReportBadges';
 import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { statusLabels, type TaskStatus } from "@/lib/maintenance/types";
+import { type TaskStatus } from "@/lib/maintenance/types";
 export const primaryLink =
   "flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 py-3 text-center text-sm font-semibold text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2";
 export const secondaryLink =
@@ -46,15 +47,9 @@ export function Status({
   status: TaskStatus;
   children?: ReactNode;
 }) {
-  return (
-    <span
-      className={`inline-flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-xs ${status === "changes-requested" ? "bg-status-red-bg text-status-red" : status === "resolved" ? "bg-status-green-bg text-status-green" : "bg-status-orange-bg text-status-orange"}`}
-    >
-      <span className="size-1.5 rounded-full bg-current" />
-      {children || statusLabels[status]}
-    </span>
-  );
+  return <TaskStatusBadge status={status}>{children}</TaskStatusBadge>;
 }
+
 export function Photo({ label, url }: { label: string; url?: string }) {
   return (
     <div className="flex min-h-[142px] flex-col justify-center gap-2 overflow-hidden rounded-3xl bg-enclave-lavender p-5 lg:min-h-[180px]">
