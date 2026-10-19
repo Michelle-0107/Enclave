@@ -230,3 +230,37 @@
  .task-evidence > div:first-child img { height:280px; }
 }
 @media (max-width: 480px) { .message-composer[data-slot="dialog-content"] { padding:24px; } }
+
+
+.message-composer[data-slot="dialog-content"] {
+  position: fixed !important;
+  inset: 0 0 0 auto !important;
+  margin: 0 !important;
+
+  width: min(520px, 100vw) !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+
+  transform: none !important;
+  translate: none !important;
+  animation: none !important;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 0 !important;
+  padding: 32px;
+}
+
+
+[aria-label="Received messages"] article + article,
+[aria-label="Sent announcements"] article + article {
+  border-top: 1px solid #b8c2ce;
+}
+
+@media (max-width: 600px) {
+  .message-composer[data-slot="dialog-content"] {
+    width: 100vw !important;
+    padding: 24px;
+  }
+}
