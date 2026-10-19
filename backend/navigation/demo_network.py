@@ -1,7 +1,7 @@
 """Explicit, server-owned simulated crossing overlay. Never used by live routing."""
 from collections import defaultdict
 from copy import copy
-from functools import lru_cache
+from .graph_cache import shared_graph_cache
 import math
 import heapq
 from pathlib import Path
@@ -147,7 +147,7 @@ def overlay_graph(base,facilities):
     return graph
 
 
-@lru_cache(maxsize=4)
+@shared_graph_cache(maxsize=4)
 def demo_walking_graph(area_id):
     from .areas import demo_area_dataset
     facilities=demo_area_dataset(area_id).dataset.get('navigationFacilities',[])

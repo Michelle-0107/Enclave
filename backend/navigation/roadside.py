@@ -7,7 +7,7 @@ remain distinct from mapped pedestrian facilities.
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from functools import lru_cache
+from .graph_cache import shared_graph_cache
 import hashlib
 import heapq
 import json
@@ -666,7 +666,7 @@ class RoadsideGraph:
                 *(['Community damage coverage is not enabled in this temporary area.'] if not community_supported else [] )])
 
 
-@lru_cache(maxsize=4)
+@shared_graph_cache(maxsize=4)
 def walking_graph(area_id):
     """Resident/staff routing only; callers enforce authenticated API access.
 

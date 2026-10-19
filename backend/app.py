@@ -172,22 +172,24 @@ def create_app(
 
     @application.middleware('http')
     async def trace_demo_route(request, call_next):
-        if request.method != 'POST' or not (request.url.path.startswith('/api/v1/navigation/areas/')
-                                            and request.url.path.endswith('/demo-routes')):
+        demo = request.url.path.startswith('/api/v1/navigation/areas/') and request.url.path.endswith('/demo-routes')
+        comparison = request.url.path == '/api/v1/management/what-if/compare'
+        if request.method != 'POST' or not (demo or comparison):
             return await call_next(request)
+        event = 'enclave_compare' if comparison else 'enclave_route'
         trace = uuid4().hex
         request.state.demo_route_trace = trace
         started = time.monotonic()
         # No request body, coordinates, credentials, or exception text in logs.
-        route_logger.info('enclave_route received trace=%s', trace)
+        route_logger.info('%s received trace=%s', event, trace)
         try:
             response = await call_next(request)
         except Exception as error:
-            route_logger.error('enclave_route failed trace=%s elapsed_ms=%d error_type=%s',
-                trace, (time.monotonic()-started)*1000, type(error).__name__)
+            route_logger.error('%s failed trace=%s elapsed_ms=%d error_type=%s',
+                event, trace, (time.monotonic()-started)*1000, type(error).__name__)
             raise
-        route_logger.info('enclave_route response trace=%s status=%d elapsed_ms=%d',
-            trace, response.status_code, (time.monotonic()-started)*1000)
+        route_logger.info('%s response trace=%s status=%d elapsed_ms=%d',
+            event, trace, response.status_code, (time.monotonic()-started)*1000)
         return response
 
     application.include_router(registration_router)
