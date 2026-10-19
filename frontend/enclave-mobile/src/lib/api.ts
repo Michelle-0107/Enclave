@@ -327,6 +327,21 @@ async function request<T>(
 ): Promise<T> {
   const baseUrl = getBaseUrl();
   const controller = new AbortController();
+  const routeDebug = typeof __DEV__ !== 'undefined' && __DEV__
+    && /^\/api\/v1\/navigation\/areas\/[^/]+\/demo-routes$/.test(path);
+  const startedAt = Date.now();
+  function traceRoute(event: string, status?: number) {
+    if (!routeDebug) return;
+    let url = path;
+    try {
+      const target = new URL(`${baseUrl}${path}`);
+      url = `${target.origin}${target.pathname}`;
+    } catch { /* Diagnostics must not hide an invalid backend URL error. */ }
+    console.info('[Enclave route]', {
+      event, url,
+      elapsedMs: Date.now() - startedAt, ...(status === undefined ? {} : { status }),
+    });
+  }
 
   // Photo upload and AI processing may take longer.
   const timeout = setTimeout(
@@ -337,6 +352,7 @@ async function request<T>(
   const isFormData = options.body instanceof FormData;
 
   try {
+    traceRoute('request_started');
     const headers: Record<string, string> = {
       Accept: 'application/json',
       ...options.headers,
@@ -370,6 +386,7 @@ async function request<T>(
           signal: controller.signal,
         });
 
+    traceRoute('response_received', response.status);
     const text = await response.text();
     let data: unknown = null;
 
@@ -391,13 +408,16 @@ async function request<T>(
       );
     }
 
+    traceRoute('request_completed', response.status);
     return data as T;
   } catch (error) {
     if (error instanceof ApiError) {
+      traceRoute('http_or_response_error', error.status);
       throw error;
     }
 
     if (controller.signal.aborted) {
+      traceRoute('request_timed_out');
       throw new ApiError(
         isFormData
           ? 'The request timed out. Check My Reports before submitting again.'
@@ -406,6 +426,7 @@ async function request<T>(
       );
     }
 
+    traceRoute('network_error');
     throw new ApiError(
       'Unable to connect to the backend.',
       0,
@@ -835,8 +856,7 @@ export const demoAreasApi = {
   },
   getRoutes(accessToken: string, areaId: string, payload: DemoRouteRequest): Promise<DemoRouteResponse> {
     return request(`/api/v1/navigation/areas/${encodeURIComponent(areaId)}/demo-routes`, {
-      // Allow for a cold service and its first server-side road graph build.
-      method: 'POST', accessToken, body: payload, timeoutMs: 90000,
+      method: 'POST', accessToken, body: payload, timeoutMs: 30000,
       timeoutMessage: 'Route calculation took too long. Please try Choose route again in a moment.',
     });
   },
