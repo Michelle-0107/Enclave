@@ -11,6 +11,25 @@ import math
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+from backend.navigation.roadside import crossing
+
+
+def mapped_facility(tags):
+    """Facility types describe OSM evidence; only conditions are simulated."""
+    pedestrian = tags.get('highway') in {'footway', 'path', 'pedestrian', 'cycleway', 'steps'}
+    if tags.get('highway') == 'steps':
+        return 'stairs', 'Mapped stairs'
+    if pedestrian and tags.get('bridge', 'no') not in {'no', 'false'}:
+        return 'footbridge', 'Mapped footbridge'
+    if pedestrian and tags.get('tunnel', 'no') not in {'no', 'false'}:
+        return 'path_surface', 'Mapped pedestrian underpass'
+    if pedestrian and crossing(tags):
+        zebra = tags.get('crossing') == 'zebra' or tags.get('crossing:markings') == 'zebra'
+        return 'crossing', 'Zebra crossing' if zebra else 'Mapped pedestrian crossing'
+    if pedestrian and (tags.get('ramp') == 'yes' or tags.get('ramp:wheelchair') == 'yes'):
+        return 'ramp', 'Mapped ramp'
+    return 'path_surface', 'Pavement section'
+
 def distance(a,b):
     x,y=map(math.radians,(a[1],b[1]))
     q=math.sin((y-x)/2)**2+math.cos(x)*math.cos(y)*math.sin(math.radians(b[0]-a[0])/2)**2
@@ -52,14 +71,17 @@ def build(source, area, metadata, *, add_demo_facilities=False):
             if any(distance(p,other[2])<55 for other in selected):continue
             selected.append((cell,key,p));count+=1
             if count==3:break
-    kinds=['crossing','ramp','stairs','path_surface','footbridge','step_free_path']
-    names=['Zebra crossing','Access ramp','Stair-only access','Pavement section','Bridge walkway','Step-free access']
+    # Retain opaque legacy identifiers so saved report/scenario references survive.
+    # The old generator cycled infrastructure types on arbitrary segments. Never
+    # infer a crossing, bridge, ramp or step-free access from that identifier.
+    legacy_kinds=['crossing','ramp','stairs','path_surface','footbridge','step_free_path']
     assignments={};facilities=[]
     for index,(cell,key,p) in enumerate(selected):
-        a,b,wid,_=atoms[key];kind=kinds[index%6];fid=f'demo-{kind}-{key}'
+        a,b,wid,_=atoms[key];kind,name=mapped_facility(ways[wid]['tags'])
+        fid=f'demo-{legacy_kinds[index%6]}-{key}'
         damaged=index%4==0;assignments[key]=fid
         road=ways[wid]['tags'].get('name','Mapped footpath' if ways[wid]['tags']['highway'] in ('footway','path') else 'Mapped local road')
-        facilities.append({'id':fid,'name':names[index%6]+' · '+road,'kind':kind,'coordinate':p,
+        facilities.append({'id':fid,'name':name+' · '+road,'kind':kind,'coordinate':p,
                            'damaged':damaged,'reporters':2 if damaged else 0,'source':'fictional_facility',
                            'restrictionRadiusMeters':3,'gridCell':list(cell),'edgeId':''})
     stops=set()
