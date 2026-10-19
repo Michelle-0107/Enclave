@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ClipboardList, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import StaffProfile from './StaffProfile';
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const navigation = [
@@ -22,7 +23,7 @@ type Props = {
 export default function MaintenanceLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const { onSignOut } = useMaintenance();
+  const { onSignOut, displayName } = useMaintenance();
   const auth = useAuth();
   const [logoutError, setLogoutError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
@@ -76,7 +77,7 @@ export default function MaintenanceLayout({ children }: Props) {
   }
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="portal-shell min-h-dvh bg-background text-foreground" data-role="maintenance">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] overflow-y-auto bg-card p-4 lg:block">
         <Link
@@ -95,7 +96,7 @@ export default function MaintenanceLayout({ children }: Props) {
           <span className="text-[23px] font-bold tracking-[5px]">ENCLAVE</span>
         </Link>
 
-        <p className="mt-8 text-xs text-muted-foreground">Maintenance</p>
+        <Link href="/maintenance/account" className="mt-8 block rounded-xl focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="maintenance" name={displayName} /></Link>
 
         <nav
           aria-label="Maintenance navigation"
@@ -147,41 +148,12 @@ export default function MaintenanceLayout({ children }: Props) {
 
       {/* Workspace */}
       <div className="lg:pl-[248px]">
-        <header className="flex min-h-[90px] items-center justify-between px-6 py-5 lg:justify-end lg:px-10 lg:py-6">
-          <Link
-            href="/maintenance"
-            className="flex items-center gap-2 lg:hidden"
-            aria-label="Enclave maintenance dashboard"
-          >
-            <Image
-              src="/images/enclave-logo.png"
-              alt=""
-              width={20}
-              height={24}
-              className="h-6 w-5 object-contain"
-            />
-
-            <span className="text-[19px] font-bold tracking-[4px]">
-              ENCLAVE
-            </span>
-          </Link>
-
-          <Link
-            href="/maintenance/account"
-            aria-label="Open maintenance account"
-            className="flex size-[42px] items-center justify-center rounded-full bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <Image
-              src="/images/enclave-logo.png"
-              alt=""
-              width={20}
-              height={24}
-              className="h-6 w-5 object-contain"
-            />
-          </Link>
+        <header className="sticky top-0 z-30 flex min-h-[90px] items-center justify-between gap-3 bg-background/95 px-6 py-5 backdrop-blur lg:px-10 lg:py-6">
+          <p className="portal-title text-[24px] leading-tight font-semibold lg:text-[32px]">Maintenance Portal</p>
+          <Link href="/maintenance/account" aria-label="Open maintenance account" className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="maintenance" name={displayName} compact /></Link>
         </header>
 
-        <main className="min-w-0 px-6 pt-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-10 lg:pb-10">
+        <main className="portal-workspace min-w-0 px-6 pt-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-10 lg:pb-10">
           {children}
         </main>
       </div>

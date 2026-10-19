@@ -39,7 +39,7 @@ export default function ManagementNotificationsPage() {
       <p className="text-sm leading-relaxed text-muted-foreground">
         Publish a broadcast to resident notification feeds. The backend does not provide a management notification history endpoint.
       </p>
-      <form onSubmit={submit} className="flex max-w-2xl flex-col gap-5 rounded-3xl bg-enclave-lavender p-5 sm:p-7">
+      <form onSubmit={submit} className="flex max-w-2xl flex-col gap-5 rounded-3xl border border-border bg-card p-5 sm:p-7">
         <label className="flex flex-col gap-2 text-sm font-semibold text-primary">
           Title
           <input required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} className="min-h-12 rounded-xl border border-border bg-white px-4 font-normal" />

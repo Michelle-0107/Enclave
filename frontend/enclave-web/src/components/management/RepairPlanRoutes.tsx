@@ -149,12 +149,13 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
 
   return <section className="flex flex-col gap-3" aria-label={`${plan.name} route comparison`}>
     <h4 className="font-semibold text-primary">Before and after routes</h4>
-    <div className="flex flex-wrap gap-2" aria-label="Select path and mode">
-      {views.map(view => <button type="button" key={view.key} aria-pressed={active?.key === view.key}
-        onClick={() => setSelected(view.key)} className={`min-h-11 rounded-xl border px-3 text-sm ${active?.key === view.key ? 'border-primary bg-primary text-white' : 'border-border bg-white text-primary'}`}>
-        {view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}
-      </button>)}
-    </div>
+    <label className="flex flex-col gap-2 text-xs font-semibold text-primary">
+      Path and route mode
+      <select aria-label={`${plan.name}: path and route mode`} value={active?.key ?? ''} onChange={event => setSelected(event.target.value)} className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal">
+        {!views.length && <option value="">No comparable paths</option>}
+        {views.map(view => <option key={view.key} value={view.key}>{view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}</option>)}
+      </select>
+    </label>
     <div className="flex flex-wrap gap-4 text-sm font-semibold">
       <span style={{ color: BEFORE }}>Dashed orange · {beforeLabel}</span>
       <span style={{ color: AFTER }}>Solid teal · {afterLabel}</span>

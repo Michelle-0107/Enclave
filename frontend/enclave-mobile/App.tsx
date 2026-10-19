@@ -395,6 +395,8 @@ function ResidentApp({
         return (
           <HomeScreen
             onReportPress={() => changeTab('Report')}
+            onMapPress={() => changeTab('Map')}
+            onMyReportsPress={openMyReports}
             onNotificationsPress={() =>
               changeTab('Notifications')
             }

@@ -75,7 +75,7 @@ export default function ResidentCreate({ modal = false, onClose, onCreated }: Re
       </p>
 
       {!resident ? (
-        <form onSubmit={saveResident} className="flex flex-col gap-5 rounded-3xl bg-enclave-lavender p-5 sm:p-7">
+        <form onSubmit={saveResident} className="flex flex-col gap-5 rounded-3xl border border-border bg-card p-5 sm:p-7">
           <label className="flex flex-col gap-2 text-sm font-semibold text-primary">Resident reference<input required maxLength={100} value={reference} onChange={(event) => setReference(event.target.value)} className="min-h-12 rounded-xl border border-border bg-white px-4 font-normal" /></label>
           <label className="flex flex-col gap-2 text-sm font-semibold text-primary">Full name<input required maxLength={150} value={fullName} onChange={(event) => setFullName(event.target.value)} className="min-h-12 rounded-xl border border-border bg-white px-4 font-normal" /></label>
           <label className="flex flex-col gap-2 text-sm font-semibold text-primary">Unit number<input required maxLength={100} value={unitNumber} onChange={(event) => setUnitNumber(event.target.value)} className="min-h-12 rounded-xl border border-border bg-white px-4 font-normal" /></label>
@@ -83,7 +83,7 @@ export default function ResidentCreate({ modal = false, onClose, onCreated }: Re
           <button disabled={working} className="min-h-12 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{working ? 'Saving…' : 'Create resident record'}</button>
         </form>
       ) : (
-        <section className="flex flex-col gap-4 rounded-3xl bg-enclave-lavender p-5 sm:p-7">
+        <section className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5 sm:p-7">
           <p className="text-sm font-semibold text-primary">Resident record created</p>
           <dl className="grid gap-2 text-sm"><div><dt className="font-semibold">Name</dt><dd>{resident.fullName}</dd></div><div><dt className="font-semibold">Email</dt><dd>{resident.email}</dd></div><div><dt className="font-semibold">Resident ID</dt><dd className="break-all">{resident.id}</dd></div></dl>
           {!invitation ? (
@@ -94,7 +94,7 @@ export default function ResidentCreate({ modal = false, onClose, onCreated }: Re
           ) : (
             <div className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4">
               <p className="text-sm font-semibold text-primary">Invitation issued · expires {new Date(invitation.expires_at).toLocaleString()}</p>
-              <code className="block max-h-28 overflow-auto break-all rounded-xl bg-enclave-lavender p-3 text-xs">{invitation.invitation_token}</code>
+              <code className="block max-h-28 overflow-auto break-all rounded-xl border border-border bg-card p-3 text-xs">{invitation.invitation_token}</code>
               <button type="button" onClick={() => void copyInvitation()} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">{copied ? 'Copied' : 'Copy token'}</button>
               <p className="text-xs leading-relaxed text-muted-foreground">This token is shown only now. Deliver it privately; do not add it to public messages or GitHub.</p>
             </div>

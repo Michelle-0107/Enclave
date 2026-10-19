@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
+import StaffProfile from './StaffProfile';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 const navigation = [
@@ -58,7 +59,7 @@ type Props = {
 export default function PortalLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, ready, error, signOut } = useAuth();
+  const { user, displayName, role, ready, error, signOut } = useAuth();
   const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   useEffect(() => {
@@ -109,7 +110,7 @@ export default function PortalLayout({ children }: Props) {
   const isReportDetail = pathname.startsWith('/management/reports/') && pathname !== '/management/reports';
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="portal-shell min-h-dvh bg-background text-foreground" data-role="management">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] overflow-y-auto bg-card p-4 lg:block">
         <Link
@@ -130,9 +131,7 @@ export default function PortalLayout({ children }: Props) {
           </span>
         </Link>
 
-        <p className="mt-8 text-xs text-muted-foreground">
-          Management
-        </p>
+        <Link href="/management/account" className="mt-8 block rounded-xl focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="management" name={displayName} /></Link>
 
         <nav
           aria-label="Management navigation"
@@ -181,50 +180,13 @@ export default function PortalLayout({ children }: Props) {
 
       {/* Workspace */}
       <div className="lg:pl-[248px]">
-        <header className={`sticky top-0 z-30 flex min-h-[90px] items-center justify-between bg-background/95 px-6 py-5 backdrop-blur lg:px-10 lg:py-6 ${isReportDetail ? '' : 'lg:justify-end'}`}>
-          {isReportDetail ? (
-            <Link href="/management/reports" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary">
-              <ChevronLeft size={18} aria-hidden="true" /> Reports
-            </Link>
-          ) : (
-            <p className="mr-auto hidden max-w-[320px] truncate text-xs text-muted-foreground lg:block">
-              {user?.email}
-            </p>
-          )}
-          <Link
-            href="/management"
-            className="flex items-center gap-2 lg:hidden"
-            aria-label="Enclave management dashboard"
-          >
-            <Image
-              src="/images/enclave-logo.png"
-              alt=""
-              width={20}
-              height={24}
-              className="h-6 w-5 object-contain"
-            />
-
-            <span className="text-[19px] font-bold tracking-[4px]">
-              ENCLAVE
-            </span>
-          </Link>
-
-          <Link
-            href="/management/account"
-            aria-label="Open management account"
-            className="flex size-[42px] items-center justify-center rounded-full bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <Image
-              src="/images/enclave-logo.png"
-              alt=""
-              width={20}
-              height={24}
-              className="h-6 w-5 object-contain"
-            />
-          </Link>
+        <header className="sticky top-0 z-30 flex min-h-[90px] items-center justify-between gap-3 bg-background/95 px-6 py-5 backdrop-blur lg:px-10 lg:py-6">
+          <p className="portal-title text-[24px] leading-tight font-semibold lg:text-[32px]">Management Portal</p>
+          <Link href="/management/account" aria-label="Open management account" className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="management" name={displayName} compact /></Link>
         </header>
+        {isReportDetail && <Link href="/management/reports" className="mx-6 inline-flex min-h-11 items-center gap-1 text-sm font-semibold lg:mx-10"><ChevronLeft size={18} aria-hidden="true" /> Reports</Link>}
 
-        <main className="min-w-0 px-6 pt-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-10 lg:pb-10">
+        <main className="portal-workspace min-w-0 px-6 pt-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-10 lg:pb-10">
           {children}
         </main>
       </div>

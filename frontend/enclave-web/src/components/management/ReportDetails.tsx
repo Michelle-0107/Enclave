@@ -16,6 +16,7 @@ import {
 } from '@/lib/api';
 import { reportStatusLabels } from '@/lib/mock-reports';
 import ReportLocationMap from '@/components/management/ReportLocationMap';
+import WorkflowGuide from '@/components/ui/WorkflowGuide';
 import MaintenanceTaskPanel from '@/components/management/MaintenanceTaskPanel';
 import type { BackendTask } from '@/lib/maintenance/api';
 
@@ -110,21 +111,22 @@ export default function ReportDetails({ report: initialReport }: Props) {
         {reportStatusLabels[report.status]}
       </div>
 
+      {report.status === 'pending' && <WorkflowGuide steps={['Review', 'Assign', 'Repair', 'Verify', 'Resolved']} active={0} next="Next: review the evidence, then approve or reject the report." />}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         <section aria-label="Report evidence" className="flex min-w-0 flex-col">
           {report.imageUrl ? (
-            <div className="relative min-h-[240px] flex-1 overflow-hidden rounded-3xl bg-enclave-lavender p-3">
+            <div className="relative min-h-[240px] flex-1 overflow-hidden rounded-3xl border border-border bg-card p-3">
               <Image src={report.imageUrl} alt={`Resident evidence for ${report.title}`} fill unoptimized sizes="(max-width: 1024px) 100vw, 50vw" className="object-contain p-3" />
               <button type="button" onClick={() => setPhotoExpanded(true)} className="absolute right-4 bottom-4 z-10 min-h-10 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow" aria-label="Expand report photo">Expand photo</button>
             </div>
           ) : (
-            <div className="flex min-h-[180px] items-center justify-center rounded-3xl bg-enclave-lavender p-5 text-sm text-muted-foreground">
+            <div className="flex min-h-[180px] items-center justify-center rounded-3xl border border-border bg-card p-5 text-sm text-muted-foreground">
               No photo was attached to this report.
             </div>
           )}
         </section>
 
-        <section aria-label="Backend report data" className="flex flex-col gap-4 rounded-3xl bg-enclave-lavender p-5">
+        <section aria-label="Report details" className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5">
           <h2 className="text-lg font-semibold text-primary">Report details</h2>
           <dl className="grid gap-4 text-sm">
             <div><dt className="font-semibold text-primary">Category</dt><dd className="mt-1 text-muted-foreground">{report.category}</dd></div>
@@ -137,7 +139,7 @@ export default function ReportDetails({ report: initialReport }: Props) {
             </div>
           </dl>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            These fields are read from the report API. Task assignment and repair verification are managed below.
+            Review the issue details and location, then follow the next step below.
           </p>
         </section>
       </div>
@@ -212,7 +214,7 @@ export default function ReportDetails({ report: initialReport }: Props) {
         </div>
       )}
 
-      <Link href="/management/what-if" className="flex min-h-[52px] items-center justify-center rounded-2xl bg-enclave-lavender px-6 text-center text-sm font-semibold text-primary transition-opacity hover:opacity-80 sm:w-[320px]">
+      <Link href="/management/what-if" className="flex min-h-[52px] items-center justify-center rounded-2xl border border-border bg-card px-6 text-center text-sm font-semibold text-primary transition-opacity hover:opacity-80 sm:w-[320px]">
         Compare repair plans
       </Link>
     </div>

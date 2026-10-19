@@ -198,3 +198,19 @@
     min-height: 100vh;
   }
 }
+
+/* Portal identity: role accents stay separate from page titles and status colors. */
+.portal-shell[data-role="management"] { --portal-accent: #70618c; --portal-soft: #eee9f3; }
+.portal-shell[data-role="maintenance"] { --portal-accent: #2f6f6b; --portal-soft: #e3efeb; }
+.portal-title, .staff-avatar { color: var(--portal-accent); }
+.staff-avatar { background: var(--portal-soft); }
+.portal-workspace h1 { font-size: 26px; line-height: 1.4; }
+.portal-workspace { overflow-wrap: anywhere; }
+.quick-access { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.quick-access a { min-width: 0; border: 1px solid var(--border); border-radius: 18px; background: var(--card); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.quick-access a:hover { border-color: var(--portal-accent); }
+.quick-access a:focus-visible { outline: 2px solid var(--portal-accent); outline-offset: 3px; }
+@media (max-width: 480px) { .quick-access { gap: 8px; } .quick-access a { padding: 14px 10px; font-size: 12px; } .portal-workspace h1 { font-size: 22px; } }
+/* Keep headings and controls in the same product sans-serif family. */
+.portal-shell, .portal-shell h1, .portal-shell h2, .portal-shell h3,
+.portal-shell .font-semibold, .portal-shell .font-bold { font-family: Arial, Helvetica, sans-serif; }

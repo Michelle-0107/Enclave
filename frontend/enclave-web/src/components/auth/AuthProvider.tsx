@@ -24,6 +24,7 @@ import {
 
 type AuthContextValue = {
   user: CurrentUser | null;
+  displayName: string;
   role: 'management' | 'maintenance' | null;
   ready: boolean;
   error: string;
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<'management' | 'maintenance' | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
@@ -50,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const access = await getStaffAccess();
           if (access.user_id !== current.user_id) throw new ApiError('Unable to verify the staff session.', 401);
           if (mounted) setUser(current);
-          if (mounted) setRole(access.role);
+          if (mounted) { setRole(access.role); setDisplayName(access.display_name); }
         }
       } catch (reason) {
         if (reason instanceof ApiError && (reason.status === 401 || reason.status === 403)) {
@@ -89,11 +91,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(current);
       setReady(true);
       setRole(access.role);
+      setDisplayName(access.display_name);
       return access.role;
     } catch (reason) {
       clearAuthSession();
       setUser(null);
       setRole(null);
+      setDisplayName('');
       throw reason;
     }
   }, []);
@@ -102,12 +106,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearAuthSession();
     setUser(null);
     setRole(null);
+    setDisplayName('');
     setError('');
   }, []);
 
   const value = useMemo(
-    () => ({ user, role, ready, error, signIn, signOut }),
-    [user, role, ready, error, signIn, signOut],
+    () => ({ user, displayName, role, ready, error, signIn, signOut }),
+    [user, displayName, role, ready, error, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

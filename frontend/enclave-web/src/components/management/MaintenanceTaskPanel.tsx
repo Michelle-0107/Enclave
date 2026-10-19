@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Photo, control } from '@/components/maintenance/Common';
+import WorkflowGuide from '@/components/ui/WorkflowGuide';
 import TaskHistory from '@/components/maintenance/TaskHistory';
 
 export default function MaintenanceTaskPanel({ report, onChange }: { report: ManagementReport; onChange: (task: BackendTask) => void }) {
@@ -85,6 +86,12 @@ export default function MaintenanceTaskPanel({ report, onChange }: { report: Man
     {loading && <p role="status">Loading maintenance task…</p>}
     {error && <p role="alert" className="text-sm text-status-red">{error}</p>}
     {notice && <p role="status" className="text-sm text-status-green">{notice}</p>}
+    {!loading && loaded && <WorkflowGuide
+      steps={['Review', 'Assign', 'Repair', 'Verify', 'Resolved']}
+      active={!task ? 1 : task.status === 'resolved' ? 4 : task.status === 'awaiting_verification' ? 3 : 2}
+      next={!task ? 'Next: choose staff or a team, set a target date, and assign this repair.' : task.status === 'awaiting_verification' ? 'Next: review the completion evidence. Verify the repair or request rework below.' : task.status === 'resolved' ? 'Complete: the repair is verified and the resident report is resolved.' : task.status === 'changes_requested' ? 'Waiting for maintenance to address your feedback and resubmit evidence.' : task.status === 'assigned' ? 'Waiting for the assigned maintenance staff to start work.' : 'Repair in progress. Review the evidence once maintenance submits it.'}
+    />}
+
     {!loading && loaded && !task && ['approved', 'in_progress'].includes(report.status) && <form onSubmit={assign} className="flex flex-col gap-4">
       {!staff.length && <p>No active maintenance staff are available. Ask your administrator to set up staff accounts.</p>}
       <label className="flex flex-col gap-2 text-sm">Assign to<select required disabled={busy} value={assignee} onChange={event => setAssignee(event.target.value)} className={control}>{options}</select></label>

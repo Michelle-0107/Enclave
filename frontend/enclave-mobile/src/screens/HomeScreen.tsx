@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,11 +14,15 @@ import { colors } from '../theme';
 type Props = {
   onReportPress: () => void;
   onNotificationsPress: () => void;
+  onMapPress: () => void;
+  onMyReportsPress: () => void;
 };
 
 export default function HomeScreen({
   onReportPress,
   onNotificationsPress,
+  onMapPress,
+  onMyReportsPress,
 }: Props) {
   const [name, setName] = useState('Resident');
   const [latestReport, setLatestReport] = useState<ReportRecord | null>(null);
@@ -85,6 +90,20 @@ export default function HomeScreen({
         </Pressable>
       </View>
 
+      <View style={styles.quickSection}>
+        <Text style={styles.sectionTitle}>Quick access</Text>
+        <View style={styles.quickRow}>
+          <Pressable accessibilityRole="button" onPress={onMapPress} style={({ pressed }) => [styles.quickTile, pressed && styles.pressed]}>
+            <Ionicons name="map-outline" size={24} color={colors.navy} />
+            <Text style={styles.quickLabel}>Plan route</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={onMyReportsPress} style={({ pressed }) => [styles.quickTile, pressed && styles.pressed]}>
+            <Ionicons name="document-text-outline" size={24} color={colors.navy} />
+            <Text style={styles.quickLabel}>My reports</Text>
+          </Pressable>
+        </View>
+      </View>
+
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Latest update</Text>
 
@@ -105,13 +124,15 @@ export default function HomeScreen({
       ) : error ? (
         <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
       ) : latestReport ? (
-        <View style={styles.updateCard}>
-          <Text style={styles.eyebrow}>{latestReport.status.toUpperCase()}</Text>
-          <Text style={styles.updateTitle}>
-            {latestReport.category || 'Community report'} · #{latestReport.ticket_id}
+        <Pressable accessibilityRole="button" accessibilityLabel="View your report updates" onPress={onMyReportsPress} style={({ pressed }) => [styles.updateCard, pressed && styles.pressed]}>
+          <Text style={[styles.eyebrow, { color: latestReport.status === 'resolved' ? '#2D7050' : latestReport.status === 'rejected' ? '#A63E37' : '#966114' }]}>{latestReport.status.replace(/_/g, ' ').toUpperCase()}</Text>
+          <Text numberOfLines={1} style={styles.updateTitle}>
+            {latestReport.category || 'Community report'}
           </Text>
-          <Text style={styles.description}>{latestReport.description}</Text>
-        </View>
+          <Text numberOfLines={2} style={styles.description}>{latestReport.description}</Text>
+          <View style={styles.divider} />
+          <Text style={styles.link}>View report updates →</Text>
+        </Pressable>
       ) : (
         <View style={styles.updateCard}>
           <Text style={styles.updateTitle}>No report updates yet.</Text>
@@ -123,6 +144,11 @@ export default function HomeScreen({
 }
 
 const styles = StyleSheet.create({
+  quickSection: { gap: 14 },
+  quickRow: { flexDirection: 'row', gap: 12 },
+  quickTile: { flex: 1, minHeight: 100, padding: 18, gap: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 18, backgroundColor: colors.white },
+  quickLabel: { fontSize: 14, fontWeight: '600', color: colors.navy },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 2 },
   container: {
     gap: 24,
   },

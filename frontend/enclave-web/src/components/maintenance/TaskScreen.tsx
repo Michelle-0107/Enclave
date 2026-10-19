@@ -16,6 +16,7 @@ import {
   control,
 } from "./Common";
 import { statusLabels } from "@/lib/maintenance/types";
+import WorkflowGuide from '@/components/ui/WorkflowGuide';
 import TaskHistory from './TaskHistory';
 export type TaskView =
   "details" | "update" | "evidence" | "blocker" | "rework" | "submitted";
@@ -62,6 +63,9 @@ export default function TaskScreen({
       </section>
     );
   const base = `/maintenance/tasks/${task.id}`;
+  const guidance = <WorkflowGuide steps={['Start work', 'Repair', 'Submit evidence', 'Management review', 'Complete']}
+    active={task.status === 'assigned' ? 0 : task.status === 'resolved' ? 4 : task.status === 'awaiting-verification' ? 3 : view === 'evidence' || view === 'rework' ? 2 : 1}
+    next={view === 'blocker' ? 'Next: describe the blocker and send it to management.' : task.status === 'assigned' ? 'Next: read the instructions and press Start work.' : task.status === 'resolved' ? 'Complete: management has verified your repair.' : task.status === 'awaiting-verification' ? 'Submitted: wait for management review. No further action is needed now.' : task.status === 'changes-requested' ? 'Next: address the review feedback, update your photo and notes, then resubmit.' : view === 'evidence' ? 'Next: add the completion photo and notes, confirm the site check, then submit.' : 'Next: save your progress. When the repair is finished, add completion evidence.'} />;
   const canEdit = ["in-progress", "changes-requested"].includes(
     task.status,
   );
@@ -166,6 +170,7 @@ export default function TaskScreen({
   if (view === "submitted")
     return (
       <section className="flex flex-col gap-7">
+        {guidance}
         <Heading
           title={
             task.status === "awaiting-verification"
@@ -207,6 +212,7 @@ export default function TaskScreen({
   if (view === "details")
     return (
       <section className="flex flex-col gap-7">
+        {guidance}
         <Heading
           title={task.title}
           subtitle={`#${task.ticketId ?? id} · Assigned ${task.assignedAt}`}
@@ -287,6 +293,7 @@ export default function TaskScreen({
   if (view === "blocker")
     return (
       <section className="flex flex-col gap-7">
+        {guidance}
         <Heading
           title="Report a blocker."
           subtitle={`#${id} · ${task.title}`}
@@ -355,6 +362,7 @@ export default function TaskScreen({
   if (view === "update")
     return (
       <section className="flex flex-col gap-7">
+        {guidance}
         <Heading
           title="Update repair."
           subtitle={`#${id} · ${task.title}`}
@@ -429,6 +437,7 @@ export default function TaskScreen({
   const rework = view === "rework";
   return (
     <section className="flex flex-col gap-7">
+        {guidance}
       <Heading
         title={rework ? "Changes requested." : "Completion evidence."}
         subtitle={`#${id} · ${task.title}`}

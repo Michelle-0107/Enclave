@@ -49,7 +49,11 @@ const routeModes = [
   { id: "accessible" as const, label: "Accessible route" },
 ];
 
+const MAX_PATHS = 10;
+const MAX_PLANS = 5;
+
 export default function WhatIfPlanner() {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [pickTargets, setPickTargets] = useState<Record<number, PickTarget>>(
     {},
   );
@@ -157,6 +161,27 @@ export default function WhatIfPlanner() {
     setError("");
   }
 
+  function validatePaths(): string {
+    if (journeys.length < 1 || journeys.length > MAX_PATHS) return 'Add between 1 and 10 paths.';
+    for (const path of journeys) {
+      if (!path.name.trim()) return 'Give every path a name.';
+      if ([path.fromLat, path.fromLng, path.toLat, path.toLng].some(value => value.trim() === '' || !Number.isFinite(Number(value)))) return 'Choose a starting point and destination for every path.';
+      const origin = parseMapPoint(path.fromLat, path.fromLng);
+      const destination = parseMapPoint(path.toLat, path.toLng);
+      if (!origin || !destination) return 'All endpoints must be inside the KL East pilot area.';
+      if (pathDistance(origin, destination) < 5) return 'Starting point and destination must be at least 5 metres apart.';
+    }
+    return '';
+  }
+
+  function continueToPlans() {
+    const message = validatePaths();
+    setError(message);
+    if (message) return;
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -165,32 +190,9 @@ export default function WhatIfPlanner() {
       setError("Select at least one route type.");
       return;
     }
-    if (
-      journeys.some((path) =>
-        [path.fromLat, path.fromLng, path.toLat, path.toLng].some(
-          (value) => value.trim() === "" || !Number.isFinite(Number(value)),
-        ),
-      )
-    ) {
-      setError(
-        "Choose a start and destination on the map, or enter valid coordinates for every major path.",
-      );
-      return;
-    }
-    for (const journey of journeys) {
-      const origin = parseMapPoint(journey.fromLat, journey.fromLng);
-      const destination = parseMapPoint(journey.toLat, journey.toLng);
-      if (!origin || !destination) {
-        setError("All endpoints must be inside the KL East pilot area.");
-        return;
-      }
-      if (pathDistance(origin, destination) < 5) {
-        setError(
-          "Starting point and destination must be at least 5 metres apart.",
-        );
-        return;
-      }
-    }
+    const pathError = validatePaths();
+    if (pathError) { setError(pathError); setStep(1); return; }
+    if (!plans.length || plans.length > MAX_PLANS) { setError('Add between 1 and 5 repair plans.'); return; }
     if (plans.some((plan) => plan.facilities.length === 0)) {
       setError("Select at least one candidate facility in every repair plan.");
       return;
@@ -210,7 +212,7 @@ export default function WhatIfPlanner() {
     }));
     const requestPlans: WhatIfPlan[] = plans.map((plan, index) => ({
       id: `plan_${index + 1}`,
-      name: plan.name.trim(),
+      name: plan.name.trim() || `Repair plan ${index + 1}`,
       repairs: plan.facilities.map((facilityId) => ({
         facility_id: facilityId,
         estimated_cost_myr: plan.costs[facilityId]?.trim() || null,
@@ -219,15 +221,16 @@ export default function WhatIfPlanner() {
 
     setComparing(true);
     try {
-      setResult(
-        await compareRepairPlans({
+      const comparison = await compareRepairPlans({
           paths,
           plans: requestPlans,
           route_modes: modes,
           budget_myr: budget.trim() || null,
           include_geometry: true,
-        }),
-      );
+        });
+      setResult(comparison);
+      setStep(3);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (reason) {
       const message =
         reason instanceof ApiError && reason.status === 409
@@ -268,13 +271,17 @@ export default function WhatIfPlanner() {
           Repair what-if.
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          Define major journeys and compare up to three independent
+          Define major journeys and compare up to five independent
           multi-facility repair plans. Estimated costs and routes are simulation
           inputs; nothing is saved or changed in resident navigation.
         </p>
       </div>
 
-      <section className="flex flex-col gap-3 rounded-3xl bg-enclave-lavender p-5">
+      <nav aria-label="Repair comparison steps" className="grid grid-cols-3 gap-2 rounded-2xl border bg-card p-2">
+        {([{ n: 1, label: 'Paths' }, { n: 2, label: 'Repair plans' }, { n: 3, label: 'Results' }] as const).map(item => <button key={item.n} type="button" aria-current={step === item.n ? 'step' : undefined} disabled={item.n === 3 && !result} onClick={() => { if (item.n === 2) continueToPlans(); else { setStep(item.n); setError(''); } }} className={`min-h-12 rounded-xl px-2 text-sm font-semibold disabled:opacity-40 ${step === item.n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{item.n}. {item.label}</button>)}
+      </nav>
+      <p role="status" className="text-sm text-muted-foreground">{step === 1 ? 'Step 1 · Name your paths and choose a start and destination for each.' : step === 2 ? 'Step 2 · Choose repairs, enter estimates, then compare plans.' : 'Step 3 · Review each plan on its own Before / After map.'}</p>
+      <section hidden={step !== 2} className={step !== 2 ? 'hidden' : 'flex flex-col gap-3 rounded-3xl border bg-card p-5'}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-primary">
@@ -328,9 +335,9 @@ export default function WhatIfPlanner() {
         )}
       </section>
 
-      <form onSubmit={submit} className="flex flex-col gap-7">
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-3">
+      <form onSubmit={submit} onInvalid={() => setError("Complete all required fields before comparing plans.")} className={step === 3 ? "hidden" : "flex flex-col gap-7"}>
+        <section className={step !== 1 ? "hidden" : "flex flex-col gap-4"}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-primary">
                 Management-defined major paths
@@ -342,11 +349,11 @@ export default function WhatIfPlanner() {
             </div>
             <button
               type="button"
-              disabled={journeys.length >= 5}
-              onClick={() => setJourneys((items) => [...items, blankJourney()])}
-              className="min-h-10 rounded-xl bg-enclave-lavender px-3 text-xs font-semibold text-primary disabled:opacity-50"
+              disabled={journeys.length >= MAX_PATHS}
+              onClick={() => { setJourneys(items => items.length < MAX_PATHS ? [...items, blankJourney()] : items); setResult(null); }}
+              className="min-h-10 rounded-xl bg-card px-3 text-xs font-semibold text-primary disabled:opacity-50"
             >
-              Add path ({journeys.length}/5)
+              Add path ({journeys.length}/{MAX_PATHS})
             </button>
           </div>
           {journeys.map((path, index) => (
@@ -460,6 +467,7 @@ export default function WhatIfPlanner() {
                   type="button"
                   onClick={() => {
                     setJourneys((items) => items.filter((_, i) => i !== index));
+                    setPickTargets({});
                     setResult(null);
                   }}
                   className="w-fit text-xs font-semibold text-status-red underline sm:col-span-2"
@@ -469,10 +477,11 @@ export default function WhatIfPlanner() {
               )}
             </fieldset>
           ))}
+          <button type="button" onClick={continueToPlans} className="min-h-12 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground">Continue to repair plans →</button>
         </section>
 
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-3">
+        <section className={step !== 2 ? "hidden" : "flex flex-col gap-4"}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-primary">
                 Independent repair plans
@@ -483,13 +492,14 @@ export default function WhatIfPlanner() {
             </div>
             <button
               type="button"
-              disabled={plans.length >= 3}
-              onClick={() =>
-                setPlans((items) => [...items, blankPlan(items.length + 1)])
-              }
-              className="min-h-10 rounded-xl bg-enclave-lavender px-3 text-xs font-semibold text-primary disabled:opacity-50"
+              disabled={plans.length >= MAX_PLANS}
+              onClick={() => {
+                setPlans(items => items.length < MAX_PLANS ? [...items, blankPlan(items.length + 1)] : items);
+                setResult(null);
+              }}
+              className="min-h-10 rounded-xl bg-card px-3 text-xs font-semibold text-primary disabled:opacity-50"
             >
-              Add plan ({plans.length}/3)
+              Add repair plan ({plans.length}/{MAX_PLANS})
             </button>
           </div>
           {plans.map((plan, planIndex) => (
@@ -523,7 +533,7 @@ export default function WhatIfPlanner() {
                     return (
                       <li
                         key={id}
-                        className="grid gap-2 rounded-xl bg-enclave-lavender p-3 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center"
+                        className="grid gap-2 rounded-xl bg-card p-3 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center"
                       >
                         <label className="flex items-start gap-3 text-sm text-primary">
                           <input
@@ -594,7 +604,7 @@ export default function WhatIfPlanner() {
           ))}
         </section>
 
-        <section className="flex flex-col gap-4 rounded-3xl bg-enclave-lavender p-5">
+        <section className={step !== 2 ? "hidden" : "flex flex-col gap-4 rounded-3xl border bg-card p-5"}>
           <h2 className="text-lg font-semibold text-primary">
             Compare settings
           </h2>
@@ -643,6 +653,7 @@ export default function WhatIfPlanner() {
           >
             {comparing ? "Comparing routes…" : "Compare repair plans"}
           </button>
+          <button type="button" onClick={() => { setStep(1); setError(''); }} className="min-h-11 rounded-2xl border bg-card px-6 text-sm font-semibold">Back to paths</button>
           <p className="text-xs leading-relaxed text-muted-foreground">
             Each comparison uses one frozen incident snapshot. It is a
             simulation only; selected repairs do not approve reports, create
@@ -669,7 +680,7 @@ export default function WhatIfPlanner() {
         </div>
       )}
 
-      {result && (
+      {result && step === 3 && (
         <section
           aria-labelledby="results-title"
           className="flex flex-col gap-4"
@@ -690,15 +701,16 @@ export default function WhatIfPlanner() {
           {result.warnings.map((warning, index) => (
             <p
               key={index}
-              className="rounded-xl bg-enclave-lavender p-3 text-xs leading-relaxed text-muted-foreground"
+              className="rounded-xl bg-card p-3 text-xs leading-relaxed text-muted-foreground"
             >
               {warning}
             </p>
           ))}
+          <div className="grid min-w-0 items-start gap-5 xl:grid-cols-2">
           {result.plans.map((plan) => (
             <article
               key={plan.id}
-              className="flex flex-col gap-4 rounded-3xl border border-border p-5"
+              className="flex min-w-0 flex-col gap-4 rounded-3xl border border-border bg-card p-5"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="text-lg font-semibold text-primary">
@@ -720,7 +732,7 @@ export default function WhatIfPlanner() {
                 {plan.summaries.map((summary) => (
                   <div
                     key={summary.route_mode}
-                    className="rounded-2xl bg-enclave-lavender p-4"
+                    className="rounded-2xl bg-card p-4"
                   >
                     <h4 className="text-sm font-semibold text-primary">
                       {summary.route_mode === "accessible"
@@ -746,6 +758,8 @@ export default function WhatIfPlanner() {
               <RepairPlanRoutes key={`${result.simulation_id}-${plan.id}`} baseline={result.baseline} plan={plan} restrictions={result.routing_restrictions} candidates={issues} />
             </article>
           ))}
+          </div>
+          <button type="button" onClick={() => setStep(2)} className="min-h-12 rounded-2xl border bg-card px-6 text-sm font-semibold">Edit repair plans</button>
         </section>
       )}
     </div>
