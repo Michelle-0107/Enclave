@@ -25,9 +25,8 @@ ALL_ROADS = ROADS | {'primary','primary_link','trunk','trunk_link','motorway','m
 PATHS = {'footway', 'path', 'steps', 'pedestrian', 'cycleway'}
 LOCAL_ROADS = {'residential', 'living_street', 'service', 'unclassified'}
 LOCAL_CROSSING_SPACING = 25.0
-OPEN_ACCESS_METERS = 120.0
-ENDPOINT_ACCESS_METERS = 100.0
-BUILDING_ACCESS_METERS = 350.0
+OPEN_ACCESS_METERS = 20.0
+ENDPOINT_ACCESS_METERS = 20.0
 OFFSET = 3.0
 SCALE = 111_195.08
 
@@ -337,7 +336,7 @@ class RoadsideGraph:
         return True
 
     def add_open_access(self):
-        """Connect nearby disconnected ground approaches across clear open land.
+        """Connect disconnected ground approaches across clear gaps of at most 20 m.
 
         Dangling ports and closed-loop vertices can need repair. Indexed projections
         handle a long target path without requiring a nearby OSM vertex. Every
@@ -364,7 +363,7 @@ class RoadsideGraph:
             px,py=xy(self.nodes[node]); cell=(components[node],math.floor(px/15),math.floor(py/15))
             if degree[node]==2 and cell in seen_cells: continue
             seen_cells.add(cell)
-            point=self.nodes[node]; delta=OPEN_ACCESS_METERS/SCALE
+            point=self.nodes[node]; delta=(OPEN_ACCESS_METERS+1e-6)/SCALE
             if not self.land_access.clear(point,point): continue
             nearby=index.candidates((point[0]-delta/math.cos(math.radians(3)),point[1]-delta),
                                     (point[0]+delta/math.cos(math.radians(3)),point[1]+delta))
@@ -373,7 +372,7 @@ class RoadsideGraph:
                 i,edge=candidates[j]; group=components[edge.a]
                 if group==components[node]: continue
                 gap,f,q=self.project(point,edge)
-                if not .05<gap<=OPEN_ACCESS_METERS: continue
+                if not .05<gap<=OPEN_ACCESS_METERS+1e-6: continue
                 choices[group].append((gap,i,f,q))
             for group,rows in choices.items():
                 for gap,i,f,q in sorted(rows)[:8]:
@@ -471,8 +470,28 @@ class RoadsideGraph:
 
     def snap_candidates(self,point):
         buildings=self.land_access.buildings_at(point)
-        radius=BUILDING_ACCESS_METERS if buildings else ENDPOINT_ACCESS_METERS
-        delta=radius/SCALE; dx=delta/math.cos(math.radians(3))
+        if not buildings:
+            candidates=self._snap_candidates_within(point,buildings,ENDPOINT_ACCESS_METERS)
+        else:
+            # Building access has no arbitrary metre cap. Expand over the whole
+            # declared routing area, stopping at the nearest usable mapped path.
+            west,south,east,north=self.bounds
+            reach=max(distance(point,corner) for corner in ((west,south),(west,north),(east,south),(east,north)))+1
+            radius=ENDPOINT_ACCESS_METERS
+            while True:
+                radius=min(radius,reach)
+                candidates=self._snap_candidates_within(point,buildings,radius)
+                if candidates or radius>=reach: break
+                radius*=2
+            # Do not silently choose a more distant road just because it has a
+            # connected route to the other endpoint. Building access is nearest.
+            candidates=candidates[:1]
+        if not candidates:
+            raise NavigationRejected(422,'No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point.')
+        return candidates
+
+    def _snap_candidates_within(self,point,buildings,radius):
+        delta=(radius+1e-6)/SCALE; dx=delta/math.cos(math.radians(3))
         best={}
         for index in self.edge_index.candidates((point[0]-dx,point[1]-delta),(point[0]+dx,point[1]+delta)):
             edge=self.edges[index]
@@ -492,12 +511,24 @@ class RoadsideGraph:
                 projections=([projected] if projected[0]<.25 else [])+[
                     (distance(point,q),f,q) for f,q in ((0,edge.points[0]),(1,edge.points[1]))
                     if buildings and self.land_access.on_building_boundary(q,buildings)]
+            if buildings:
+                # A mapped ground path can run through a building footprint.
+                # Associate to its boundary/outdoor section, not an indoor point.
+                from .land_access import intersection
+                for building in buildings:
+                    for ring in self.land_access.polygons[building][1]:
+                        for a,b in zip(ring,ring[1:]):
+                            hit=intersection(*edge.points,a,b)
+                            if hit is None: continue
+                            fraction=hit[0]
+                            q=tuple(a+(b-a)*fraction for a,b in zip(*edge.points))
+                            projections.append((distance(point,q),fraction,q))
             for gap,fraction,q in projections:
-                if gap>radius or not self.access_clear(point,q,own_buildings=buildings,allow_road_endpoint=True): continue
+                if (buildings and self.land_access.buildings_at(q)&buildings
+                        and not self.land_access.on_building_boundary(q,buildings)): continue
+                if gap>radius+1e-6 or not self.access_clear(point,q,own_buildings=buildings,allow_road_endpoint=True): continue
                 candidate=(gap,index,fraction,q); group=self.components[edge.a]
                 if group not in best or candidate[:2]<best[group][:2]: best[group]=candidate
-        if not best:
-            raise NavigationRejected(422,'No nearby walking access can be connected without crossing a mapped barrier or road. Choose another access point.')
         return sorted(best.values())
 
     def snap(self,point):

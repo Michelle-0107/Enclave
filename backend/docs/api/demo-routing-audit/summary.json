@@ -1,7 +1,13 @@
 {
   "random-primary": {
     "seed": 20261019,
-    "algorithm_sha256": "c428536f45baf2540ca920d3e801a8159320202305a3a830b17872c862b9fca6",
+    "algorithm_sha256": "34b266b6aa3e5591cf70895326bcb6fade996bd4d92d1341d4f3b69050e6874f",
+    "access_policy": {
+      "inferred_gap_limit_meters": 20.0,
+      "outdoor_approach_limit_meters": 20.0,
+      "building_access": "nearest_usable_mapped_road_without_distance_cap"
+    },
+    "ninety_percent_per_group_passed": false,
     "summary": [
       {
         "area": "kajang-prima-saujana",
@@ -9,29 +15,29 @@
         "success": 30,
         "total": 30,
         "rate": 1.0,
-        "crossing_traversals": 28,
-        "median_ms": 73.62,
-        "max_ms": 109.35
+        "crossing_traversals": 29,
+        "median_ms": 39.62,
+        "max_ms": 56.84
       },
       {
         "area": "kajang-prima-saujana",
         "category": "local_streets",
-        "success": 29,
+        "success": 28,
         "total": 30,
-        "rate": 0.9667,
+        "rate": 0.9333,
         "crossing_traversals": 0,
-        "median_ms": 75.84,
-        "max_ms": 212.82
+        "median_ms": 43.15,
+        "max_ms": 67.5
       },
       {
         "area": "kajang-prima-saujana",
         "category": "long_distance",
-        "success": 30,
+        "success": 24,
         "total": 30,
-        "rate": 1.0,
+        "rate": 0.8,
         "crossing_traversals": 0,
-        "median_ms": 84.59,
-        "max_ms": 127.97
+        "median_ms": 51.12,
+        "max_ms": 75.29
       },
       {
         "area": "kajang-prima-saujana",
@@ -40,38 +46,38 @@
         "total": 30,
         "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 65.9,
-        "max_ms": 105.27
+        "median_ms": 42.27,
+        "max_ms": 62.16
       },
       {
         "area": "kl-east-pilot",
         "category": "cross_road",
-        "success": 30,
+        "success": 25,
         "total": 30,
-        "rate": 1.0,
-        "crossing_traversals": 25,
-        "median_ms": 81.92,
-        "max_ms": 228.59
+        "rate": 0.8333,
+        "crossing_traversals": 22,
+        "median_ms": 41.76,
+        "max_ms": 54.47
       },
       {
         "area": "kl-east-pilot",
         "category": "local_streets",
-        "success": 30,
+        "success": 25,
         "total": 30,
-        "rate": 1.0,
+        "rate": 0.8333,
         "crossing_traversals": 0,
-        "median_ms": 77.88,
-        "max_ms": 263.41
+        "median_ms": 44.98,
+        "max_ms": 59.61
       },
       {
         "area": "kl-east-pilot",
         "category": "long_distance",
-        "success": 30,
+        "success": 26,
         "total": 30,
-        "rate": 1.0,
+        "rate": 0.8667,
         "crossing_traversals": 0,
-        "median_ms": 98.0,
-        "max_ms": 251.09
+        "median_ms": 57.89,
+        "max_ms": 83.14
       },
       {
         "area": "kl-east-pilot",
@@ -80,44 +86,50 @@
         "total": 30,
         "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 70.37,
-        "max_ms": 96.74
+        "median_ms": 42.05,
+        "max_ms": 59.47
       }
     ]
   },
   "random-holdout": {
     "seed": 20261020,
-    "algorithm_sha256": "c428536f45baf2540ca920d3e801a8159320202305a3a830b17872c862b9fca6",
+    "algorithm_sha256": "34b266b6aa3e5591cf70895326bcb6fade996bd4d92d1341d4f3b69050e6874f",
+    "access_policy": {
+      "inferred_gap_limit_meters": 20.0,
+      "outdoor_approach_limit_meters": 20.0,
+      "building_access": "nearest_usable_mapped_road_without_distance_cap"
+    },
+    "ninety_percent_per_group_passed": false,
     "summary": [
       {
         "area": "kajang-prima-saujana",
         "category": "cross_road",
-        "success": 29,
+        "success": 28,
         "total": 30,
-        "rate": 0.9667,
-        "crossing_traversals": 27,
-        "median_ms": 72.04,
-        "max_ms": 95.69
+        "rate": 0.9333,
+        "crossing_traversals": 26,
+        "median_ms": 41.82,
+        "max_ms": 64.63
       },
       {
         "area": "kajang-prima-saujana",
         "category": "local_streets",
-        "success": 30,
+        "success": 28,
         "total": 30,
-        "rate": 1.0,
+        "rate": 0.9333,
         "crossing_traversals": 0,
-        "median_ms": 73.47,
-        "max_ms": 110.13
+        "median_ms": 42.27,
+        "max_ms": 75.75
       },
       {
         "area": "kajang-prima-saujana",
         "category": "long_distance",
-        "success": 29,
+        "success": 23,
         "total": 30,
-        "rate": 0.9667,
+        "rate": 0.7667,
         "crossing_traversals": 0,
-        "median_ms": 91.66,
-        "max_ms": 125.95
+        "median_ms": 53.95,
+        "max_ms": 82.34
       },
       {
         "area": "kajang-prima-saujana",
@@ -126,38 +138,38 @@
         "total": 30,
         "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 67.41,
-        "max_ms": 125.69
+        "median_ms": 41.26,
+        "max_ms": 61.33
       },
       {
         "area": "kl-east-pilot",
         "category": "cross_road",
-        "success": 27,
+        "success": 26,
         "total": 30,
-        "rate": 0.9,
-        "crossing_traversals": 24,
-        "median_ms": 75.78,
-        "max_ms": 207.31
+        "rate": 0.8667,
+        "crossing_traversals": 23,
+        "median_ms": 43.15,
+        "max_ms": 66.52
       },
       {
         "area": "kl-east-pilot",
         "category": "local_streets",
-        "success": 30,
+        "success": 28,
         "total": 30,
-        "rate": 1.0,
+        "rate": 0.9333,
         "crossing_traversals": 0,
-        "median_ms": 81.08,
-        "max_ms": 191.17
+        "median_ms": 47.43,
+        "max_ms": 69.44
       },
       {
         "area": "kl-east-pilot",
         "category": "long_distance",
-        "success": 29,
+        "success": 23,
         "total": 30,
-        "rate": 0.9667,
+        "rate": 0.7667,
         "crossing_traversals": 0,
-        "median_ms": 95.3,
-        "max_ms": 244.35
+        "median_ms": 58.11,
+        "max_ms": 79.65
       },
       {
         "area": "kl-east-pilot",
@@ -166,14 +178,20 @@
         "total": 30,
         "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 74.34,
-        "max_ms": 144.37
+        "median_ms": 43.65,
+        "max_ms": 59.88
       }
     ]
   },
   "facilities": {
     "seed": 20261021,
-    "algorithm_sha256": "c428536f45baf2540ca920d3e801a8159320202305a3a830b17872c862b9fca6",
+    "algorithm_sha256": "34b266b6aa3e5591cf70895326bcb6fade996bd4d92d1341d4f3b69050e6874f",
+    "access_policy": {
+      "inferred_gap_limit_meters": 20.0,
+      "outdoor_approach_limit_meters": 20.0,
+      "building_access": "nearest_usable_mapped_road_without_distance_cap"
+    },
+    "ninety_percent_per_group_passed": true,
     "summary": [
       {
         "area": "kajang-prima-saujana",
@@ -182,18 +200,18 @@
         "total": 30,
         "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 71.15,
-        "max_ms": 116.14
+        "median_ms": 42.58,
+        "max_ms": 71.36
       },
       {
         "area": "kajang-prima-saujana",
         "category": "simulation_footbridge",
-        "success": 29,
+        "success": 30,
         "total": 30,
-        "rate": 0.9667,
+        "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 74.7,
-        "max_ms": 116.43
+        "median_ms": 44.23,
+        "max_ms": 67.44
       },
       {
         "area": "kl-east-pilot",
@@ -202,8 +220,8 @@
         "total": 27,
         "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 94.25,
-        "max_ms": 174.3
+        "median_ms": 52.47,
+        "max_ms": 79.84
       },
       {
         "area": "kl-east-pilot",
@@ -212,8 +230,8 @@
         "total": 10,
         "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 71.42,
-        "max_ms": 191.36
+        "median_ms": 46.86,
+        "max_ms": 65.78
       },
       {
         "area": "kl-east-pilot",
@@ -222,8 +240,8 @@
         "total": 30,
         "rate": 1.0,
         "crossing_traversals": 0,
-        "median_ms": 74.26,
-        "max_ms": 179.44
+        "median_ms": 45.42,
+        "max_ms": 67.97
       },
       {
         "area": "kl-east-pilot",
@@ -232,8 +250,8 @@
         "total": 30,
         "rate": 0.9667,
         "crossing_traversals": 0,
-        "median_ms": 77.17,
-        "max_ms": 173.69
+        "median_ms": 47.16,
+        "max_ms": 68.98
       }
     ]
   }

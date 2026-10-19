@@ -5,6 +5,7 @@ from pathlib import Path
 
 from backend.navigation.areas import demo_area_dataset
 from backend.navigation.road_cache import signature
+from backend.navigation.roadside import OPEN_ACCESS_METERS, ENDPOINT_ACCESS_METERS
 from backend.tools.benchmark_demo_routes import evaluate
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -22,14 +23,20 @@ def main():
     for name,path in inputs.items():
         result=evaluate(json.loads(path.read_text(encoding='utf-8')),demo=True)
         result['algorithm_sha256']=signature()
+        result['access_policy']={'inferred_gap_limit_meters':OPEN_ACCESS_METERS,
+            'outdoor_approach_limit_meters':ENDPOINT_ACCESS_METERS,'building_access':'nearest_usable_mapped_road_without_distance_cap'}
+        result['ninety_percent_per_group_passed']=all(row['rate']>=.9 for row in result['summary'])
         reports[name]=result
         (out/f'{name}.json.gz').write_bytes(gzip.compress(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode(),mtime=0))
         print(name,json.dumps(result['summary'],ensure_ascii=False),flush=True)
-    (out/'summary.json').write_text(json.dumps({name:{'seed':r['seed'],'algorithm_sha256':r['algorithm_sha256'],'summary':r['summary']}
+    (out/'summary.json').write_text(json.dumps({name:{'seed':r['seed'],'algorithm_sha256':r['algorithm_sha256'],'access_policy':r['access_policy'],'ninety_percent_per_group_passed':r['ninety_percent_per_group_passed'],'summary':r['summary']}
                                               for name,r in reports.items()},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     text=['# Demo 导航随机测试报告','',
           '本报告验证本地后端和导航模型，不代表手机实地走测、生产部署或真实道路的通行认证。',
           '',f'路网算法校验：`{signature()}`。',
+          '',f'当前规则：道路缺口和室外接近最多 {OPEN_ACCESS_METERS:g} 米；建筑物内起终点关联最近可接入道路，不设距离上限。长距离不再通过空白地带补接。',
+          '',('**90% 分类门槛：通过。**' if all(r['ninety_percent_per_group_passed'] for r in reports.values()) else
+              '**90% 分类门槛：未通过。** 严格执行当前短缺口规则；不删除失败样本，也不通过增加长距离空地连接来提高成功率。需补充真实已记录连接才能改善缺失路网。'),
           '', '## 抽样方式','',
           '- 两个地区，每类30条不同路线，四类各自计算成功率。固定样本240条，另有不同随机种子的独立验证240条。',
           '- 同侧点取自同一条道路一侧；小路取自不同的住宅/服务道路，直线距离50–500米；长距离至少800米。',

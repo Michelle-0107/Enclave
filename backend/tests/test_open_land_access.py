@@ -11,7 +11,7 @@ from backend.tests.test_roadside import body, osm_graph, p
 
 class OpenLandAccessTests(unittest.TestCase):
     def gap(self, obstacle=None, gate=None):
-        nodes={'a':(-80,0),'b':(0,0),'c':(30,0),'d':(110,0)}
+        nodes={'a':(-80,0),'b':(0,0),'c':(20,0),'d':(100,0)}
         ways=[(['a','b'],{'highway':'footway'}),(['c','d'],{'highway':'footway'})]
         node_tags={}
         if obstacle in {'building','water','restricted'}:
@@ -27,48 +27,102 @@ class OpenLandAccessTests(unittest.TestCase):
 
     def test_disconnected_paths_join_across_open_land_and_show_the_link(self):
         graph=self.gap()
-        route=graph.route(body(p(-60,0),p(90,0)))
-        self.assertAlmostEqual(route.distance_meters,150,places=2)
+        route=graph.route(body(p(-60,0),p(80,0)))
+        self.assertAlmostEqual(route.distance_meters,140,places=2)
         self.assertTrue(any('open area' in step.instruction for step in route.maneuvers))
         self.assertTrue(any('inferred outdoor' in warning for warning in route.warnings))
         self.assertFalse(route.field_verified)
         self.assertEqual(route.mapped_crossing_count,0)
         # Reversing the request must not impose a vehicle direction on the link.
-        self.assertAlmostEqual(graph.route(body(p(90,0),p(-60,0))).distance_meters,150,places=2)
+        self.assertAlmostEqual(graph.route(body(p(80,0),p(-60,0))).distance_meters,140,places=2)
 
     def test_open_land_cannot_cut_buildings_water_fences_or_main_roads(self):
         for obstacle in ('building','water','restricted','fence','wall','stream','major_road'):
             with self.subTest(obstacle=obstacle),self.assertRaises(NavigationRejected):
-                self.gap(obstacle).route(body(p(-60,0),p(90,0)))
+                self.gap(obstacle).route(body(p(-60,0),p(80,0)))
 
     def test_unlocked_mapped_gate_permits_access_but_locked_gate_does_not(self):
-        self.assertAlmostEqual(self.gap('fence','no').route(body(p(-60,0),p(90,0))).distance_meters,150,places=2)
+        self.assertAlmostEqual(self.gap('fence','no').route(body(p(-60,0),p(80,0))).distance_meters,140,places=2)
         with self.assertRaises(NavigationRejected):
-            self.gap('fence','yes').route(body(p(-60,0),p(90,0)))
+            self.gap('fence','yes').route(body(p(-60,0),p(80,0)))
 
     def test_projected_link_can_join_the_middle_of_a_long_path(self):
-        graph=osm_graph({'a':(-80,0),'b':(0,0),'c':(30,-150),'d':(30,150)},
+        graph=osm_graph({'a':(-80,0),'b':(0,0),'c':(20,-150),'d':(20,150)},
                         [(['a','b'],{'highway':'footway'}),(['c','d'],{'highway':'footway'})])
-        route=graph.route(body(p(-60,0),p(30,100)))
-        self.assertAlmostEqual(route.distance_meters,190,places=2)
+        route=graph.route(body(p(-60,0),p(20,100)))
+        self.assertAlmostEqual(route.distance_meters,180,places=2)
 
     def test_open_approach_is_drawn_and_counted_and_cannot_skip_damage(self):
         graph=osm_graph({'a':(-150,0),'b':(150,0)},[(['a','b'],{'highway':'footway'})])
-        route=graph.route(body(p(-80,35),p(80,35)))
-        self.assertLess(distance(route.geometry.coordinates[0],p(-80,35)),.01)
-        self.assertLess(distance(route.geometry.coordinates[-1],p(80,35)),.01)
-        self.assertAlmostEqual(route.distance_meters,230,places=2)
+        route=graph.route(body(p(-80,15),p(80,15)))
+        self.assertLess(distance(route.geometry.coordinates[0],p(-80,15)),.01)
+        self.assertLess(distance(route.geometry.coordinates[-1],p(80,15)),.01)
+        self.assertAlmostEqual(route.distance_meters,190,places=2)
         self.assertEqual(route.origin_snap_distance_meters,0)
-        west,south=p(-85,10);east,north=p(-75,25)
+        west,south=p(-85,5);east,north=p(-75,10)
         with self.assertRaises(NavigationRejected):
-            graph.route(body(p(-80,35),p(80,35),'avoid_damage'),boxes=[(west,south,east,north)])
+            graph.route(body(p(-80,15),p(80,15),'avoid_damage'),boxes=[(west,south,east,north)])
 
     def test_damage_blocks_an_inferred_gap_without_moving_access_points(self):
         graph=self.gap();west,south=p(10,-5);east,north=p(20,5)
         with self.assertRaises(NavigationRejected):
-            graph.route(body(p(-60,0),p(90,0),'avoid_damage'),boxes=[(west,south,east,north)])
+            graph.route(body(p(-60,0),p(80,0),'avoid_damage'),boxes=[(west,south,east,north)])
         with self.assertRaises(NavigationRejected):
-            graph.route(body(p(-60,0),p(90,0),'accessible'),demo_mode=True)
+            graph.route(body(p(-60,0),p(80,0),'accessible'),demo_mode=True)
+
+    def test_gap_limit_accepts_twenty_metres_but_rejects_longer_connections(self):
+        for gap in (19.9,20,20.1,60,120):
+            with self.subTest(gap=gap):
+                graph=osm_graph({'a':(-100,0),'b':(0,0),'c':(gap,0),'d':(gap+100,0)},
+                    [(['a','b'],{'highway':'footway'}),(['c','d'],{'highway':'footway'})])
+                if gap<=20:
+                    route=graph.route(body(p(-80,0),p(gap+80,0)))
+                    self.assertAlmostEqual(route.distance_meters,160+gap,places=2)
+                else:
+                    self.assertFalse(any(e.kind=='open_access' for e in graph.edges))
+                    with self.assertRaises(NavigationRejected): graph.route(body(p(-80,0),p(gap+80,0)))
+
+    def test_outdoor_endpoint_cannot_bypass_the_gap_limit(self):
+        graph=osm_graph({'a':(-150,0),'b':(150,0)},[(['a','b'],{'highway':'footway'})])
+        for offset in (20.1,35,100,400):
+            with self.subTest(offset=offset),self.assertRaises(NavigationRejected):
+                graph.route(body(p(-80,offset),p(80,0)))
+
+    def test_building_access_over_350_metres_uses_nearest_road_in_both_directions(self):
+        graph=osm_graph({'a':(500,-150),'b':(500,150),
+            'w':(-40,-40),'x':(40,-40),'y':(40,40),'z':(-40,40)},
+            [(['a','b'],{'highway':'footway'}),(['w','x','y','z','w'],{'building':'yes'})])
+        for origin,end in ((p(0,0),p(500,100)),(p(500,100),p(0,0))):
+            with self.subTest(origin=origin):
+                route=graph.route(body(origin,end))
+                self.assertAlmostEqual(route.distance_meters,100,places=2)
+                self.assertAlmostEqual(max(route.origin_snap_distance_meters,route.destination_snap_distance_meters),500,places=2)
+                self.assertTrue(all(distance(point,p(0,0))>400 for point in route.geometry.coordinates))
+        with self.assertRaises(NavigationRejected): graph.route(body(p(0,50),p(500,100)))
+
+    def test_building_association_uses_the_recorded_path_boundary_not_an_indoor_point(self):
+        graph=osm_graph({'a':(-100,0),'b':(100,0),
+            'w':(-40,-40),'x':(40,-40),'y':(40,40),'z':(-40,40)},
+            [(['a','b'],{'highway':'footway'}),(['w','x','y','z','w'],{'building':'yes'})])
+        snap=graph.snap(p(0,0))
+        self.assertAlmostEqual(snap[0],40,places=2)
+        self.assertTrue(graph.land_access.on_building_boundary(snap[3],graph.land_access.buildings_at(p(0,0))))
+
+    def test_building_does_not_choose_a_farther_connected_road(self):
+        graph=osm_graph({'a':(500,-20),'b':(500,20),'c':(650,-150),'d':(650,150),
+            'w':(-40,-40),'x':(40,-40),'y':(40,40),'z':(-40,40)},
+            [(['a','b'],{'highway':'footway'}),(['c','d'],{'highway':'footway'}),
+             (['w','x','y','z','w'],{'building':'yes'})])
+        candidates=graph.snap_candidates(p(0,0))
+        self.assertEqual(len(candidates),1)
+        self.assertAlmostEqual(candidates[0][0],500,places=2)
+        with self.assertRaises(NavigationRejected): graph.route(body(p(0,0),p(650,100)))
+
+    def test_recorded_long_path_is_preserved_despite_short_inferred_gap_limit(self):
+        graph=osm_graph({'a':(-400,0),'b':(400,0)},[(['a','b'],{'highway':'footway'})])
+        route=graph.route(body(p(-390,0),p(390,0)))
+        self.assertAlmostEqual(route.distance_meters,780,places=2)
+        self.assertFalse(any(e.kind=='open_access' for e in graph.edges))
 
     def test_building_endpoints_associate_to_outdoor_access_in_both_directions(self):
         graph=osm_graph({'a':(150,-150),'b':(150,150),
