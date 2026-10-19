@@ -423,7 +423,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
     {feature && <View style={styles.selectedPanel}>
       <Text style={styles.cardTitle}>{feature.name}</Text>
       <Text style={styles.body}>{facility ? `${facility.kind.replaceAll('_', ' ')} · ${isBlocked(facility, state) ? `${facility.reporters} residents reported` : 'No confirmed damage'}` : 'Real mapped landmark'}</Text>
-      <Text style={styles.hint}>{facility ? 'Fictional facility data for this resident demo.' : place?.positionBasis}</Text>
+      <Text style={styles.hint}>{facility ? 'Facility type follows mapped OSM tags; damage and reports are simulated.' : place?.positionBasis}</Text>
       <View style={styles.row}>{(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="button"
         onPress={() => choose(feature.coordinate, feature.name, which)} style={styles.textButton}><Text style={styles.link}>{which === 'origin' ? 'Use as start' : 'Use as end'}</Text></Pressable>)}
         <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={styles.textButton}><Text style={styles.link}>Close</Text></Pressable></View>
