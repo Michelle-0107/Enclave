@@ -14,15 +14,17 @@ const AFTER = '#137b79';
 const EMPTY_RESTRICTIONS: RoutingRestriction[] = [];
 const EMPTY_CANDIDATES: FacilityIssue[] = [];
 
-export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_RESTRICTIONS, candidates = EMPTY_CANDIDATES }: {
+export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_RESTRICTIONS, candidates = EMPTY_CANDIDATES, selectedKey, onSelectionChange }: {
   baseline: WhatIfResult['baseline']; plan: RepairPlanResult; restrictions?: RoutingRestriction[]; candidates?: FacilityIssue[];
+  selectedKey?: string; onSelectionChange?: (key: string) => void;
 }) {
   const repaired = useMemo(() => new Set(plan.facility_impacts?.map(item => item.facility_id) ?? []), [plan.facility_impacts]);
   const facilities = useMemo(()=>repairMapFacilities(plan,candidates,restrictions),[plan,candidates,restrictions]);
   const facilityMarkers = useRef(new Map<string,MapLibre.Marker>());
   const views = useMemo(() => repairPathViews(baseline, plan.paths), [baseline, plan.paths]);
-  const [selected, setSelected] = useState('all:avoid_damage');
-  const selection = selected.startsWith('all:') || views.some(view => view.key === selected) ? selected : 'all:avoid_damage';
+  const [selected, setSelected] = useState('');
+  const requested = selectedKey ?? selected;
+  const selection = views.find(view => view.key === requested)?.key ?? views[0]?.key ?? '';
   const mapPaths = useMemo(() => repairMapPaths(views, selection), [views, selection]);
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre.Map | null>(null);
@@ -122,7 +124,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
         .setPopup(new M.Popup({offset:18}).setText(label)).addTo(instance);
       markerIndex.set(item.id,marker); markers.push(marker);
     }
-    // Draw all before routes first so solid after routes stay visible on overlaps.
+    // Only the selected journey is drawn; cleanup removes its previous layers and markers.
     for (const phase of ['before', 'after'] as const) for (const path of mapPaths) {
       const before = phase === 'before';
       draw(`repair-${path.number}-${phase}`, before ? path.beforePoints : path.afterPoints,
@@ -160,14 +162,12 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     <h4 className="font-semibold text-primary">Before and after routes</h4>
     <label className="flex flex-col gap-2 text-xs font-semibold text-primary">
       Path and route mode
-      <select aria-label={`${plan.name}: path and route mode`} value={selection} onChange={event => setSelected(event.target.value)} className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal">
-        <option value="all:avoid_damage">All paths · Avoid damage</option>
-        <option value="all:accessible">All paths · Accessible</option>
+      <select aria-label={`${plan.name}: path and route mode`} value={selection} onChange={event => { setSelected(event.target.value); onSelectionChange?.(event.target.value); }} className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal">
         {!views.length && <option value="">No comparable paths</option>}
         {views.map(view => <option key={view.key} value={view.key}>{view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}</option>)}
       </select>
     </label>
-    <p className="text-xs text-muted-foreground">Showing {mapPaths.length} of {new Set(views.map(view => view.pathId)).size} paths. Select an individual path to focus the map.</p>
+    <p className="text-xs text-muted-foreground">Select a path to compare its Before and After routes across all repair plans.</p>
     <div className="flex flex-col gap-2 text-sm font-semibold">
       {mapPaths.map(path => <div key={path.view.key} className="flex flex-wrap gap-x-4 gap-y-1">
         <span className="text-primary">P{path.number} · {path.view.name}</span>
@@ -204,9 +204,9 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     <div ref={host} className="h-[420px] min-h-[300px] w-full overflow-hidden rounded-2xl border border-border" aria-label="Map showing before and after repair routes" />
     {error && <p role="status" className="text-sm text-status-red">{error}</p>}
     {!beforePoints.length && !afterPoints.length && <p className="text-sm text-muted-foreground">No mapped route geometry is available for this selection.</p>}
-    <p className="text-xs text-muted-foreground">1A / 2A: path starts · 1B / 2B: destinations. P1 / P2 identify each path. Orange and teal overlap when the route is unchanged. Simulation only.</p>
+    <p className="text-xs text-muted-foreground">A: selected path start · B: selected path destination. P identifies the selected path. Orange and teal overlap when the route is unchanged. Simulation only.</p>
     <ul className="flex flex-col gap-3">
-      {views.map(view => <li key={view.key} className="rounded-xl border border-border p-3 text-sm">
+      {mapPaths.map(({ view }) => <li key={view.key} className="rounded-xl border border-border p-3 text-sm">
         <div className="flex flex-wrap justify-between gap-2 font-semibold text-primary">
           <span>{view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}</span>
           <span>{routeChange(view)}</span>

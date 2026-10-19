@@ -66,6 +66,7 @@ export default function WhatIfPlanner() {
   ]);
   const [budget, setBudget] = useState("");
   const [result, setResult] = useState<WhatIfResult | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState("");
   const [loadingCandidates, setLoadingCandidates] = useState(true);
   const [comparing, setComparing] = useState(false);
   const [error, setError] = useState("");
@@ -229,6 +230,8 @@ export default function WhatIfPlanner() {
           include_geometry: true,
         });
       setResult(comparison);
+      const first = comparison.baseline[0];
+      setSelectedRoute(first ? `${first.path_id}:${first.route_mode}` : "");
       setStep(3);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (reason) {
@@ -755,7 +758,7 @@ export default function WhatIfPlanner() {
                   </div>
                 ))}
               </div>
-              <RepairPlanRoutes key={`${result.simulation_id}-${plan.id}`} baseline={result.baseline} plan={plan} restrictions={result.routing_restrictions} candidates={issues} />
+              <RepairPlanRoutes key={`${result.simulation_id}-${plan.id}`} baseline={result.baseline} plan={plan} restrictions={result.routing_restrictions} candidates={issues} selectedKey={selectedRoute} onSelectionChange={setSelectedRoute} />
             </article>
           ))}
           </div>
