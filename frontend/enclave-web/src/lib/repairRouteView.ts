@@ -3,7 +3,7 @@ import type { RouteOutcome, RouteDetails, WhatIfResult, FacilityIssue, RoutingRe
 export type RepairPlanResult = WhatIfResult['plans'][number];
 export type RouteDisplay = { route: RouteDetails | null; reference: boolean; state: string };
 export type RepairPathView = {
-  key: string; name: string; mode: 'avoid_damage' | 'accessible';
+  key: string; pathId: string; name: string; mode: 'avoid_damage' | 'accessible';
   before: RouteDisplay; after: RouteDisplay; effect: string; explanation?: string | null;
 };
 
@@ -22,7 +22,7 @@ export function repairPathViews(baseline: WhatIfResult['baseline'], paths: Repai
     const walkingBefore = baseline.find(row => row.path_id === path.path_id && row.route_mode === 'avoid_damage');
     const walkingAfter = paths.find(row => row.path_id === path.path_id && row.route_mode === 'avoid_damage');
     return {
-      key: `${path.path_id}:${path.route_mode}`, name: path.path_name, mode: path.route_mode,
+      key: `${path.path_id}:${path.route_mode}`, pathId: path.path_id, name: path.path_name, mode: path.route_mode,
       before: display(original?.current, path.route_mode === 'accessible' ? walkingBefore?.current : undefined),
       after: display(path.after, path.route_mode === 'accessible' ? walkingAfter?.after : undefined),
       effect: path.effect, explanation: path.explanation,
@@ -90,4 +90,22 @@ export function repairMapFacilities(plan: RepairPlanResult, candidates: Facility
 
 export function repairMapBoundsPoints(before:[number,number][],after:[number,number][],facilities:RepairMapFacility[]):[number,number][] {
   return [...before,...after,...facilities.filter(item=>item.selected && item.coordinate).map(item=>item.coordinate!)];
+}
+
+// Overview includes each journey once, rather than duplicating walking fallbacks.
+export function repairMapPaths(views: RepairPathView[], selection = 'all:avoid_damage') {
+  const ids = [...new Set(views.map(view => view.pathId))];
+  const focused = views.find(view => view.key === selection);
+  const visible = focused ? [focused] : ids.flatMap(id => {
+    const mode = selection === 'all:accessible' ? 'accessible' : 'avoid_damage';
+    const row = views.find(view => view.pathId === id && view.mode === mode)
+      ?? (mode === 'avoid_damage' ? views.find(view => view.pathId === id) : undefined);
+    return row ? [row] : [];
+  });
+  return visible.map(view => ({
+    view, number: ids.indexOf(view.pathId) + 1,
+    beforePoints: routeCoordinates(view.before.route), afterPoints: routeCoordinates(view.after.route),
+    beforeLabel: `Before: ${routeDistance(view.before.route)}${view.before.reference ? ' · walking reference' : ''}`,
+    afterLabel: `After: ${routeDistance(view.after.route)}${view.after.reference ? ' · walking reference' : ''}`,
+  }));
 }

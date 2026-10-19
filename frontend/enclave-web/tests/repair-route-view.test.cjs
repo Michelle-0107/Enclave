@@ -7,13 +7,13 @@ const { createRequire } = require('node:module');
 const web = path.resolve(__dirname, '..');
 const fromWeb = createRequire(path.join(web, 'package.json'));
 const ts = fromWeb('typescript');
-function load(relative, dependencies = {}) {
+function load(relative, dependencies = {}, globals = {}) {
   const filename = path.join(web, relative);
   const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX,
   } }).outputText;
   const mod = { exports: {} };
-  vm.runInNewContext(output, { module: mod, exports: mod.exports,
+  vm.runInNewContext(output, { ...globals, module: mod, exports: mod.exports,
     require(name) { return name in dependencies ? dependencies[name] : fromWeb(name); },
   }, { filename });
   return mod.exports;
@@ -160,4 +160,73 @@ test('selected facility names and map controls render even without restriction g
     plan:{id:'p',name:'Repair',paths,facility_impacts:[{facility_id:'f',facility_name:'North pavement'}]},
     candidates:[{facility_id:'f',facility_name:'North pavement',longitude:101.73,latitude:3.226}]}));
   for (const label of ['Selected repairs','R1','North pavement','Show route and selected repairs','locations only'])assert.ok(html.includes(label),label);
+});
+
+test('overview retains both independent journeys, separate geometries, and stable focus numbers', () => {
+  const secondPoints = [[101.735, 3.23], [101.737, 3.232]];
+  const secondRoute = { ...route(591), geometry: { type: 'LineString', coordinates: secondPoints } };
+  const rows = view.repairPathViews([...baseline,
+    { ...baseline[0], path_id: 'two', path_name: 'Journey 2', current: secondRoute }],
+    [...paths, { ...paths[0], path_id: 'two', path_name: 'Journey 2', after: secondRoute }]);
+  const overview = view.repairMapPaths(rows);
+  assert.equal(overview.length, 2, 'walking references must not duplicate journeys');
+  assert.equal(overview[0].beforePoints, points);
+  assert.equal(overview[1].beforePoints, secondPoints);
+  assert.equal(overview[1].beforeLabel, 'Before: 591 m');
+  const focus = view.repairMapPaths(rows, 'two:avoid_damage');
+  assert.equal(focus.length, 1);
+  assert.equal(focus[0].number, 2, 'focused path keeps the same number as the overview');
+  assert.equal(view.repairMapPaths(rows, 'deleted-path').length, 2);
+  const accessible = view.repairMapPaths(rows, 'all:accessible');
+  assert.equal(accessible.length, 1);
+  assert.equal(accessible[0].view.before.reference, true);
+});
+
+test('map creates four distinct route sources, fits both journeys, and cleans up on selection change', async () => {
+  const effects = [], sources = new Map(), layers = new Map(), markers = [];
+  let fitted, refIndex = 0;
+  const React = fromWeb('react');
+  const hooks = { ...React,
+    useMemo: fn => fn(), useEffect: fn => effects.push(fn),
+    useState: value => [value === 0 ? 1 : value, () => {}],
+    useRef: value => ({ current: refIndex++ === 1 ? {} : value }),
+  };
+  class FakeMap {
+    scrollZoom = { disable() {} };
+    addControl() {} on() {} resize() {} remove() {}
+    addSource(id, source) { sources.set(id, source); }
+    addLayer(layer) { layers.set(layer.id, layer); }
+    getSource(id) { return sources.get(id); }
+    getLayer(id) { return layers.get(id); }
+    removeSource(id) { sources.delete(id); }
+    removeLayer(id) { layers.delete(id); }
+    fitBounds(bounds) { fitted = bounds.points; }
+  }
+  class Marker {
+    constructor(options) { this.options = options; }
+    setLngLat(point) { this.point = point; return this; }
+    addTo() { markers.push(this); return this; }
+    remove() { this.removed = true; }
+  }
+  class Bounds { points = []; extend(point) { this.points.push(point); } }
+  const Component = load('src/components/management/RepairPlanRoutes.tsx', {
+    react: hooks, '@/lib/repairRouteView': view, 'maplibre-gl/dist/maplibre-gl.css': {},
+    'maplibre-gl': { Map: FakeMap, Marker, LngLatBounds: Bounds, NavigationControl: class {}, setWorkerUrl() {} },
+  }, { document: { createElement: () => ({ style: {} }) }, ResizeObserver: class { observe() {} disconnect() {} } }).default;
+  const secondPoints = [[101.735, 3.23], [101.737, 3.232]];
+  const second = { ...route(591), geometry: { type: 'LineString', coordinates: secondPoints } };
+  Component({ baseline: [...baseline, { ...baseline[0], path_id: 'two', current: second }],
+    plan: { name: 'Repair plan', paths: [...paths, { ...paths[0], path_id: 'two', path_name: 'Journey 2', after: second }] } });
+  const unmount = effects[0]();
+  await new Promise(resolve => setImmediate(resolve));
+  const cleanup = effects[1]();
+  assert.deepEqual([...sources.keys()], ['repair-1-before', 'repair-2-before', 'repair-1-after', 'repair-2-after']);
+  assert.equal(sources.get('repair-2-after').data.geometry.coordinates, secondPoints);
+  assert.ok(fitted.includes(points[0]) && fitted.includes(secondPoints[1]));
+  for (const label of ['1A', '1B', '2A', '2B']) assert.ok(markers.some(m => m.options.element.textContent === label), label);
+  assert.ok(markers.some(m => m.options.element.textContent.includes('P2 · Journey 2 · After: 591 m')));
+  cleanup();
+  assert.equal(sources.size, 0); assert.equal(layers.size, 0);
+  assert.ok(markers.every(m => m.removed));
+  unmount();
 });

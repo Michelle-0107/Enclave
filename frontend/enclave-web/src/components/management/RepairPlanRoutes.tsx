@@ -5,7 +5,7 @@ import type * as MapLibre from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { WhatIfResult, RoutingRestriction, FacilityIssue } from '@/lib/api';
 import {
-  lineMidpoint, repairPathViews, routeChange, routeCoordinates, routeDistance, repairMapFacilities, repairMapBoundsPoints,
+  lineMidpoint, repairPathViews, routeChange, repairMapPaths, routeDistance, repairMapFacilities, repairMapBoundsPoints,
   type RepairPlanResult,
 } from '@/lib/repairRouteView';
 
@@ -21,17 +21,17 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
   const facilities = useMemo(()=>repairMapFacilities(plan,candidates,restrictions),[plan,candidates,restrictions]);
   const facilityMarkers = useRef(new Map<string,MapLibre.Marker>());
   const views = useMemo(() => repairPathViews(baseline, plan.paths), [baseline, plan.paths]);
-  const [selected, setSelected] = useState(views[0]?.key ?? '');
-  const active = views.find(view => view.key === selected) ?? views[0];
+  const [selected, setSelected] = useState('all:avoid_damage');
+  const selection = selected.startsWith('all:') || views.some(view => view.key === selected) ? selected : 'all:avoid_damage';
+  const mapPaths = useMemo(() => repairMapPaths(views, selection), [views, selection]);
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre.Map | null>(null);
   const api = useRef<typeof MapLibre | null>(null);
   const [loaded, setLoaded] = useState(0);
   const [error, setError] = useState('');
-  const beforePoints = useMemo(() => routeCoordinates(active?.before.route ?? null), [active]);
-  const afterPoints = useMemo(() => routeCoordinates(active?.after.route ?? null), [active]);
-  const beforeLabel = `Before: ${routeDistance(active?.before.route ?? null)}${active?.before.reference ? ' · walking reference' : ''}`;
-  const afterLabel = `After: ${routeDistance(active?.after.route ?? null)}${active?.after.reference ? ' · walking reference' : ''}`;
+  const beforePoints = useMemo(() => mapPaths.flatMap(path => path.beforePoints), [mapPaths]);
+  const afterPoints = useMemo(() => mapPaths.flatMap(path => path.afterPoints), [mapPaths]);
+
 
   useEffect(() => {
     let disposed = false;
@@ -66,15 +66,15 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     const markerIndex = facilityMarkers.current;
     const layers: string[] = [];
     const sources: string[] = [];
-    function draw(id: string, points: [number, number][], color: string, label: string, offset: [number, number]) {
-      if (!points.length || !instance || !M) return;
+    function draw(id: string, points: [number, number][], color: string, label: string, before: boolean, offset: [number, number]) {
+      if (points.length < 2 || !instance || !M) return;
       instance.addSource(id, { type: 'geojson', data: {
         type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points },
       } });
       sources.push(id);
       instance.addLayer({ id, source: id, type: 'line',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: id === 'repair-before'
+        paint: before
           ? { 'line-color': color, 'line-width': 9, 'line-dasharray': [1.6, 1.2], 'line-opacity': 0.85 }
           : { 'line-color': color, 'line-width': 4.5 },
       });
@@ -122,19 +122,28 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
         .setPopup(new M.Popup({offset:18}).setText(label)).addTo(instance);
       markerIndex.set(item.id,marker); markers.push(marker);
     }
-    draw('repair-before', beforePoints, BEFORE, beforeLabel, [-35, -24]);
-    draw('repair-after', afterPoints, AFTER, afterLabel, [35, 24]);
+    // Draw all before routes first so solid after routes stay visible on overlaps.
+    for (const phase of ['before', 'after'] as const) for (const path of mapPaths) {
+      const before = phase === 'before';
+      draw(`repair-${path.number}-${phase}`, before ? path.beforePoints : path.afterPoints,
+        before ? BEFORE : AFTER, `P${path.number} · ${path.view.name} · ${before ? path.beforeLabel : path.afterLabel}`,
+        before, [before ? -25 : 25, (before ? -24 : 24) + ((path.number - 1) % 3) * 18]);
+    }
     const points = repairMapBoundsPoints(beforePoints,afterPoints,facilities);
     if (points.length) {
       const bounds = new M.LngLatBounds();
       points.forEach(point => bounds.extend(point));
       instance.fitBounds(bounds, { padding: 80, maxZoom: 18, duration: 0 });
-      const route = afterPoints.length ? afterPoints : beforePoints;
-      if (route.length) for (const [label, point] of [['A', route[0]], ['B', route[route.length - 1]]] as const) {
+    }
+    for (const path of mapPaths) {
+      const route = path.afterPoints.length ? path.afterPoints : path.beforePoints;
+      if (!route.length) continue;
+      for (const [label, point] of [['A', route[0]], ['B', route[route.length - 1]]] as const) {
         const el = document.createElement('div');
-        el.textContent = label;
+        el.textContent = `${path.number}${label}`;
+        el.title = `P${path.number} · ${path.view.name} · ${label === 'A' ? 'Start' : 'Destination'}`;
         Object.assign(el.style, { color: '#fff', background: '#202c46', border: '2px solid #fff',
-          borderRadius: '50%', width: '28px', height: '28px', display: 'grid', placeItems: 'center', fontWeight: '700' });
+          borderRadius: '50%', minWidth: '30px', height: '30px', display: 'grid', placeItems: 'center', fontWeight: '700' });
         markers.push(new M.Marker({ element: el }).setLngLat(point).addTo(instance));
       }
     }
@@ -145,22 +154,29 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       for (const id of layers.reverse()) if (instance.getLayer(id)) instance.removeLayer(id);
       for (const id of sources) if (instance.getSource(id)) instance.removeSource(id);
     };
-  }, [beforePoints, afterPoints, beforeLabel, afterLabel, loaded, restrictions, repaired, facilities]);
+  }, [beforePoints, afterPoints, mapPaths, loaded, restrictions, repaired, facilities]);
 
   return <section className="flex flex-col gap-3" aria-label={`${plan.name} route comparison`}>
     <h4 className="font-semibold text-primary">Before and after routes</h4>
     <label className="flex flex-col gap-2 text-xs font-semibold text-primary">
       Path and route mode
-      <select aria-label={`${plan.name}: path and route mode`} value={active?.key ?? ''} onChange={event => setSelected(event.target.value)} className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal">
+      <select aria-label={`${plan.name}: path and route mode`} value={selection} onChange={event => setSelected(event.target.value)} className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal">
+        <option value="all:avoid_damage">All paths · Avoid damage</option>
+        <option value="all:accessible">All paths · Accessible</option>
         {!views.length && <option value="">No comparable paths</option>}
         {views.map(view => <option key={view.key} value={view.key}>{view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}</option>)}
       </select>
     </label>
-    <div className="flex flex-wrap gap-4 text-sm font-semibold">
-      <span style={{ color: BEFORE }}>Dashed orange · {beforeLabel}</span>
-      <span style={{ color: AFTER }}>Solid teal · {afterLabel}</span>
+    <p className="text-xs text-muted-foreground">Showing {mapPaths.length} of {new Set(views.map(view => view.pathId)).size} paths. Select an individual path to focus the map.</p>
+    <div className="flex flex-col gap-2 text-sm font-semibold">
+      {mapPaths.map(path => <div key={path.view.key} className="flex flex-wrap gap-x-4 gap-y-1">
+        <span className="text-primary">P{path.number} · {path.view.name}</span>
+        <span style={{ color: BEFORE }}>Dashed orange · {path.beforeLabel}</span>
+        <span style={{ color: AFTER }}>Solid teal · {path.afterLabel}</span>
+        {!path.beforePoints.length && !path.afterPoints.length && <span className="text-muted-foreground">No mapped geometry for this path.</span>}
+      </div>)}
     </div>
-    {(active?.before.reference || active?.after.reference) && <p role="note" className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
+    {mapPaths.some(path => path.view.before.reference || path.view.after.reference) && <p role="note" className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
       No verified accessible route is available for one or both cases. The map shows an Avoid damage walking reference instead. It may include stairs and is not verified for wheelchair use. Accessible availability counts are unchanged.
     </p>}
     {restrictions.length>0 && <div className="text-xs text-muted-foreground">
@@ -188,7 +204,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     <div ref={host} className="h-[420px] min-h-[300px] w-full overflow-hidden rounded-2xl border border-border" aria-label="Map showing before and after repair routes" />
     {error && <p role="status" className="text-sm text-status-red">{error}</p>}
     {!beforePoints.length && !afterPoints.length && <p className="text-sm text-muted-foreground">No mapped route geometry is available for this selection.</p>}
-    <p className="text-xs text-muted-foreground">A: route start · B: destination. Orange and teal overlap when the route is unchanged. Simulation only.</p>
+    <p className="text-xs text-muted-foreground">1A / 2A: path starts · 1B / 2B: destinations. P1 / P2 identify each path. Orange and teal overlap when the route is unchanged. Simulation only.</p>
     <ul className="flex flex-col gap-3">
       {views.map(view => <li key={view.key} className="rounded-xl border border-border p-3 text-sm">
         <div className="flex flex-wrap justify-between gap-2 font-semibold text-primary">
