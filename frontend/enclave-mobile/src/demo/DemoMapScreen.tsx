@@ -1,6 +1,7 @@
+import { NativeMap as Map } from '../navigation/NativeMap';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Camera, GeoJSONSource, Layer, Map, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
+import { Camera, GeoJSONSource, Layer, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { demoAreasApi, type DemoRouteResponse } from '../lib/api';
@@ -390,7 +391,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
           onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'facility', id }); setSearching(false); Keyboard.dismiss(); } }}>
           <Layer id="demo-facility-points" type="circle" paint={{ 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 4, 16, 10],
             'circle-color': ['case', ['get', 'blocked'], '#A63E37', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
-          <Layer id="demo-facility-labels" type="symbol" minzoom={15.5} layout={{ 'text-field': ['get', 'symbol'], 'text-size': 9, 'text-allow-overlap': true }} paint={{ 'text-color': '#FFFFFF' }} />
+          <Layer id="demo-facility-labels" type="symbol" minzoom={15.5} layout={{ 'text-field': ['get', 'symbol'], 'text-font': ['Noto Sans Regular'], 'text-size': 9, 'text-allow-overlap': true }} paint={{ 'text-color': '#FFFFFF' }} />
         </GeoJSONSource>
         {feature && selectedMarkerData && <GeoJSONSource id="demo-selection-highlight" data={selectedMarkerData}>
           <Layer id="demo-selection-shadow" type="circle" paint={{

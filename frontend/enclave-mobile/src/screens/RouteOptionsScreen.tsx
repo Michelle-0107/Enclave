@@ -1,3 +1,4 @@
+import { NativeMap as Map } from '../navigation/NativeMap';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,7 +11,6 @@ import {
   Camera,
   GeoJSONSource,
   Layer,
-  Map,
   Marker,
 } from '@maplibre/maplibre-react-native';
 

@@ -14,6 +14,7 @@ const Screen=compile('NavigationView.tsx',name=>{
  if(name==='react-native')return{Pressable:'Pressable',Text:'Text',View:'View',StyleSheet:{create:x=>x}};
  if(name==='react-native-safe-area-context')return{useSafeAreaInsets:()=>({top:24,bottom:20})};
  if(name==='@expo/vector-icons')return{MaterialCommunityIcons:'Icon'};
+ if(name==='../navigation/NativeMap')return{NativeMap:'Map'};
  if(name==='@maplibre/maplibre-react-native')return{Camera:'Camera',GeoJSONSource:'Source',Layer:'Layer',Map:'Map',Marker:'Marker'};
  if(name==='./navigationHeading')return heading;if(name==='./network')return network;throw Error(name);
 }).default;

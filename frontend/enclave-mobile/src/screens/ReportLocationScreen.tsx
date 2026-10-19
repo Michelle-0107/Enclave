@@ -1,3 +1,4 @@
+import { NativeMap as Map } from '../navigation/NativeMap';
 import { useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -10,7 +11,6 @@ import {
 import * as Location from 'expo-location';
 import {
   Camera,
-  Map,
   Marker,
   type CameraRef,
 } from '@maplibre/maplibre-react-native';

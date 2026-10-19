@@ -14,6 +14,7 @@ const Screen=compile('DemoMapScreen.tsx',name=>{
  if(name==='react')return react;
  if(name==='react/jsx-runtime')return{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
  if(name==='react-native')return{Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',Keyboard:{dismiss:()=>{}},Linking:{openURL:async url=>openedUrls.push(url)},StyleSheet:{create:x=>x}};
+ if(name==='../navigation/NativeMap')return{NativeMap:'Map'};
  if(name==='@maplibre/maplibre-react-native')return{Camera:'Camera',GeoJSONSource:'GeoJSONSource',Layer:'Layer',Map:'Map',Marker:'Marker'};
  if(name==='@expo/vector-icons')return{MaterialCommunityIcons:'MaterialCommunityIcons'};
  if(name==='./access')return access;if(name==='./JourneyGuidance')return{__esModule:true,default:'JourneyGuidance'};
@@ -39,6 +40,7 @@ test('Management repair/count/cost controls are absent',()=>{
 test('Whole pilot facility source is rendered efficiently, with real landmarks separately',()=>{
  const t=tree();const f=find(t,n=>n.props?.id==='demo-facilities');const p=find(t,n=>n.props?.id==='demo-places');
  assert.equal(f.props.data.features.length,138);assert.equal(p.props.data.features.length,249);assert.ok(text(t).includes('138'));assert.ok(text(t).includes('35'));
+ assert.equal(find(t,n=>n.props?.id==='demo-facility-labels').props.layout['text-font'].join(','),'Noto Sans Regular');
 });
 test('Choosing route before selecting both endpoints explains the missing choice',async()=>{
  let t=tree();await button(t,'Choose route').props.onPress();t=tree();assert.ok(text(t).includes('Select both locations'));assert.equal(all(t).filter(n=>n.props?.accessibilityRole==='radio').length,0);
