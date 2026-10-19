@@ -38,6 +38,7 @@ from .navigation.accessibility import VerifiedNetwork
 from .what_if.contracts import CompareRequest, CompareResponse, RepairCandidates
 from .what_if.repository import WhatIfRepository, WhatIfRejected, WhatIfUnavailable
 from .what_if.service import WhatIfService
+from .what_if.summary import SummaryRequest, RepairSummary, RepairSummaryService, SummaryNarrator
 from .notifications.models import NotificationCreate, NotificationListResponse, NotificationResponse
 from .notifications.repository import NotificationAccessDenied, NotificationsRepository, NotificationsUnavailable
 from .registration.residents import ResidentAccessRepository, ResidentDirectoryUnavailable
@@ -129,6 +130,7 @@ def create_app(
         application.state.navigation = NavigationService(routing_provider,application.state.community_issues,application.state.accessibility)
         application.state.what_if_repository = WhatIfRepository(configured, transport=what_if_transport)
         application.state.what_if = WhatIfService(application.state.what_if_repository, application.state.navigation)
+        application.state.what_if_summaries = RepairSummaryService(application.state.what_if_repository, SummaryNarrator(configured.service_values))
         application.state.media = media_services if media_services is not None else MediaServices(configured)
         application.state.report_photo_links = MediaServices(configured)
         application.state.registration = registration_service
@@ -150,6 +152,7 @@ def create_app(
             await application.state.report_workflow.close()
             await application.state.maintenance.close()
             await routing_provider.close()
+            await application.state.what_if_summaries.close()
             await application.state.what_if_repository.close()
             if application.state.registration is not None:
                 application.state.registration.close()
@@ -633,7 +636,19 @@ def create_app(
     async def compare_repairs(request: Request, response: Response, body: CompareRequest,
                               user: AuthenticatedUser = Depends(current_user)):
         response.headers["Cache-Control"] = "private, no-store"
-        return await request.app.state.what_if.compare(user.user_id, body)
+        result = await request.app.state.what_if.compare(user.user_id, body)
+        request.app.state.what_if_summaries.remember(user.user_id, result)
+        return result
+
+    @application.post("/api/v1/management/what-if/{simulation_id}/summary", response_model=RepairSummary,
+                      tags=["Management What-if"], responses={401:{"description":"Invalid credentials."},
+                          403:{"description":"Management role required."},404:{"description":"Comparison expired or unavailable."},
+                          429:{"description":"Summary generation busy."}},
+                      description="Summarize an owned comparison from the last ten minutes. Numeric facts and rankings are calculated; optional AI explains them. AI failure returns a labelled calculated summary. No live changes.")
+    async def repair_summary(request: Request, response: Response, simulation_id: UUID, body: SummaryRequest,
+                             user: AuthenticatedUser = Depends(current_user)):
+        response.headers["Cache-Control"] = "private, no-store"
+        return await request.app.state.what_if_summaries.summary(user.user_id,simulation_id,body.route_mode)
 
     return application
 

@@ -238,7 +238,15 @@ test('switching route removes old geometry, endpoints and distances before drawi
   for (const label of ['2A', '2B']) assert.ok(active.some(m => m.options.element.textContent === label));
   assert.ok(active.every(m => !m.options.element.textContent.includes('P1')));
   assert.ok(active.some(m => m.options.element.textContent.includes('P2 · Journey 2 · After: 591 m')));
-  cleanupSecond(); unmount();
+  cleanupSecond();
+  effects.length = 0; refIndex = 0;
+  Component({ ...props, selectedKey: 'all:avoid_damage' });
+  const cleanupAll = effects[1]();
+  assert.deepEqual([...sources.keys()], ['repair-1-before', 'repair-2-before', 'repair-1-after', 'repair-2-after']);
+  assert.ok(fitted.includes(points[0]) && fitted.includes(secondPoints[1]));
+  cleanupAll();
+  assert.equal(sources.size, 0); assert.ok(markers.every(m => m.removed));
+  unmount();
 });
 
 test('a shared selection displays route 2 in every plan and hides route 1 result details', () => {
@@ -279,7 +287,7 @@ test('planner passes the same route selection and change handler to every repair
   };
   const Planner = load('src/components/management/WhatIfPlanner.tsx', {
     react: hooks, '@/lib/api': { ApiError: class extends Error {} },
-    './WhatIfPathMap': { __esModule: true, default: () => null, parseMapPoint: () => null, pathDistance: () => 0 }, './RepairPlanRoutes': { default: props => { captured.push(props); return null; }, __esModule: true },
+    './RepairSummaryPanel': { __esModule: true, default: () => null }, './WhatIfPathMap': { __esModule: true, default: () => null, parseMapPoint: () => null, pathDistance: () => 0 }, './RepairPlanRoutes': { default: props => { captured.push(props); return null; }, __esModule: true },
   }).default;
   const { renderToStaticMarkup } = fromWeb('react-dom/server');
   renderToStaticMarkup(React.createElement(Planner));
@@ -288,4 +296,91 @@ test('planner passes the same route selection and change handler to every repair
     assert.equal(props.selectedKey, 'two:avoid_damage');
     assert.equal(props.onSelectionChange, select);
   }
+});
+
+
+test('explicit all-route mode lists each journey once with before/after distance and time savings', () => {
+  const before = [{ ...baseline[0], current: { ...route(200), duration_seconds: 100 } }, baseline[1],
+    { ...baseline[0], path_id: 'two', path_name: 'Journey 2', current: { ...route(591), duration_seconds: 500 } }];
+  const after = [{ ...paths[0], after: { ...route(150), duration_seconds: 70 } }, paths[1],
+    { ...paths[0], path_id: 'two', path_name: 'Journey 2', after: { ...route(300), duration_seconds: 250 } }];
+  const rows = view.repairPathViews(before, after);
+  const all = view.repairMapPaths(rows, 'all:avoid_damage');
+  assert.equal(all.length, 2);
+  assert.ok(all.every(path => path.view.mode === 'avoid_damage'));
+  assert.equal(view.repairMapPaths(rows, 'one:avoid_damage').length, 1);
+  assert.equal(view.routeTimeChange(rows[0]), '30 s saved');
+  const Component = load('src/components/management/RepairPlanRoutes.tsx', {
+    '@/lib/repairRouteView': view, 'maplibre-gl/dist/maplibre-gl.css': {},
+  }).default;
+  const React = fromWeb('react'); const { renderToStaticMarkup } = fromWeb('react-dom/server');
+  const html = renderToStaticMarkup(React.createElement(Component, { baseline: before,
+    plan: { name: 'Plan', paths: after }, selectedKey: 'all:avoid_damage' }));
+  for (const label of ['Compare all routes','Comparing all 2 routes','Journey 2','50 m shorter','291 m shorter','30 s saved','4 min 10 s saved']) assert.ok(html.includes(label), label);
+});
+
+test('time differences do not invent savings for restored routes or mismatched references', () => {
+  const row = view.repairPathViews(baseline, paths)[0];
+  row.before.route = { ...route(100), duration_seconds: 70 };
+  row.after.route = { ...route(100), duration_seconds: 90 };
+  assert.equal(view.routeTimeChange(row), '20 s longer');
+  row.after.reference = true;
+  assert.equal(view.routeTimeChange(row), 'Time not comparable');
+  row.before.route = null; row.after.reference = false;
+  assert.equal(view.routeTimeChange(row), 'Time saving unavailable');
+  assert.equal(view.formatRouteSeconds(null), 'Unavailable');
+  assert.equal(view.formatRouteSeconds(Infinity), 'Unavailable');
+});
+
+test('summary panel explicitly labels calculated fallback and does not call it AI generated', () => {
+  const React = fromWeb('react'); const { renderToStaticMarkup } = fromWeb('react-dom/server');
+  const value = { source: 'calculated', text: 'Ranking uses time only.', facts: {
+    route_mode: 'avoid_damage', budget_myr: null, comparable_path_count: 2, excluded_path_count: 0,
+    recommended_plan_ids: ['plan1'], explanation: 'Each route is walked once.', plans: [{
+      id: 'plan1', name: 'Repair plan 1', before_seconds: 300, after_seconds: 200, saved_seconds: 100,
+      cost_myr: null, budget_status: 'unknown_cost', restored_paths: 0, unavailable_after_paths: 0,
+    }],
+  } };
+  let state = 0;
+  const hooks = { ...React, useEffect() {}, useState(initial) {
+    return [state++ === 0 ? { key: 's:avoid_damage:0', value } : initial, () => {}];
+  } };
+  const Panel = load('src/components/management/RepairSummaryPanel.tsx', {
+    react: hooks, '@/lib/api': {}, '@/lib/repairRouteView': view,
+  }).default;
+  const html = renderToStaticMarkup(React.createElement(Panel, { simulationId: 's', mode: 'avoid_damage' }));
+  for (const label of ['Calculated summary','AI unavailable','Recommended: Repair plan 1','Unknown / incomplete','1 min 40 s','Ranking uses time only.']) assert.ok(html.includes(label), label);
+  assert.ok(!html.includes('AI explanation'));
+});
+
+test('summary ignores an earlier mode response after the user changes route mode', async () => {
+  const React = fromWeb('react'); const effects = [], updates = [], pending = [];
+  const Panel = load('src/components/management/RepairSummaryPanel.tsx', {
+    react: { ...React, useState: value => [value, next => updates.push(next)], useEffect: fn => effects.push(fn) },
+    '@/lib/api': { getRepairSummary: (...args) => new Promise(resolve => pending.push({ args, resolve })) },
+    '@/lib/repairRouteView': view,
+  }).default;
+  Panel({ simulationId: 's', mode: 'avoid_damage' });
+  const cleanup = effects[0]();
+  cleanup();
+  Panel({ simulationId: 's', mode: 'accessible' }); effects[1]();
+  pending[0].resolve({ source: 'ai', text: 'stale' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(updates.length, 0);
+  pending[1].resolve({ source: 'calculated', text: 'current' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].key, 's:accessible:0');
+});
+
+test('summary API sends only the simulation ID and selected mode, with the existing session', async () => {
+  let request;
+  const api = load('src/lib/api.ts', { '@/lib/auth-session': { clearAuthSession() {}, getValidAccessToken: async () => 'session-fixture' } }, {
+    process: { env: { NEXT_PUBLIC_API_BASE_URL: 'https://backend.example' } }, Headers, FormData,
+    fetch: async (url, options) => { request = { url, options }; return { ok: true, status: 200, json: async () => ({ source: 'calculated' }) }; },
+  });
+  await api.getRepairSummary('simulation-fixture', 'accessible');
+  assert.equal(request.url, 'https://backend.example/api/v1/management/what-if/simulation-fixture/summary');
+  assert.deepEqual(JSON.parse(request.options.body), { route_mode: 'accessible' });
+  assert.equal(request.options.headers.get('Authorization'), 'Bearer session-fixture');
 });

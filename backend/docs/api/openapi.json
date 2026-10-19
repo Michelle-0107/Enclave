@@ -3569,6 +3569,77 @@
           }
         ]
       }
+    },
+    "/api/v1/management/what-if/{simulation_id}/summary": {
+      "post": {
+        "tags": [
+          "Management What-if"
+        ],
+        "summary": "Repair Summary",
+        "description": "Summarize an owned comparison from the last ten minutes. Numeric facts and rankings are calculated; optional AI explains them. AI failure returns a labelled calculated summary. No live changes.",
+        "operationId": "repair_summary_api_v1_management_what_if__simulation_id__summary_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "simulation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Simulation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Management role required."
+          },
+          "404": {
+            "description": "Comparison expired or unavailable."
+          },
+          "429": {
+            "description": "Summary generation busy."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5709,6 +5780,76 @@
         ],
         "title": "PlaceSearchResult"
       },
+      "PlanFacts": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "before_seconds": {
+            "type": "number",
+            "title": "Before Seconds"
+          },
+          "after_seconds": {
+            "type": "number",
+            "title": "After Seconds"
+          },
+          "saved_seconds": {
+            "type": "number",
+            "title": "Saved Seconds"
+          },
+          "saved_meters": {
+            "type": "number",
+            "title": "Saved Meters"
+          },
+          "restored_paths": {
+            "type": "integer",
+            "title": "Restored Paths"
+          },
+          "unavailable_after_paths": {
+            "type": "integer",
+            "title": "Unavailable After Paths"
+          },
+          "cost_myr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Myr"
+          },
+          "missing_cost_count": {
+            "type": "integer",
+            "title": "Missing Cost Count"
+          },
+          "budget_status": {
+            "type": "string",
+            "title": "Budget Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "before_seconds",
+          "after_seconds",
+          "saved_seconds",
+          "saved_meters",
+          "restored_paths",
+          "unavailable_after_paths",
+          "cost_myr",
+          "missing_cost_count",
+          "budget_status"
+        ],
+        "title": "PlanFacts"
+      },
       "PlanResult": {
         "properties": {
           "id": {
@@ -5939,6 +6080,32 @@
           "repairs"
         ],
         "title": "RepairPlan"
+      },
+      "RepairSummary": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "calculated"
+            ],
+            "title": "Source"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "facts": {
+            "$ref": "#/components/schemas/SummaryFacts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "text",
+          "facts"
+        ],
+        "title": "RepairSummary"
       },
       "ReportCreatedResponse": {
         "properties": {
@@ -7331,6 +7498,92 @@
           "event"
         ],
         "title": "StatusUpdated"
+      },
+      "SummaryFacts": {
+        "properties": {
+          "route_mode": {
+            "type": "string",
+            "enum": [
+              "avoid_damage",
+              "accessible"
+            ],
+            "title": "Route Mode"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "time_only",
+              "cost_effectiveness",
+              "budget_and_time"
+            ],
+            "title": "Basis"
+          },
+          "budget_myr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Myr"
+          },
+          "comparable_path_count": {
+            "type": "integer",
+            "title": "Comparable Path Count"
+          },
+          "excluded_path_count": {
+            "type": "integer",
+            "title": "Excluded Path Count"
+          },
+          "recommended_plan_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recommended Plan Ids"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PlanFacts"
+            },
+            "type": "array",
+            "title": "Plans"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "route_mode",
+          "basis",
+          "budget_myr",
+          "comparable_path_count",
+          "excluded_path_count",
+          "recommended_plan_ids",
+          "plans",
+          "explanation"
+        ],
+        "title": "SummaryFacts"
+      },
+      "SummaryRequest": {
+        "properties": {
+          "route_mode": {
+            "type": "string",
+            "enum": [
+              "avoid_damage",
+              "accessible"
+            ],
+            "title": "Route Mode",
+            "default": "avoid_damage"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SummaryRequest"
       },
       "Task": {
         "properties": {
