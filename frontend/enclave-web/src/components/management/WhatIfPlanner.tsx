@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 
 import RepairPlanRoutes from "./RepairPlanRoutes";
+import RepairSummaryPanel from "./RepairSummaryPanel";
 
 import WhatIfPathMap, {
   parseMapPoint,
@@ -762,6 +763,8 @@ export default function WhatIfPlanner() {
             </article>
           ))}
           </div>
+          {(selectedRoute === 'all:avoid_damage' || selectedRoute === 'all:accessible') &&
+            <RepairSummaryPanel simulationId={result.simulation_id} mode={selectedRoute === 'all:accessible' ? 'accessible' : 'avoid_damage'} />}
           <button type="button" onClick={() => setStep(2)} className="min-h-12 rounded-2xl border bg-card px-6 text-sm font-semibold">Edit repair plans</button>
         </section>
       )}

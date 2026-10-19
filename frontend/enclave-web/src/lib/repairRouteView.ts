@@ -92,15 +92,33 @@ export function repairMapBoundsPoints(before:[number,number][],after:[number,num
   return [...before,...after,...facilities.filter(item=>item.selected && item.coordinate).map(item=>item.coordinate!)];
 }
 
-// A comparison map shows exactly one journey and route mode at a time.
+// Individual selection shows one journey; explicit all-route mode shows one mode per journey.
 export function repairMapPaths(views: RepairPathView[], selection = '') {
   const ids = [...new Set(views.map(view => view.pathId))];
   const focused = views.find(view => view.key === selection) ?? views[0];
-  const visible = focused ? [focused] : [];
+  const visible = selection === 'all:avoid_damage' || selection === 'all:accessible'
+    ? views.filter(view => view.mode === selection.slice(4)) : focused ? [focused] : [];
   return visible.map(view => ({
     view, number: ids.indexOf(view.pathId) + 1,
     beforePoints: routeCoordinates(view.before.route), afterPoints: routeCoordinates(view.after.route),
     beforeLabel: `Before: ${routeDistance(view.before.route)}${view.before.reference ? ' · walking reference' : ''}`,
     afterLabel: `After: ${routeDistance(view.after.route)}${view.after.reference ? ' · walking reference' : ''}`,
   }));
+}
+
+export function formatRouteSeconds(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return 'Unavailable';
+  if (seconds > 0 && seconds < 0.5) return '<1 s';
+  const total = Math.round(seconds);
+  return total < 60 ? `${total} s` : `${Math.floor(total / 60)} min${total % 60 ? ` ${total % 60} s` : ''}`;
+}
+
+export function routeTimeChange(view: RepairPathView): string {
+  if (view.before.reference !== view.after.reference) return 'Time not comparable';
+  const before = view.before.route?.duration_seconds;
+  const after = view.after.route?.duration_seconds;
+  if (before == null || after == null || !Number.isFinite(before) || !Number.isFinite(after)) return 'Time saving unavailable';
+  const saved = before - after;
+  const prefix = view.before.reference ? 'Walking reference: ' : '';
+  return Math.abs(saved) < 0.5 ? `${prefix}time unchanged` : `${prefix}${formatRouteSeconds(Math.abs(saved))} ${saved > 0 ? 'saved' : 'longer'}`;
 }

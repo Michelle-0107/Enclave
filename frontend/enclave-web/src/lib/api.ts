@@ -491,3 +491,30 @@ export function compareRepairPlans(input: {
     body: input,
   });
 }
+
+
+export type RepairSummary = {
+  source: 'ai' | 'calculated';
+  text: string;
+  facts: {
+    route_mode: 'avoid_damage' | 'accessible';
+    basis: 'time_only' | 'cost_effectiveness' | 'budget_and_time';
+    budget_myr: string | null;
+    comparable_path_count: number;
+    excluded_path_count: number;
+    recommended_plan_ids: string[];
+    explanation: string;
+    plans: Array<{
+      id: string; name: string; before_seconds: number; after_seconds: number;
+      saved_seconds: number; saved_meters: number; restored_paths: number;
+      unavailable_after_paths: number; cost_myr: string | null; missing_cost_count: number;
+      budget_status: 'within_budget' | 'over_budget' | 'unknown_cost' | 'not_set';
+    }>;
+  };
+};
+
+export function getRepairSummary(simulationId: string, mode: 'avoid_damage' | 'accessible') {
+  return apiRequest<RepairSummary>(`/api/v1/management/what-if/${encodeURIComponent(simulationId)}/summary`, {
+    method: 'POST', body: { route_mode: mode },
+  });
+}

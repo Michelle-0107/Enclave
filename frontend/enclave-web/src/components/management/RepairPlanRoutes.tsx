@@ -5,7 +5,7 @@ import type * as MapLibre from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { WhatIfResult, RoutingRestriction, FacilityIssue } from '@/lib/api';
 import {
-  lineMidpoint, repairPathViews, routeChange, repairMapPaths, routeDistance, repairMapFacilities, repairMapBoundsPoints,
+  lineMidpoint, repairPathViews, routeChange, repairMapPaths, routeDistance, formatRouteSeconds, routeTimeChange, repairMapFacilities, repairMapBoundsPoints,
   type RepairPlanResult,
 } from '@/lib/repairRouteView';
 
@@ -24,7 +24,8 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
   const views = useMemo(() => repairPathViews(baseline, plan.paths), [baseline, plan.paths]);
   const [selected, setSelected] = useState('');
   const requested = selectedKey ?? selected;
-  const selection = views.find(view => view.key === requested)?.key ?? views[0]?.key ?? '';
+  const selection = requested === 'all:avoid_damage' || requested === 'all:accessible'
+    ? requested : views.find(view => view.key === requested)?.key ?? views[0]?.key ?? '';
   const mapPaths = useMemo(() => repairMapPaths(views, selection), [views, selection]);
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre.Map | null>(null);
@@ -163,11 +164,13 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     <label className="flex flex-col gap-2 text-xs font-semibold text-primary">
       Path and route mode
       <select aria-label={`${plan.name}: path and route mode`} value={selection} onChange={event => { setSelected(event.target.value); onSelectionChange?.(event.target.value); }} className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm font-normal">
+        {views.some(view => view.mode === 'avoid_damage') && <option value="all:avoid_damage">Compare all routes · Avoid damage</option>}
+        {views.some(view => view.mode === 'accessible') && <option value="all:accessible">Compare all routes · Accessible</option>}
         {!views.length && <option value="">No comparable paths</option>}
         {views.map(view => <option key={view.key} value={view.key}>{view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}</option>)}
       </select>
     </label>
-    <p className="text-xs text-muted-foreground">Select a path to compare its Before and After routes across all repair plans.</p>
+    <p className="text-xs text-muted-foreground">{selection.startsWith('all:') ? `Comparing all ${mapPaths.length} routes. Each route is listed below with its Before / After distance and time.` : 'Select a path to compare its Before and After routes across all repair plans.'}</p>
     <div className="flex flex-col gap-2 text-sm font-semibold">
       {mapPaths.map(path => <div key={path.view.key} className="flex flex-wrap gap-x-4 gap-y-1">
         <span className="text-primary">P{path.number} · {path.view.name}</span>
@@ -211,9 +214,10 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
           <span>{view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}</span>
           <span>{routeChange(view)}</span>
         </div>
+        <p className="mt-1 font-semibold text-primary">{routeTimeChange(view)}</p>
         {view.explanation && <p className="mt-1 text-xs text-muted-foreground">{view.explanation}</p>}
-        <p className="mt-1" style={{ color: BEFORE }}>Before repairs: {routeDistance(view.before.route)}{view.before.reference ? ' · Avoid damage reference, accessibility unverified' : ''}</p>
-        <p className="mt-1" style={{ color: AFTER }}>After repairs: {routeDistance(view.after.route)}{view.after.reference ? ' · Avoid damage reference, accessibility unverified' : ''}</p>
+        <p className="mt-1" style={{ color: BEFORE }}>Before repairs: {routeDistance(view.before.route)} · {formatRouteSeconds(view.before.route?.duration_seconds)}{view.before.reference ? ' · Avoid damage reference, accessibility unverified' : ''}</p>
+        <p className="mt-1" style={{ color: AFTER }}>After repairs: {routeDistance(view.after.route)} · {formatRouteSeconds(view.after.route?.duration_seconds)}{view.after.reference ? ' · Avoid damage reference, accessibility unverified' : ''}</p>
       </li>)}
     </ul>
   </section>;
