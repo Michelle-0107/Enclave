@@ -23,6 +23,16 @@ class DemoNavigationTests(unittest.TestCase):
             root=ROOT/'data/demo_areas'
             self.assertIsNotNone(read_graph(root/f'{area.id}-routing.json.gz',root/f'{area.id}.osm',area.bbox))
 
+    def test_both_areas_live_and_demo_graphs_have_no_inferred_links_over_twenty_metres(self):
+        from backend.navigation.roadside import distance
+        for area in service_areas().items:
+            for factory in (walking_graph,demo_walking_graph):
+                with self.subTest(area=area.id,graph=factory.__name__):
+                    graph=factory(area.id)
+                    self.assertTrue(any(edge.kind=='open_access' for edge in graph.edges))
+                    self.assertTrue(all(distance(*edge.points)<=20+1e-6
+                                        for edge in graph.edges if edge.kind=='open_access'))
+
     def test_cache_signature_survives_windows_to_linux_line_endings(self):
         from backend.navigation.road_cache import signature
         with patch('backend.navigation.road_cache.Path.read_bytes',return_value=b'code\nnext line\n'):
@@ -46,14 +56,23 @@ class DemoNavigationTests(unittest.TestCase):
                 self.assertEqual(graph.navigation_facility_ids[edge.way_id],f['id'])
             with self.assertRaises(NavigationRejected): graph.route(body(p(0,0),p(10,10)))
 
-    def test_frozen_random_routes_meet_ninety_percent_in_every_area_and_category(self):
+    def test_frozen_random_routes_enforce_the_twenty_metre_policy_without_replacing_failures(self):
         paths=[ROOT/'data/demo_areas/random-route-samples.json',ROOT/'tests/fixtures/demo-routing/holdout-samples.json']
         for path in paths:
             sample=json.loads(path.read_text(encoding='utf-8'));result=evaluate(sample,demo=True)
             for row in result['summary']:
                 with self.subTest(seed=sample['seed'],area=row['area'],category=row['category']):
                     self.assertEqual(row['total'],30)
-                    self.assertGreaterEqual(row['rate'],.9)
+            # The stricter 20 m policy takes priority over the previous route-
+            # availability target. The separate audit command still fails its
+            # 90% gate and records every failed sample; never add long shortcuts
+            # merely to satisfy that score.
+            for row in result['cases']:
+                if not row['success']:
+                    self.assertTrue(row['reason'])
+                for step in row.get('maneuvers',[]):
+                    if 'open area' in step['instruction']:
+                        self.assertLessEqual(step['distance_meters'],20+1e-6)
             # No duplicate journey was substituted for a failed one.
             pairs={(r['area'],tuple(r['origin']),tuple(r['destination'])) for r in sample['cases']}
             self.assertEqual(len(pairs),len(sample['cases']))

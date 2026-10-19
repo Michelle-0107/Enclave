@@ -2,7 +2,11 @@
 
 本报告验证本地后端和导航模型，不代表手机实地走测、生产部署或真实道路的通行认证。
 
-路网算法校验：`c428536f45baf2540ca920d3e801a8159320202305a3a830b17872c862b9fca6`。
+路网算法校验：`34b266b6aa3e5591cf70895326bcb6fade996bd4d92d1341d4f3b69050e6874f`。
+
+当前规则：道路缺口和室外接近最多 20 米；建筑物内起终点关联最近可接入道路，不设距离上限。长距离不再通过空白地带补接。
+
+**90% 分类门槛：未通过。** 严格执行当前短缺口规则；不删除失败样本，也不通过增加长距离空地连接来提高成功率。需补充真实已记录连接才能改善缺失路网。
 
 ## 抽样方式
 
@@ -17,31 +21,31 @@
 
 | 批次 | 地区 | 类型 | 成功/总数 | 成功率 | 确实经过过街设施 | 本地耗时中位数 |
 |---|---|---|---:|---:|---:|---:|
-| 20261019 | kajang-prima-saujana | 道路两侧 | 30/30 | 100.0% | 28 | 73.62 ms |
-| 20261019 | kajang-prima-saujana | 小路通行 | 29/30 | 96.7% | — | 75.84 ms |
-| 20261019 | kajang-prima-saujana | 长距离（直线至少800米） | 30/30 | 100.0% | — | 84.59 ms |
-| 20261019 | kajang-prima-saujana | 同侧街道 | 30/30 | 100.0% | — | 65.9 ms |
-| 20261019 | kl-east-pilot | 道路两侧 | 30/30 | 100.0% | 25 | 81.92 ms |
-| 20261019 | kl-east-pilot | 小路通行 | 30/30 | 100.0% | — | 77.88 ms |
-| 20261019 | kl-east-pilot | 长距离（直线至少800米） | 30/30 | 100.0% | — | 98.0 ms |
-| 20261019 | kl-east-pilot | 同侧街道 | 30/30 | 100.0% | — | 70.37 ms |
-| 20261020 | kajang-prima-saujana | 道路两侧 | 29/30 | 96.7% | 27 | 72.04 ms |
-| 20261020 | kajang-prima-saujana | 小路通行 | 30/30 | 100.0% | — | 73.47 ms |
-| 20261020 | kajang-prima-saujana | 长距离（直线至少800米） | 29/30 | 96.7% | — | 91.66 ms |
-| 20261020 | kajang-prima-saujana | 同侧街道 | 30/30 | 100.0% | — | 67.41 ms |
-| 20261020 | kl-east-pilot | 道路两侧 | 27/30 | 90.0% | 24 | 75.78 ms |
-| 20261020 | kl-east-pilot | 小路通行 | 30/30 | 100.0% | — | 81.08 ms |
-| 20261020 | kl-east-pilot | 长距离（直线至少800米） | 29/30 | 96.7% | — | 95.3 ms |
-| 20261020 | kl-east-pilot | 同侧街道 | 30/30 | 100.0% | — | 74.34 ms |
+| 20261019 | kajang-prima-saujana | 道路两侧 | 30/30 | 100.0% | 29 | 39.62 ms |
+| 20261019 | kajang-prima-saujana | 小路通行 | 28/30 | 93.3% | — | 43.15 ms |
+| 20261019 | kajang-prima-saujana | 长距离（直线至少800米） | 24/30 | 80.0% | — | 51.12 ms |
+| 20261019 | kajang-prima-saujana | 同侧街道 | 30/30 | 100.0% | — | 42.27 ms |
+| 20261019 | kl-east-pilot | 道路两侧 | 25/30 | 83.3% | 22 | 41.76 ms |
+| 20261019 | kl-east-pilot | 小路通行 | 25/30 | 83.3% | — | 44.98 ms |
+| 20261019 | kl-east-pilot | 长距离（直线至少800米） | 26/30 | 86.7% | — | 57.89 ms |
+| 20261019 | kl-east-pilot | 同侧街道 | 30/30 | 100.0% | — | 42.05 ms |
+| 20261020 | kajang-prima-saujana | 道路两侧 | 28/30 | 93.3% | 26 | 41.82 ms |
+| 20261020 | kajang-prima-saujana | 小路通行 | 28/30 | 93.3% | — | 42.27 ms |
+| 20261020 | kajang-prima-saujana | 长距离（直线至少800米） | 23/30 | 76.7% | — | 53.95 ms |
+| 20261020 | kajang-prima-saujana | 同侧街道 | 30/30 | 100.0% | — | 41.26 ms |
+| 20261020 | kl-east-pilot | 道路两侧 | 26/30 | 86.7% | 23 | 43.15 ms |
+| 20261020 | kl-east-pilot | 小路通行 | 28/30 | 93.3% | — | 47.43 ms |
+| 20261020 | kl-east-pilot | 长距离（直线至少800米） | 23/30 | 76.7% | — | 58.11 ms |
+| 20261020 | kl-east-pilot | 同侧街道 | 30/30 | 100.0% | — | 43.65 ms |
 
-两批合计：**473/480，98.54%**。每个地区、每类、每个批次分别要求至少90%，不以总体平均掩盖某类失败。
+两批合计：**434/480，90.42%**。每个地区、每类、每个批次分别要求至少90%，不以总体平均掩盖某类失败。
 
 ## 设施专项结果
 
 | 地区 | 设施类型 | 指定设施确实被经过 | 成功率 |
 |---|---|---:|---:|
 | kajang-prima-saujana | 虚构斑马线 | 30/30 | 100.0% |
-| kajang-prima-saujana | 虚构天桥 | 29/30 | 96.7% |
+| kajang-prima-saujana | 虚构天桥 | 30/30 | 100.0% |
 | kl-east-pilot | 真实过街通道 | 27/27 | 100.0% |
 | kl-east-pilot | 真实天桥 | 10/10 | 100.0% |
 | kl-east-pilot | 虚构斑马线 | 30/30 | 100.0% |
@@ -62,15 +66,53 @@
 
 | 批次 | 样本 | 原因 |
 |---|---|---|
+| random-primary | kl-east-pilot-cross_road-19 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-primary | kl-east-pilot-cross_road-20 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-primary | kl-east-pilot-cross_road-21 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-primary | kl-east-pilot-cross_road-27 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-primary | kl-east-pilot-cross_road-29 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-local_streets-03 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-local_streets-10 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-local_streets-17 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-local_streets-18 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-local_streets-19 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-long_distance-24 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-long_distance-25 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-long_distance-26 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kl-east-pilot-long_distance-27 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kajang-prima-saujana-local_streets-16 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
 | random-primary | kajang-prima-saujana-local_streets-22 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
-| random-holdout | kl-east-pilot-cross_road-04 | No nearby walking access can be connected without crossing a mapped barrier or road. Choose another access point. |
-| random-holdout | kl-east-pilot-cross_road-24 | No nearby walking access can be connected without crossing a mapped barrier or road. Choose another access point. |
-| random-holdout | kl-east-pilot-cross_road-30 | No nearby walking access can be connected without crossing a mapped barrier or road. Choose another access point. |
+| random-primary | kajang-prima-saujana-long_distance-08 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kajang-prima-saujana-long_distance-09 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kajang-prima-saujana-long_distance-16 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kajang-prima-saujana-long_distance-17 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kajang-prima-saujana-long_distance-27 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-primary | kajang-prima-saujana-long_distance-28 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kl-east-pilot-cross_road-04 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-holdout | kl-east-pilot-cross_road-10 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-holdout | kl-east-pilot-cross_road-24 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-holdout | kl-east-pilot-cross_road-30 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-holdout | kl-east-pilot-local_streets-16 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kl-east-pilot-local_streets-19 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kl-east-pilot-long_distance-05 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kl-east-pilot-long_distance-06 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kl-east-pilot-long_distance-07 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kl-east-pilot-long_distance-13 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kl-east-pilot-long_distance-16 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kl-east-pilot-long_distance-20 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
 | random-holdout | kl-east-pilot-long_distance-22 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
-| random-holdout | kajang-prima-saujana-cross_road-03 | No nearby walking access can be connected without crossing a mapped barrier or road. Choose another access point. |
+| random-holdout | kajang-prima-saujana-cross_road-03 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-holdout | kajang-prima-saujana-cross_road-12 | No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point. |
+| random-holdout | kajang-prima-saujana-local_streets-04 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kajang-prima-saujana-local_streets-20 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kajang-prima-saujana-long_distance-03 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kajang-prima-saujana-long_distance-11 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
 | random-holdout | kajang-prima-saujana-long_distance-17 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kajang-prima-saujana-long_distance-18 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kajang-prima-saujana-long_distance-21 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kajang-prima-saujana-long_distance-27 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
+| random-holdout | kajang-prima-saujana-long_distance-29 | No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations. |
 | facilities | simulated-footbridge-1180007882-1-0 | Route did not traverse the specified navigation facility |
-| facilities | simulated-footbridge-779969810-0-0 | Route did not traverse the specified navigation facility |
 
 完整坐标、路线几何、导航步骤、失败原因及耗时保存在同目录 `demo-routing-audit/` 的 `.json.gz` 文件，解压即为 JSON。`summary.json` 可直接查看汇总。
 
