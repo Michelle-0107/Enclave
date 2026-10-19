@@ -1941,6 +1941,31 @@
         }
       }
     },
+    "/health/routing": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Routing Revision",
+        "operationId": "routing_revision_health_routing_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Routing Revision Health Routing Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/me": {
       "get": {
         "tags": [
@@ -6510,6 +6535,12 @@
             "type": "integer",
             "minimum": 0.0,
             "title": "Unmarked Crossing Count",
+            "default": 0
+          },
+          "simulated_crossing_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Simulated Crossing Count",
             "default": 0
           },
           "geometry": {

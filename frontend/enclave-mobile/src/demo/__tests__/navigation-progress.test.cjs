@@ -11,6 +11,16 @@ const route={coordinates:coords,maneuvers:[{instruction:'Continue straight.',coo
  {instruction:'Cross the private local road when traffic is clear; this is an unmarked crossing.',coordinate:p(100,30),distanceFromStart:130},
  {instruction:'Turn right onto Park Road.',coordinate:coords[2],distanceFromStart:200,type:10}]};
 const cases=[];function test(name,fn){try{fn();cases.push({name,passed:true});}catch(e){cases.push({name,passed:false,error:e.message});}}
+test('Mapped and simulated bridges survive guidance filtering and GPS advances after crossing',()=>{
+ const model=nav.navigationModel({coordinates:coords,maneuvers:[
+  {instruction:'Use the mapped footbridge.',coordinate:coords[0],distanceFromStart:0},
+  {instruction:'Use the simulated zebra crossing. Demo only.',coordinate:coords[1],distanceFromStart:100},
+  {instruction:'Take the simulated footbridge.',coordinate:coords[2],distanceFromStart:200}]});
+ assert.deepEqual(Array.from(model.instructions,x=>x.kind),['crossing','crossing','crossing','arrive']);
+ assert.ok(nav.nextInstruction(model,20).text.includes('zebra'));
+ assert.ok(nav.nextInstruction(model,120).text.includes('simulated footbridge'));
+ assert.equal(nav.nextInstruction(model,250).kind,'arrive');
+});
 test('Backend turns and unmarked crossing instructions survive, straight geometry vertices are not instructions',()=>{
  const model=nav.navigationModel(route);assert.equal(model.instructions.length,4);
  assert.deepEqual(Array.from(model.instructions,x=>x.kind),['left','crossing','right','arrive']);

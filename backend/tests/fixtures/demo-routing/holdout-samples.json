@@ -1,0 +1,3127 @@
+{
+  "seed": 20261020,
+  "per_category_per_area": 30,
+  "eligibility": "Mapped ground walking/roadside points or opposite sides of a sampled road; known physical endpoint obstacles excluded. No connected-component or route-success filtering.",
+  "cases": [
+    {
+      "id": "kl-east-pilot-cross_road-01",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73645853319232,
+        3.220344293273035
+      ],
+      "destination": [
+        101.73635459218585,
+        3.2204439454352567
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-02",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.74082208534467,
+        3.223814390406071
+      ],
+      "destination": [
+        101.74081326677214,
+        3.2239580119227695
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-03",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72410439826217,
+        3.2310326705124446
+      ],
+      "destination": [
+        101.7239603821706,
+        3.2310372388081774
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-04",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72744781257981,
+        3.227045212464673
+      ],
+      "destination": [
+        101.7273138152889,
+        3.226992310661891
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-05",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73564041080206,
+        3.2228993713700818
+      ],
+      "destination": [
+        101.73573748762075,
+        3.2230057038586435
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-06",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72965890802148,
+        3.221132228699884
+      ],
+      "destination": [
+        101.72955146751944,
+        3.2210363493437217
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-07",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72455595142624,
+        3.2287595280434673
+      ],
+      "destination": [
+        101.72470003566164,
+        3.2287583918932827
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-08",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73544016301304,
+        3.219925706776212
+      ],
+      "destination": [
+        101.73550736942288,
+        3.220052987427642
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-09",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72493388594376,
+        3.226911560944629
+      ],
+      "destination": [
+        101.72490716516565,
+        3.2267701655770624
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-10",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.7357984151583,
+        3.219012713026088
+      ],
+      "destination": [
+        101.73567214895519,
+        3.218943393408722
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-11",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73731642746712,
+        3.218209540386074
+      ],
+      "destination": [
+        101.73731507802087,
+        3.218065655438095
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-12",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73018099142142,
+        3.219192302912983
+      ],
+      "destination": [
+        101.73020599821837,
+        3.2190505952307
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-13",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72154093183505,
+        3.2230682081935096
+      ],
+      "destination": [
+        101.72144191658576,
+        3.223172743012601
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-14",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73069884795775,
+        3.219748363794449
+      ],
+      "destination": [
+        101.73077986474316,
+        3.219629372395069
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-15",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73019230282775,
+        3.22261811642843
+      ],
+      "destination": [
+        101.73028872206848,
+        3.2225111889373155
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-16",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.7217888855179,
+        3.2277747657547846
+      ],
+      "destination": [
+        101.72185271123284,
+        3.2276457613729845
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-17",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73047285503745,
+        3.2188222992835396
+      ],
+      "destination": [
+        101.73048280730409,
+        3.218678751667898
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-18",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72329103289901,
+        3.2231322593729237
+      ],
+      "destination": [
+        101.7233784357822,
+        3.2230178637671276
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-19",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73411997774724,
+        3.219986739271891
+      ],
+      "destination": [
+        101.73423739238883,
+        3.219903335091337
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-20",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72803113713293,
+        3.2244011597194087
+      ],
+      "destination": [
+        101.72809150098722,
+        3.2245318152968343
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-21",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73469246189809,
+        3.217155524438403
+      ],
+      "destination": [
+        101.7345690328623,
+        3.2172297652365316
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-22",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.7222683260415,
+        3.229484002481389
+      ],
+      "destination": [
+        101.72233233801839,
+        3.229355090168399
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-23",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.7242534769443,
+        3.224094919921447
+      ],
+      "destination": [
+        101.72435641730239,
+        3.223994237242147
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-24",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72815600121373,
+        3.2257572630010944
+      ],
+      "destination": [
+        101.72825294437803,
+        3.2258637170227225
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-25",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72586563245204,
+        3.229926275524689
+      ],
+      "destination": [
+        101.72572177329245,
+        3.2299343947865093
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-26",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72564658440633,
+        3.2179112228977433
+      ],
+      "destination": [
+        101.72574319311472,
+        3.2178044660900995
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-27",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73841848799206,
+        3.2208794495159982
+      ],
+      "destination": [
+        101.73832908852208,
+        3.2207666030704605
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-28",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72687070149945,
+        3.2340078484750596
+      ],
+      "destination": [
+        101.72677922524032,
+        3.234119022700573
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-29",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.73009449673854,
+        3.227521997100576
+      ],
+      "destination": [
+        101.73010347084406,
+        3.227665609009173
+      ]
+    },
+    {
+      "id": "kl-east-pilot-cross_road-30",
+      "area": "kl-east-pilot",
+      "category": "cross_road",
+      "origin": [
+        101.72775594206301,
+        3.2261178428025477
+      ],
+      "destination": [
+        101.72765463843338,
+        3.226015517936475
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-01",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.7316687831308,
+        3.2219342225262215
+      ],
+      "destination": [
+        101.73138455522341,
+        3.2216899440325246
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-02",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72475760106005,
+        3.2330189069421995
+      ],
+      "destination": [
+        101.72470511037123,
+        3.2331583612745414
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-03",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72765316505344,
+        3.2248037213333762
+      ],
+      "destination": [
+        101.7278231686094,
+        3.2247059884950455
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-04",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72438707078616,
+        3.2230842633359433
+      ],
+      "destination": [
+        101.72470811606085,
+        3.22267308808007
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-05",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.7324744712153,
+        3.2249502175403197
+      ],
+      "destination": [
+        101.7326083056115,
+        3.2250117075745375
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-06",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.74067774373054,
+        3.2252105829604054
+      ],
+      "destination": [
+        101.74034058328257,
+        3.2254314369078902
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-07",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72331543206542,
+        3.2201093200540356
+      ],
+      "destination": [
+        101.72297907294963,
+        3.2204527185959932
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-08",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72797893929099,
+        3.2230905959570126
+      ],
+      "destination": [
+        101.72824923150347,
+        3.222779742032814
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-09",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.7405452528168,
+        3.2232401909388027
+      ],
+      "destination": [
+        101.74091703175428,
+        3.2234133605781037
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-10",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.73745960969119,
+        3.217969712525458
+      ],
+      "destination": [
+        101.73718611655967,
+        3.217964057682367
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-11",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.73878057219738,
+        3.217647037323067
+      ],
+      "destination": [
+        101.73828734867294,
+        3.2181076385005527
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-12",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72603118669012,
+        3.222053952081181
+      ],
+      "destination": [
+        101.72578098603735,
+        3.222383952601387
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-13",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.73420428351794,
+        3.2226369722616885
+      ],
+      "destination": [
+        101.73409991296185,
+        3.222728810368602
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-14",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.7235311962353,
+        3.2283169323392102
+      ],
+      "destination": [
+        101.7235196223038,
+        3.2285516742079072
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-15",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.73196540001473,
+        3.2175975117627824
+      ],
+      "destination": [
+        101.73198226050879,
+        3.217969106430966
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-16",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72583757652843,
+        3.2216583597338997
+      ],
+      "destination": [
+        101.7260554609548,
+        3.221809180270969
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-17",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72235569012892,
+        3.228793471205577
+      ],
+      "destination": [
+        101.72231397026282,
+        3.228940226059247
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-18",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.73820254826296,
+        3.2189879760837075
+      ],
+      "destination": [
+        101.73800466137104,
+        3.218987560728912
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-19",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72355196046756,
+        3.2264476663461834
+      ],
+      "destination": [
+        101.72382455523157,
+        3.2266197857082037
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-20",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72543952349936,
+        3.2228485902058286
+      ],
+      "destination": [
+        101.72578117978064,
+        3.223111285924325
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-21",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.7238174100724,
+        3.2234088365657447
+      ],
+      "destination": [
+        101.72397899829937,
+        3.2235319824322723
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-22",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.7363254939003,
+        3.2206622843270187
+      ],
+      "destination": [
+        101.73648910841429,
+        3.2205714579469613
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-23",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.7371612891917,
+        3.2184828886841124
+      ],
+      "destination": [
+        101.73686437722799,
+        3.2184914938302907
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-24",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72237346350757,
+        3.224200109203489
+      ],
+      "destination": [
+        101.7224807455774,
+        3.22430924854833
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-25",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72598356463818,
+        3.2262579974799785
+      ],
+      "destination": [
+        101.7258393815282,
+        3.225794170332464
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-26",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72496017258209,
+        3.2340259711686437
+      ],
+      "destination": [
+        101.72457886858278,
+        3.2348546739916815
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-27",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72459984812998,
+        3.2281515373712835
+      ],
+      "destination": [
+        101.72481044887225,
+        3.2280584690089014
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-28",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.73072794390389,
+        3.2266587849364354
+      ],
+      "destination": [
+        101.73072711110564,
+        3.2269103657143523
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-29",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72460056405166,
+        3.228706852348505
+      ],
+      "destination": [
+        101.72460172946894,
+        3.228854243356825
+      ]
+    },
+    {
+      "id": "kl-east-pilot-same_side-30",
+      "area": "kl-east-pilot",
+      "category": "same_side",
+      "origin": [
+        101.72347604016954,
+        3.2259602558122564
+      ],
+      "destination": [
+        101.72330959173375,
+        3.226149653556947
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-01",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72380786612861,
+        3.221599925885657
+      ],
+      "destination": [
+        101.72251158171676,
+        3.224191618863655
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-02",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.73095913670157,
+        3.219966844686521
+      ],
+      "destination": [
+        101.73335214866603,
+        3.2225884504197913
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-03",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72259216785535,
+        3.2236147661862073
+      ],
+      "destination": [
+        101.72662245853535,
+        3.224033625475947
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-04",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.7350087018906,
+        3.2223409360386883
+      ],
+      "destination": [
+        101.7384281489384,
+        3.2206523347375415
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-05",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72223641842423,
+        3.226724915733208
+      ],
+      "destination": [
+        101.72614775761303,
+        3.2263103828014943
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-06",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72304098763064,
+        3.2203895081456553
+      ],
+      "destination": [
+        101.72124292767016,
+        3.223950223916079
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-07",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72325293432502,
+        3.2302297729854246
+      ],
+      "destination": [
+        101.72556968549827,
+        3.231384932186569
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-08",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.73816020333952,
+        3.221206822730476
+      ],
+      "destination": [
+        101.73691280671896,
+        3.2189460539982826
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-09",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.7305851573718,
+        3.223111363672133
+      ],
+      "destination": [
+        101.72648003931127,
+        3.2229890387866473
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-10",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72954239196075,
+        3.2227948734026404
+      ],
+      "destination": [
+        101.73224058978296,
+        3.2210324360867437
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-11",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.73498012479563,
+        3.224082187238066
+      ],
+      "destination": [
+        101.73285564072867,
+        3.2208718090901995
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-12",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.7291398225607,
+        3.220455010812475
+      ],
+      "destination": [
+        101.73026623034254,
+        3.2247166712380344
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-13",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.7253023517936,
+        3.2274308185376395
+      ],
+      "destination": [
+        101.72572595207168,
+        3.230525847995124
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-14",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72435612251421,
+        3.2244294909175104
+      ],
+      "destination": [
+        101.72471463779212,
+        3.220215587747497
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-15",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72813774255954,
+        3.2203160386186624
+      ],
+      "destination": [
+        101.72970142351478,
+        3.2194602188343535
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-16",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.7313703687404,
+        3.2191815228585243
+      ],
+      "destination": [
+        101.73381035655196,
+        3.2173592304794587
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-17",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72940183201267,
+        3.220835548626284
+      ],
+      "destination": [
+        101.73246281995138,
+        3.2214386583434256
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-18",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72385845100442,
+        3.226577347594126
+      ],
+      "destination": [
+        101.72547553495623,
+        3.224030407852486
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-19",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72918006668816,
+        3.2195026006193155
+      ],
+      "destination": [
+        101.7295610731966,
+        3.217546983683094
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-20",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72280457977507,
+        3.2213969343359627
+      ],
+      "destination": [
+        101.72190748360116,
+        3.223731579251294
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-21",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.73868120917405,
+        3.2174215102279393
+      ],
+      "destination": [
+        101.74063910580585,
+        3.2176442455729526
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-22",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.7275911002806,
+        3.2220697969201106
+      ],
+      "destination": [
+        101.72780136043367,
+        3.2185896449534104
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-23",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.73059031901686,
+        3.2212050977314415
+      ],
+      "destination": [
+        101.72646571029355,
+        3.2217407737588792
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-24",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72542749583708,
+        3.227443997843099
+      ],
+      "destination": [
+        101.72415396589604,
+        3.2286007559761916
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-25",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72601701572182,
+        3.231957844154946
+      ],
+      "destination": [
+        101.72335883826655,
+        3.2341355317240894
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-26",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72874118842634,
+        3.2226540394586043
+      ],
+      "destination": [
+        101.72716538571456,
+        3.2193125561474507
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-27",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72187395562271,
+        3.224784966756466
+      ],
+      "destination": [
+        101.7255605010598,
+        3.2246150960895403
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-28",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.73342524397366,
+        3.2217794164036704
+      ],
+      "destination": [
+        101.73518823730623,
+        3.2227790029238927
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-29",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72896705286279,
+        3.2215476345903387
+      ],
+      "destination": [
+        101.732607139461,
+        3.2225759559218328
+      ]
+    },
+    {
+      "id": "kl-east-pilot-local_streets-30",
+      "area": "kl-east-pilot",
+      "category": "local_streets",
+      "origin": [
+        101.72541455046623,
+        3.224789110107299
+      ],
+      "destination": [
+        101.72476045218706,
+        3.225599340556165
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-01",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72467500170502,
+        3.233108348269461
+      ],
+      "destination": [
+        101.73068844399313,
+        3.226256025814766
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-02",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72830358893104,
+        3.2262197740087086
+      ],
+      "destination": [
+        101.73657619179441,
+        3.2195259012126294
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-03",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72365562812351,
+        3.2178157152198055
+      ],
+      "destination": [
+        101.7389083598614,
+        3.2189351774803283
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-04",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72505697112852,
+        3.2302335426993363
+      ],
+      "destination": [
+        101.72455754141417,
+        3.2206929488477183
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-05",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73633422796641,
+        3.2205957000404797
+      ],
+      "destination": [
+        101.72683608497137,
+        3.2171130251543927
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-06",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72265378643269,
+        3.229955048792288
+      ],
+      "destination": [
+        101.73197882342123,
+        3.2180293737979384
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-07",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72756380702009,
+        3.224587896686509
+      ],
+      "destination": [
+        101.74010268694128,
+        3.225376166447962
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-08",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72401452006103,
+        3.228339027935376
+      ],
+      "destination": [
+        101.72445933756298,
+        3.2199662785843004
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-09",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73163920181294,
+        3.2193152214390905
+      ],
+      "destination": [
+        101.7400864174796,
+        3.218627029970343
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-10",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73894822930971,
+        3.217641340235072
+      ],
+      "destination": [
+        101.72528241041947,
+        3.228759832061504
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-11",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72655650520488,
+        3.231678343070201
+      ],
+      "destination": [
+        101.7293036222414,
+        3.221944905231661
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-12",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.74076957502473,
+        3.2172873449806882
+      ],
+      "destination": [
+        101.72909350830444,
+        3.2214802213187945
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-13",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.7383966041628,
+        3.218005609289084
+      ],
+      "destination": [
+        101.72922100110723,
+        3.2176358300361825
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-14",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73464012826993,
+        3.2241135386553514
+      ],
+      "destination": [
+        101.72218436480415,
+        3.2195394848920276
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-15",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72958381344294,
+        3.2211486648035685
+      ],
+      "destination": [
+        101.72551873741023,
+        3.2311639914612527
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-16",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73063580961501,
+        3.225351246322206
+      ],
+      "destination": [
+        101.72902522856309,
+        3.218086559574282
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-17",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73388727717395,
+        3.217089979610968
+      ],
+      "destination": [
+        101.72635273906187,
+        3.2201558603983096
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-18",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72816047349852,
+        3.222881819609861
+      ],
+      "destination": [
+        101.73806352181788,
+        3.2211211198556002
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-19",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72499572740671,
+        3.228532157464756
+      ],
+      "destination": [
+        101.74045706054888,
+        3.2214899229987615
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-20",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73351905030172,
+        3.2183920898983738
+      ],
+      "destination": [
+        101.74073652023938,
+        3.218691486230929
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-21",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73646665210993,
+        3.219781491078915
+      ],
+      "destination": [
+        101.72327765890303,
+        3.229015951065867
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-22",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73017453006156,
+        3.220533471548793
+      ],
+      "destination": [
+        101.72223655768504,
+        3.2348831777076614
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-23",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72406720329914,
+        3.224097450813404
+      ],
+      "destination": [
+        101.7359085316179,
+        3.220370537617336
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-24",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72536234782936,
+        3.232247759414666
+      ],
+      "destination": [
+        101.72783245260015,
+        3.2232691758477343
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-25",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73901675820012,
+        3.218000737258277
+      ],
+      "destination": [
+        101.73098231302178,
+        3.2191815895090015
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-26",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.72572540912488,
+        3.2272700187576615
+      ],
+      "destination": [
+        101.72373059173881,
+        3.2178130546340444
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-27",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73269416764592,
+        3.2199167096168186
+      ],
+      "destination": [
+        101.72390479491348,
+        3.2284413824731697
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-28",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.74002135003086,
+        3.2218268526340568
+      ],
+      "destination": [
+        101.7238214027269,
+        3.223411879354864
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-29",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.73855299439916,
+        3.2184269300058825
+      ],
+      "destination": [
+        101.72232767930849,
+        3.2223894401639885
+      ]
+    },
+    {
+      "id": "kl-east-pilot-long_distance-30",
+      "area": "kl-east-pilot",
+      "category": "long_distance",
+      "origin": [
+        101.7228801020693,
+        3.219507675878214
+      ],
+      "destination": [
+        101.72403081197359,
+        3.2282852254401555
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-01",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.79751257024733,
+        3.006221840716533
+      ],
+      "destination": [
+        101.79765453820366,
+        3.006246437443523
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-02",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80517133998632,
+        3.0135094243671046
+      ],
+      "destination": [
+        101.80524196426235,
+        3.013634845927138
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-03",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.7973627994956,
+        3.01190237817921
+      ],
+      "destination": [
+        101.7974185874644,
+        3.012035046644009
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-04",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80124934091847,
+        3.0041328782673724
+      ],
+      "destination": [
+        101.80111410138834,
+        3.0040832288938883
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-05",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.8121629678729,
+        3.0109991461138916
+      ],
+      "destination": [
+        101.81223481039888,
+        3.011123875753269
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-06",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80741593271124,
+        3.014038967221314
+      ],
+      "destination": [
+        101.80734446058841,
+        3.013914025547982
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-07",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.79798186963261,
+        3.005857679677047
+      ],
+      "destination": [
+        101.79801012832658,
+        3.0057165828033368
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-08",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80712617859693,
+        3.0118678262569745
+      ],
+      "destination": [
+        101.80720013923721,
+        3.011991315127174
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-09",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80988238788129,
+        3.00058142705346
+      ],
+      "destination": [
+        101.80976948070402,
+        3.0006708226971637
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-10",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.81015514498225,
+        3.0149193360861486
+      ],
+      "destination": [
+        101.81028270151192,
+        3.0148524138012536
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-11",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.81088789561369,
+        3.011933242852097
+      ],
+      "destination": [
+        101.81101284032287,
+        3.0118615750506597
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-12",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80270282700036,
+        3.0081435279097297
+      ],
+      "destination": [
+        101.80277524222028,
+        3.0082679268393484
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-13",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.81129588115292,
+        3.0145801152183873
+      ],
+      "destination": [
+        101.81137135075679,
+        3.0147026902316556
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-14",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.81110829489756,
+        3.0089700640992696
+      ],
+      "destination": [
+        101.81102858954698,
+        3.0088501926998235
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-15",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.8016848273409,
+        3.0137955086251793
+      ],
+      "destination": [
+        101.80180346323434,
+        3.0138771711611767
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-16",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.79969813537348,
+        3.001399568418976
+      ],
+      "destination": [
+        101.79957902227422,
+        3.0014805352352347
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-17",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.7983220425358,
+        3.0014855116451877
+      ],
+      "destination": [
+        101.79822154672411,
+        3.00138239545388
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-18",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80771407992806,
+        3.0135597631581583
+      ],
+      "destination": [
+        101.80764676142486,
+        3.0134325415948067
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-19",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.81379824924949,
+        3.0164185319263797
+      ],
+      "destination": [
+        101.81370526820182,
+        3.016528454169135
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-20",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.79647800077248,
+        3.0003962442092567
+      ],
+      "destination": [
+        101.79637463977656,
+        3.000295992219519
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-21",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80478402712939,
+        3.0027331660775256
+      ],
+      "destination": [
+        101.80486237918817,
+        3.0028539239523138
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-22",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80393432541848,
+        3.0137877702989404
+      ],
+      "destination": [
+        101.80396347791793,
+        3.0139286857128624
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-23",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80472394858337,
+        3.017527742566162
+      ],
+      "destination": [
+        101.80481600618415,
+        3.017417047919571
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-24",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80316987538613,
+        3.0159162779075928
+      ],
+      "destination": [
+        101.80328151573612,
+        3.016007246390547
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-25",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.81341718162153,
+        3.007516464332871
+      ],
+      "destination": [
+        101.81331466970619,
+        3.0076175820135362
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-26",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80036832096424,
+        3.0153505149340893
+      ],
+      "destination": [
+        101.80028005204062,
+        3.0154642454596847
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-27",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80652042007046,
+        3.0153572087015137
+      ],
+      "destination": [
+        101.80663089001402,
+        3.0154495911249573
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-28",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.79805180106648,
+        3.012294010138961
+      ],
+      "destination": [
+        101.79812708930498,
+        3.0121713239488703
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-29",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.80264282667326,
+        3.004865581221886
+      ],
+      "destination": [
+        101.8027801044143,
+        3.0049092977407383
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-cross_road-30",
+      "area": "kajang-prima-saujana",
+      "category": "cross_road",
+      "origin": [
+        101.81454888121533,
+        3.0066222217356433
+      ],
+      "destination": [
+        101.81445886278155,
+        3.006509867068346
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-01",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.81372731599394,
+        3.0135764497844195
+      ],
+      "destination": [
+        101.8136077022943,
+        3.013359274072804
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-02",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.7965856388329,
+        3.0061354667820694
+      ],
+      "destination": [
+        101.79655905841055,
+        3.0063478640458947
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-03",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80431643163433,
+        3.0014421669267146
+      ],
+      "destination": [
+        101.80465123635373,
+        3.001554555165071
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-04",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80142126428613,
+        3.00001000473135
+      ],
+      "destination": [
+        101.80079151114899,
+        2.9998481613576367
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-05",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.7968525391934,
+        3.0082250123690546
+      ],
+      "destination": [
+        101.79666928191106,
+        3.008517428821502
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-06",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.7974238732761,
+        3.0063976972950943
+      ],
+      "destination": [
+        101.79719997166269,
+        3.006344903328728
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-07",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.79965789902528,
+        3.0002375175589533
+      ],
+      "destination": [
+        101.79948714674568,
+        3.0003539374695114
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-08",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.79550666937591,
+        3.015180119144864
+      ],
+      "destination": [
+        101.7958304915786,
+        3.014793666882336
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-09",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.8109810246761,
+        3.0094697347268213
+      ],
+      "destination": [
+        101.81081912090251,
+        3.0092263103178234
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-10",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80117282769369,
+        3.010801973921695
+      ],
+      "destination": [
+        101.80093027555587,
+        3.0110236233806615
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-11",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.8069045142293,
+        2.9993489976192773
+      ],
+      "destination": [
+        101.80704322730081,
+        2.999229617602354
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-12",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.8055847220811,
+        3.010846703333199
+      ],
+      "destination": [
+        101.80567866747774,
+        3.0110012197225395
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-13",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.79617172455545,
+        3.0096020058567032
+      ],
+      "destination": [
+        101.79671716137034,
+        3.009899646726304
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-14",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.798096025898,
+        3.005834623560803
+      ],
+      "destination": [
+        101.79792852996182,
+        3.005801169581642
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-15",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80328700037747,
+        2.999697959328868
+      ],
+      "destination": [
+        101.80352102977483,
+        2.999756115809543
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-16",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.8034829238332,
+        3.0115427645897657
+      ],
+      "destination": [
+        101.80390486919408,
+        3.0121067178166236
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-17",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.81239504524346,
+        3.012479067734423
+      ],
+      "destination": [
+        101.81229497346334,
+        3.0122966122398522
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-18",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.8067144561037,
+        3.010936566258396
+      ],
+      "destination": [
+        101.80743337772236,
+        3.0104754927276662
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-19",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80587067029549,
+        3.001236514394622
+      ],
+      "destination": [
+        101.80580536271587,
+        3.001508629309699
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-20",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80457966665149,
+        3.0113864821978713
+      ],
+      "destination": [
+        101.80401653520119,
+        3.0116996310277067
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-21",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80900120970429,
+        3.0158439105490586
+      ],
+      "destination": [
+        101.80861094412168,
+        3.0160507800614975
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-22",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.81127262628748,
+        3.002614955070766
+      ],
+      "destination": [
+        101.81106904459182,
+        3.0023933372021667
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-23",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80003538891694,
+        3.00883017962967
+      ],
+      "destination": [
+        101.8002179839856,
+        3.0089200572359744
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-24",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80869275010487,
+        3.010454009709065
+      ],
+      "destination": [
+        101.80847580416791,
+        3.010598222594415
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-25",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.797113361731,
+        3.0011040683674537
+      ],
+      "destination": [
+        101.79694525036962,
+        3.0012613108017354
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-26",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80498514244383,
+        3.0136400958399445
+      ],
+      "destination": [
+        101.80512650575214,
+        3.013828999105249
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-27",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80515653008285,
+        3.0120902553927325
+      ],
+      "destination": [
+        101.80505806856536,
+        3.0119153021119804
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-28",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80294589599562,
+        3.0137629820986107
+      ],
+      "destination": [
+        101.80285176354388,
+        3.0139019470357753
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-29",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.79663866100341,
+        3.001546683721338
+      ],
+      "destination": [
+        101.79643528128432,
+        3.0017327545281765
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-same_side-30",
+      "area": "kajang-prima-saujana",
+      "category": "same_side",
+      "origin": [
+        101.80334970215563,
+        3.005779013077131
+      ],
+      "destination": [
+        101.80316042712829,
+        3.0057266795200683
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-01",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80651008122621,
+        3.0099704494534825
+      ],
+      "destination": [
+        101.80624739092804,
+        3.011863814149787
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-02",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80215001795591,
+        3.0009976598683155
+      ],
+      "destination": [
+        101.8001406933134,
+        2.9994843190780696
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-03",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80732049857521,
+        3.009060186855455
+      ],
+      "destination": [
+        101.80995322280015,
+        3.010233019245563
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-04",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.79656270495242,
+        3.006318725475213
+      ],
+      "destination": [
+        101.79870106408941,
+        3.0025078472336406
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-05",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80684044196549,
+        3.0115507585069
+      ],
+      "destination": [
+        101.80990785633412,
+        3.010164792765367
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-06",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.81127436386659,
+        3.008651168663453
+      ],
+      "destination": [
+        101.80845424407822,
+        3.010612554472607
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-07",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80613036624848,
+        3.0105584324897583
+      ],
+      "destination": [
+        101.80784659626293,
+        3.0112064151771674
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-08",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.8005079595914,
+        3.0150357779857773
+      ],
+      "destination": [
+        101.80233391622814,
+        3.0109404544237983
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-09",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80191980617118,
+        3.01074120849677
+      ],
+      "destination": [
+        101.80557262684692,
+        3.0098774868213547
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-10",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80381059725082,
+        3.0077811014948117
+      ],
+      "destination": [
+        101.80706938585872,
+        3.010111063997253
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-11",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.8078291790442,
+        3.0062354944057827
+      ],
+      "destination": [
+        101.80619815034206,
+        3.0095604147394277
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-12",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.81376689504467,
+        3.0107248237585456
+      ],
+      "destination": [
+        101.81193998033095,
+        3.011843300569406
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-13",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.7969462368287,
+        3.005328901986749
+      ],
+      "destination": [
+        101.80080661721148,
+        3.00587661843029
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-14",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80398097920892,
+        3.008333895904597
+      ],
+      "destination": [
+        101.80092101566309,
+        3.0059117342609905
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-15",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80653928891117,
+        3.0097499328071917
+      ],
+      "destination": [
+        101.8051219257386,
+        3.007430303349002
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-16",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80104003248746,
+        3.0003646669247295
+      ],
+      "destination": [
+        101.801746760391,
+        3.0044641044433176
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-17",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80394699400013,
+        2.999299922573476
+      ],
+      "destination": [
+        101.80428638729707,
+        3.0037020531107776
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-18",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80444630002587,
+        3.012740120671283
+      ],
+      "destination": [
+        101.80566995076634,
+        3.0109868829394735
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-19",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.81315256151281,
+        3.01688051184633
+      ],
+      "destination": [
+        101.81244963878521,
+        3.0177880683346707
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-20",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.81318941045052,
+        3.0166182374851434
+      ],
+      "destination": [
+        101.81346523435266,
+        3.0144729691634007
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-21",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80115724751471,
+        3.004252725453507
+      ],
+      "destination": [
+        101.80280367506752,
+        3.0006685928541628
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-22",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80633262248813,
+        3.010020144605668
+      ],
+      "destination": [
+        101.80675942708572,
+        3.01176484908914
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-23",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80756799523937,
+        3.012648216852295
+      ],
+      "destination": [
+        101.80523001888574,
+        3.0102761417502535
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-24",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80377216905949,
+        3.013946578592829
+      ],
+      "destination": [
+        101.8004403194988,
+        3.0122855427296353
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-25",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80601696410588,
+        3.0053946106794056
+      ],
+      "destination": [
+        101.80479531137715,
+        3.009677681299368
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-26",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80202141257074,
+        3.002081434584398
+      ],
+      "destination": [
+        101.79944103640445,
+        3.0052912241364003
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-27",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80693534847748,
+        3.0074491895977866
+      ],
+      "destination": [
+        101.80622908605278,
+        3.005038630303303
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-28",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80390945728429,
+        3.017148757338698
+      ],
+      "destination": [
+        101.80163956071507,
+        3.017367468029989
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-29",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.80749907329849,
+        3.0073478067291863
+      ],
+      "destination": [
+        101.80753533333532,
+        3.0059656522349316
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-local_streets-30",
+      "area": "kajang-prima-saujana",
+      "category": "local_streets",
+      "origin": [
+        101.79710832214727,
+        3.01301243098891
+      ],
+      "destination": [
+        101.7957902325519,
+        3.0111725880725397
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-01",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80007905361293,
+        3.0020945172161215
+      ],
+      "destination": [
+        101.80668895156654,
+        3.0109529233503114
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-02",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.81370072128085,
+        3.0041996328301592
+      ],
+      "destination": [
+        101.80600986873458,
+        3.0070739985536226
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-03",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.81416276393246,
+        3.0158350570204773
+      ],
+      "destination": [
+        101.79777212429408,
+        3.01225711168306
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-04",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.79588179961951,
+        3.0094552115278903
+      ],
+      "destination": [
+        101.80484885578254,
+        3.0120160321621863
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-05",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80393988967506,
+        3.0093104281273866
+      ],
+      "destination": [
+        101.80524915062102,
+        3.000233705788458
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-06",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.81305580130369,
+        3.0028713019720112
+      ],
+      "destination": [
+        101.81072675559889,
+        3.0119381475687006
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-07",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.81290836451475,
+        3.010879078039841
+      ],
+      "destination": [
+        101.804688982656,
+        3.013154643477907
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-08",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.8146861331032,
+        3.012259770923656
+      ],
+      "destination": [
+        101.79571235674169,
+        3.002274930511706
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-09",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80685433037928,
+        3.0085253733357167
+      ],
+      "destination": [
+        101.81127873940316,
+        3.002621609773512
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-10",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80744773520061,
+        3.0111817338984794
+      ],
+      "destination": [
+        101.80591507480845,
+        2.999060932472648
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-11",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.79580189099241,
+        3.013982322956531
+      ],
+      "destination": [
+        101.80224443419542,
+        3.0035150098449312
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-12",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80138175378906,
+        3.0112307252190367
+      ],
+      "destination": [
+        101.81319347929106,
+        3.0018684879713695
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-13",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80518787937426,
+        2.999172840747018
+      ],
+      "destination": [
+        101.81102066889291,
+        3.0162449745512117
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-14",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.7994291064426,
+        3.0055277970589467
+      ],
+      "destination": [
+        101.80200829399105,
+        3.0128306136553067
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-15",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80951780930135,
+        3.0076101328108535
+      ],
+      "destination": [
+        101.80154595940509,
+        3.004762434024363
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-16",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.81051802325781,
+        3.015334245751258
+      ],
+      "destination": [
+        101.8040282998597,
+        3.009449224293355
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-17",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80317084208238,
+        3.006350305287429
+      ],
+      "destination": [
+        101.81423311391913,
+        2.9993774273429508
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-18",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80323846864054,
+        2.9999448365216432
+      ],
+      "destination": [
+        101.79536974546741,
+        3.0168388914749857
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-19",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80196835193956,
+        2.999470760374734
+      ],
+      "destination": [
+        101.80599834500667,
+        3.0074547307879134
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-20",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80658087931556,
+        3.0051703167123125
+      ],
+      "destination": [
+        101.80655986242716,
+        3.014318149649929
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-21",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80130254816,
+        3.0038966042940847
+      ],
+      "destination": [
+        101.81359486190385,
+        3.017377891417256
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-22",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.79749464145799,
+        3.004152519530582
+      ],
+      "destination": [
+        101.81301595651492,
+        3.003377087374709
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-23",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80510083025237,
+        3.0148699635422083
+      ],
+      "destination": [
+        101.8004016454184,
+        2.999348245695479
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-24",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80362889440282,
+        3.0042666264884303
+      ],
+      "destination": [
+        101.81239728310616,
+        3.00297783968739
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-25",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80384714176618,
+        3.015552119598107
+      ],
+      "destination": [
+        101.81441935710075,
+        3.0100970713907067
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-26",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.79936976461745,
+        3.009746452862727
+      ],
+      "destination": [
+        101.80396605219545,
+        3.017683731550179
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-27",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.79711373436744,
+        3.014300707591889
+      ],
+      "destination": [
+        101.80253507122285,
+        2.9999337930181413
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-28",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80808011042245,
+        3.0122828655325278
+      ],
+      "destination": [
+        101.79825100017707,
+        3.002860092826589
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-29",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.81268785920648,
+        3.001351091752202
+      ],
+      "destination": [
+        101.79651127772345,
+        3.0137859007162655
+      ]
+    },
+    {
+      "id": "kajang-prima-saujana-long_distance-30",
+      "area": "kajang-prima-saujana",
+      "category": "long_distance",
+      "origin": [
+        101.80048363061574,
+        3.015567452720976
+      ],
+      "destination": [
+        101.80893317153426,
+        3.00402530812291
+      ]
+    }
+  ]
+}

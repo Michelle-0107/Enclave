@@ -141,7 +141,7 @@ def build(source, area, metadata, *, add_demo_facilities=False):
         p=[round(sum(points[n][i] for n in refs)/len(refs),7) for i in (0,1)]
         if inside(p):landmarks.append({'id':'osm-way-'+wid,'osmType':'way','osmId':wid,'name':t['name'],'coordinate':p,'positionBasis':'OSM outline vertex mean; label only, not an entrance'})
     # Stable real POI catalog; no fabricated residential/garden destinations.
-    return {'version':3,'source':'osm_roads_with_fictional_facilities','fieldVerified':False,
+    dataset={'version':3,'source':'osm_roads_with_fictional_facilities','fieldVerified':False,
             'name':area['name']+' resident demo','bbox':list(BBOX),'center':area['center'],
             'styleUrl':'https://tiles.openfreemap.org/styles/liberty',
             'provenance':{'geometrySource':'OpenStreetMap','extractUrl':metadata['source_url'],
@@ -152,3 +152,10 @@ def build(source, area, metadata, *, add_demo_facilities=False):
             'nodes':[{'id':n,'coordinate':points[n]} for n in sorted(stops)],
             'landmarks':sorted(landmarks,key=lambda l:(l['name'],l['id'])),
             'facilities':facilities,'edges':sorted(edges,key=lambda e:e['id'])}
+    manifest=source.with_name(area['id']+'-crossings.json')
+    if manifest.is_file():
+        overlay=json.loads(manifest.read_text(encoding='utf-8'))
+        if overlay['sourceXmlSha256']!=dataset['provenance']['sourceXmlSha256']:
+            raise ValueError('Demo crossing manifest does not match OSM source')
+        dataset['navigationFacilities']=overlay['facilities']
+    return dataset

@@ -25,7 +25,7 @@ ALL_ROADS = ROADS | {'primary','primary_link','trunk','trunk_link','motorway','m
 PATHS = {'footway', 'path', 'steps', 'pedestrian', 'cycleway'}
 LOCAL_ROADS = {'residential', 'living_street', 'service', 'unclassified'}
 LOCAL_CROSSING_SPACING = 25.0
-OPEN_ACCESS_METERS = 40.0
+OPEN_ACCESS_METERS = 120.0
 ENDPOINT_ACCESS_METERS = 100.0
 BUILDING_ACCESS_METERS = 350.0
 OFFSET = 3.0
@@ -242,7 +242,7 @@ class RoadsideGraph:
             if nid not in road_nodes:
                 for port,grade in arms[1:]:
                     self.add(arms[0][0],port,'mapped pedestrian connection','connection','',grade=grade)
-        for key in set(roads) | set(paths):
+        for key in sorted(set(roads) | set(paths)):
             nid, grade = key
             arms = roads[key]
             pedestrians = [p for p in paths[key] if p[0] in used]
@@ -339,7 +339,7 @@ class RoadsideGraph:
     def add_open_access(self):
         """Connect nearby disconnected ground approaches across clear open land.
 
-        Only dangling ports need repair. Indexed endpoint-to-segment projections
+        Dangling ports and closed-loop vertices can need repair. Indexed projections
         handle a long target path without requiring a nearby OSM vertex. Every
         inferred link remains an explicit edge, including for damage checks.
         """
@@ -355,19 +355,30 @@ class RoadsideGraph:
         from .land_access import bounds
         index=BoundsIndex([bounds(e.points) for _,e in candidates])
         cuts=defaultdict(list); links=[]; pairs=set()
+        seen_positions=set(); seen_cells=set()
         for node in sorted(ports):
-            if degree[node]!=1: continue
+            if degree[node] not in (1,2): continue
+            position=tuple(round(v,9) for v in self.nodes[node])
+            if position in seen_positions: continue
+            seen_positions.add(position)
+            px,py=xy(self.nodes[node]); cell=(components[node],math.floor(px/15),math.floor(py/15))
+            if degree[node]==2 and cell in seen_cells: continue
+            seen_cells.add(cell)
             point=self.nodes[node]; delta=OPEN_ACCESS_METERS/SCALE
+            if not self.land_access.clear(point,point): continue
             nearby=index.candidates((point[0]-delta/math.cos(math.radians(3)),point[1]-delta),
                                     (point[0]+delta/math.cos(math.radians(3)),point[1]+delta))
-            best={}
+            choices=defaultdict(list); best={}
             for j in nearby:
                 i,edge=candidates[j]; group=components[edge.a]
                 if group==components[node]: continue
                 gap,f,q=self.project(point,edge)
                 if not .05<gap<=OPEN_ACCESS_METERS: continue
-                if group not in best or gap<best[group][0]:
-                    if self.access_clear(point,q): best[group]=(gap,i,f,q)
+                choices[group].append((gap,i,f,q))
+            for group,rows in choices.items():
+                for gap,i,f,q in sorted(rows)[:8]:
+                    if self.access_clear(point,q):
+                        best[group]=(gap,i,f,q);break
             for gap,i,f,q in sorted(best.values())[:3]:
                 edge=self.edges[i]
                 target=edge.a if f<1e-8 else edge.b if f>1-1e-8 else f'open-access:{i}:{f:.9f}'
@@ -465,16 +476,20 @@ class RoadsideGraph:
         best={}
         for index in self.edge_index.candidates((point[0]-dx,point[1]-delta),(point[0]+dx,point[1]+delta)):
             edge=self.edges[index]
-            if edge.kind in {'connection','crossing','unmarked_crossing','open_access'}: continue
+            if edge.kind in {'connection','unmarked_crossing','open_access','demo_crossing'}: continue
             if distance(*edge.points)<.01: continue
-            projections=[self.project(point,edge),
+            projected=self.project(point,edge)
+            # Selecting a point on a genuine crossing must retain that crossing,
+            # rather than snapping onto a nearby disconnected carriageway.
+            if edge.kind=='crossing' and projected[0]>=.25: continue
+            projections=[projected,
                          *[(distance(point,q),f,q) for f,q in ((0,edge.points[0]),(1,edge.points[1]))]]
             if edge.grade!=('0',False,False):
                 # Elevated entrances can serve an endpoint in the building
                 # they actually touch; proximity cannot raise an outdoor user
                 # onto a bridge, tunnel or an unrelated floor.
-                if edge.kind not in {'footbridge','underpass'}: continue
-                projections=([self.project(point,edge)] if self.project(point,edge)[0]<.25 else [])+[
+                if edge.kind not in {'footbridge','underpass','demo_footbridge'}: continue
+                projections=([projected] if projected[0]<.25 else [])+[
                     (distance(point,q),f,q) for f,q in ((0,edge.points[0]),(1,edge.points[1]))
                     if buildings and self.land_access.on_building_boundary(q,buildings)]
             for gap,fraction,q in projections:
@@ -533,6 +548,8 @@ class RoadsideGraph:
                     raise NavigationRejected(422,'This surveyed route crosses a road at an unmarked map node. A mapped pedestrian crossing, footbridge or underpass is required.')
 
     def route(self,body,snapshot=None,boxes=(),area_id='kl-east-pilot',community_supported=True,*,demo_mode=False,excluded_way_ids=()):
+        if hasattr(self,'navigation_facility_ids') and not demo_mode:
+            raise NavigationRejected(422,'Simulated infrastructure is available only in resident demo routing.')
         if body.route_mode == 'accessible' and not demo_mode:
             raise NavigationRejected(422,'No field-verified step-free network is available in this service area. Ordinary road walking cannot be labelled wheelchair accessible.')
         origin=(body.origin.longitude,body.origin.latitude); target=(body.destination.longitude,body.destination.latitude)
@@ -545,7 +562,7 @@ class RoadsideGraph:
         adjacency=defaultdict(list)
         zone_index=BoundsIndex(boxes)
         def link(a,b,edge,pa,pb):
-            if edge.way_id in excluded_way_ids or (body.route_mode == 'accessible' and edge.kind in {'steps','unmarked_crossing','open_access'}): return
+            if edge.way_id in excluded_way_ids or (body.route_mode == 'accessible' and edge.kind in {'steps','unmarked_crossing','open_access','demo_crossing','demo_footbridge'}): return
             length=distance(pa,pb)
             if zone_index.intersects(pa,pb): return
             if edge.direction != -1: adjacency[a].append((b,length,edge,pa,pb))
@@ -584,22 +601,29 @@ class RoadsideGraph:
         if end_approach:
             selected.append((Edge('@end','@target',(end[3],target),'outdoor approach','open_access',''),end[3],target,end[0]))
         geometry=[selected[0][1]]; maneuvers=[]; total=0.0
-        kinds=set(); crossing_ids=set(); unmarked_ids=set()
+        kinds=set(); crossing_ids=set(); unmarked_ids=set(); simulated_ids=set(); facility_ids=set()
         for edge,pa,pb,length in selected:
             if length < 0.01: continue
             kinds.add(edge.kind)
-            if edge.kind=='crossing': crossing_ids.add(edge.way_id)
+            if edge.kind in {'crossing','footbridge','underpass'}: crossing_ids.add(edge.way_id)
             if edge.kind=='unmarked_crossing': unmarked_ids.add((edge.a,edge.b))
+            if edge.kind in {'demo_crossing','demo_footbridge'}: simulated_ids.add(edge.way_id)
+            facility_id=getattr(self,'navigation_facility_ids',{}).get(edge.way_id)
+            if facility_id: facility_ids.add(facility_id)
             begin=len(geometry)-1; geometry.append(pb)
             travel=f' for {length:.0f} meters' if length>=1 else ''
             text=(f'Use the mapped pedestrian crossing at {edge.name}.' if edge.kind=='crossing' else
                   f'Cross the private local road at {edge.name} when traffic is clear; this is an unmarked crossing.' if edge.kind=='unmarked_crossing' else
                   f'Walk along the road side of {edge.name}{travel}; a sidewalk is not recorded.' if edge.kind=='road_fallback' else
+                  f'Use the mapped footbridge at {edge.name}{travel}.' if edge.kind=='footbridge' else
+                  f'Use the mapped underpass at {edge.name}{travel}.' if edge.kind=='underpass' else
+                  f'Use the simulated zebra crossing{travel}. This facility exists only in the demo.' if edge.kind=='demo_crossing' else
+                  f'Take the simulated footbridge{travel}. This facility exists only in the demo.' if edge.kind=='demo_footbridge' else
                   f'Walk across the open area{travel}; this connection is inferred.' if edge.kind=='open_access' else
                   'Continue along the path.' if edge.kind=='connection' else
                   f'Continue along {edge.name}{travel}.')
             maneuver_type=1 if not maneuvers else 8
-            if len(geometry)>2 and edge.kind not in {'crossing','unmarked_crossing'}:
+            if len(geometry)>2 and edge.kind not in {'crossing','unmarked_crossing','demo_crossing'}:
                 a,b,c=map(xy,geometry[-3:]); v=(b[0]-a[0],b[1]-a[1]); w=(c[0]-b[0],c[1]-b[1])
                 turn=math.degrees(math.atan2(v[0]*w[1]-v[1]*w[0],v[0]*w[0]+v[1]*w[1]))
                 if abs(turn)>30:
@@ -619,13 +643,15 @@ class RoadsideGraph:
             road_fallback_used='road_fallback' in kinds,
             crossing_policy='resident_local_roads' if unmarked_ids else 'mapped_facilities_only',
             mapped_crossing_count=len(crossing_ids),unmarked_crossing_count=len(unmarked_ids),
+            simulated_crossing_count=len(simulated_ids),demo_facility_ids=sorted(facility_ids),
             accessibility_status='synthetic_network' if demo_mode and body.route_mode == 'accessible' else 'not_requested',
             community_issue_avoidance=('applied' if boxes else 'no_active_obstacles') if snapshot else 'not_applied',
             obstacle_snapshot_at=snapshot.checked_at if snapshot else None,obstacle_count=len(boxes),obstacle_source='community_reports' if snapshot else None,
             warnings=[
                 'Real OpenStreetMap walking coverage; road-side positions are inferred, not surveyed sidewalks.',
                 ('Includes unmarked private local-road crossings under the resident policy; these are not mapped zebra crossings or verified step-free connections.'
-                 if unmarked_ids else 'This route uses only mapped pedestrian facilities when crossing roads. Missing map data can prevent routing.'),
+                 if unmarked_ids else 'Uses simulated crossing facilities; this route is for demo testing only.' if simulated_ids
+                 else 'This route uses only mapped pedestrian facilities when crossing roads. Missing map data can prevent routing.'),
                 'Road walking and endpoint approaches are not field verified or certified accessible. Check traffic and local access before proceeding.',
                 *(['Includes inferred outdoor connections across open land; these are not mapped or field-verified footpaths.']
                   if 'open_access' in kinds else []),
@@ -636,6 +662,7 @@ class RoadsideGraph:
                 *(['Includes private residential ways under the app resident-access policy for verified residents of supported service areas.']
                   if any(edge.way_id in self.private_way_ids for edge,_,_,_ in selected) else []),
                 *(['Demo-only route: facility damage and step-free annotations are simulated and not field verified.'] if demo_mode else []),
+                *(['Simulated bridges/crossings are fictional and must not be used as directions for a real road crossing.'] if simulated_ids else []),
                 *(['Community damage coverage is not enabled in this temporary area.'] if not community_supported else [] )])
 
 
@@ -656,4 +683,6 @@ def walking_graph(area_id):
     metadata=json.loads((root/(area.id+'-source.json')).read_text(encoding='utf-8'))
     if hashlib.sha256(source.read_bytes()).hexdigest() != metadata['source_xml_sha256']:
         raise ValueError('Road source checksum mismatch')
-    return RoadsideGraph(source,area.bbox,resident_access=True)
+    from .road_cache import read_graph
+    cached=read_graph(root/(area.id+'-routing.json.gz'),source,area.bbox)
+    return cached if cached is not None else RoadsideGraph(source,area.bbox,resident_access=True)

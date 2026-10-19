@@ -8,6 +8,10 @@ export type Facility = {
   id: string; name: string; kind: string; coordinate: Coordinate; damaged: boolean; reporters: number;
   source: 'fictional_facility'; edgeId: string; restrictionRadiusMeters: number; gridCell: number[];
 };
+export type NavigationFacility = {
+  id: string; name: string; kind: string; coordinate: Coordinate; geometry: Coordinate[];
+  routingSource: 'openstreetmap' | 'simulation'; routingWayId: string; fieldVerified: false;
+};
 export type Landmark = { id: string; name: string; coordinate: Coordinate; osmType: 'node' | 'way'; osmId: string; positionBasis: string };
 export type Edge = {
   id: string; start: string; end: string; facilityId: string | null; mappedHasSteps: boolean; baseStepFree: boolean;
@@ -18,6 +22,7 @@ export type Dataset = {
   version: 3; source: 'osm_roads_with_fictional_facilities'; fieldVerified: false; name: string;
   bbox: [number, number, number, number]; center: Coordinate; styleUrl: string;
   nodes: { id: string; coordinate: Coordinate }[]; edges: Edge[]; facilities: Facility[]; landmarks: Landmark[];
+  navigationFacilities?: NavigationFacility[];
   provenance: { geometrySource: 'OpenStreetMap'; sourceXmlSha256: string; license: 'ODbL-1.0';
     downloadedAt: string; attribution: string; extractUrl: string; networkScope: string; routingAccess: string };
 };
@@ -34,6 +39,7 @@ export type Route = {
   profile: TravelProfile;
   mode: Mode; distance: number; seconds: number; coordinates: Coordinate[]; segments: Segment[];
   facilities: Facility[]; originSnap: Snap; destinationSnap: Snap;
+  navigationFacilities?: NavigationFacility[];
   dataSource: Dataset['source']; fieldVerified: false;
 };
 export type ModeResult = { mode: Mode; route: Route | null; unavailableReason?: string };
@@ -82,6 +88,10 @@ export function validateDataset(data: Dataset): Dataset {
         !e.geometry.slice(1).some((p, i) => project(f.coordinate, e.geometry[i], p).distance < 0.02)) throw new Error('Invalid fictional facility.');
   }
   for (const p of data.landmarks) if (!insidePilot(p.coordinate, data) || !p.name || !/^\d+$/.test(p.osmId)) throw new Error('Invalid real landmark.');
+  for (const f of data.navigationFacilities ?? []) {
+    if (!insidePilot(f.coordinate, data) || f.geometry.length < 2 || f.geometry.some(p => !insidePilot(p, data)) ||
+        !['openstreetmap', 'simulation'].includes(f.routingSource) || f.fieldVerified !== false || !f.routingWayId) throw new Error('Invalid navigation facility.');
+  }
   return data;
 }
 export const dataset = validateDataset(raw as Dataset);

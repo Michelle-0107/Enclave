@@ -1,0 +1,2204 @@
+{
+  "seed": 20261021,
+  "eligibility": "Independent facility sample; all mapped facilities up to 30 per kind and 30 simulated facilities per kind, without reachability filtering. Exact facility ID must occur on the returned route.",
+  "cases": [
+    {
+      "id": "mapped-crossing-1320940494",
+      "facility_expected_id": "mapped-crossing-1320940494",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.724575,
+        3.2170441
+      ],
+      "destination": [
+        101.7245294,
+        3.2171038
+      ]
+    },
+    {
+      "id": "mapped-crossing-1252137884",
+      "facility_expected_id": "mapped-crossing-1252137884",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72604034999998,
+        3.2266804749999993
+      ],
+      "destination": [
+        101.7259826,
+        3.2266972
+      ]
+    },
+    {
+      "id": "mapped-crossing-1445677337",
+      "facility_expected_id": "mapped-crossing-1445677337",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7214464,
+        3.2196456
+      ],
+      "destination": [
+        101.7214929,
+        3.2196831
+      ]
+    },
+    {
+      "id": "mapped-crossing-10029673521",
+      "facility_expected_id": "mapped-crossing-10029673521",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72740222085059,
+        3.2262816671758565
+      ],
+      "destination": [
+        101.72742637914943,
+        3.226329932824143
+      ]
+    },
+    {
+      "id": "mapped-crossing-7221245398",
+      "facility_expected_id": "mapped-crossing-7221245398",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72136815663094,
+        3.220340077193629
+      ],
+      "destination": [
+        101.72140744336907,
+        3.2203771228063705
+      ]
+    },
+    {
+      "id": "mapped-crossing-5485075942",
+      "facility_expected_id": "mapped-crossing-5485075942",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72150041532629,
+        3.220118591256604
+      ],
+      "destination": [
+        101.72150478467371,
+        3.220064808743396
+      ]
+    },
+    {
+      "id": "mapped-crossing-1252137879",
+      "facility_expected_id": "mapped-crossing-1252137879",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7250161,
+        3.2269252
+      ],
+      "destination": [
+        101.72503305,
+        3.2269871500000002
+      ]
+    },
+    {
+      "id": "mapped-crossing-1246879714",
+      "facility_expected_id": "mapped-crossing-1246879714",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7213225,
+        3.2202947
+      ],
+      "destination": [
+        101.7211317,
+        3.2204853
+      ]
+    },
+    {
+      "id": "mapped-crossing-1252137899",
+      "facility_expected_id": "mapped-crossing-1252137899",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7228226,
+        3.2191133
+      ],
+      "destination": [
+        101.7227845,
+        3.2190754
+      ]
+    },
+    {
+      "id": "mapped-crossing-5485075938",
+      "facility_expected_id": "mapped-crossing-5485075938",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72149054124326,
+        3.219679950505123
+      ],
+      "destination": [
+        101.72144725875675,
+        3.219647649494878
+      ]
+    },
+    {
+      "id": "mapped-crossing-9502075720",
+      "facility_expected_id": "mapped-crossing-9502075720",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72452584573135,
+        3.2170770548848524
+      ],
+      "destination": [
+        101.72453295426867,
+        3.2171305451151477
+      ]
+    },
+    {
+      "id": "mapped-crossing-570513169",
+      "facility_expected_id": "mapped-crossing-570513169",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7241835,
+        3.230885
+      ],
+      "destination": [
+        101.72413445,
+        3.2308857499999997
+      ]
+    },
+    {
+      "id": "mapped-crossing-1252137886",
+      "facility_expected_id": "mapped-crossing-1252137886",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7279261,
+        3.2265064
+      ],
+      "destination": [
+        101.7279708,
+        3.2265244
+      ]
+    },
+    {
+      "id": "mapped-crossing-11591856783",
+      "facility_expected_id": "mapped-crossing-11591856783",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72121484555679,
+        3.2204030742915664
+      ],
+      "destination": [
+        101.72117575444322,
+        3.2204403257084344
+      ]
+    },
+    {
+      "id": "mapped-crossing-570513172",
+      "facility_expected_id": "mapped-crossing-570513172",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72458381085765,
+        3.229194857990173
+      ],
+      "destination": [
+        101.7246875,
+        3.229197
+      ]
+    },
+    {
+      "id": "mapped-crossing-1320940493",
+      "facility_expected_id": "mapped-crossing-1320940493",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72450097500001,
+        3.2170617999999997
+      ],
+      "destination": [
+        101.7245633,
+        3.2171509
+      ]
+    },
+    {
+      "id": "mapped-crossing-5485075937",
+      "facility_expected_id": "mapped-crossing-5485075937",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72207409752578,
+        3.218975370167628
+      ],
+      "destination": [
+        101.72209270247424,
+        3.219026029832372
+      ]
+    },
+    {
+      "id": "mapped-crossing-1252137878",
+      "facility_expected_id": "mapped-crossing-1252137878",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7247728,
+        3.2286374
+      ],
+      "destination": [
+        101.7248963,
+        3.2285138
+      ]
+    },
+    {
+      "id": "mapped-crossing-1252137881",
+      "facility_expected_id": "mapped-crossing-1252137881",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72531617500002,
+        3.2277668499999996
+      ],
+      "destination": [
+        101.7253224,
+        3.2278246
+      ]
+    },
+    {
+      "id": "mapped-crossing-1095302480",
+      "facility_expected_id": "mapped-crossing-1095302480",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.740575,
+        3.2219027
+      ],
+      "destination": [
+        101.74082998893427,
+        3.2220261318077856
+      ]
+    },
+    {
+      "id": "mapped-crossing-1252137885",
+      "facility_expected_id": "mapped-crossing-1252137885",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7274078,
+        3.2262072
+      ],
+      "destination": [
+        101.7274407,
+        3.2262578
+      ]
+    },
+    {
+      "id": "mapped-crossing-1246879713",
+      "facility_expected_id": "mapped-crossing-1246879713",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7215461,
+        3.2200322
+      ],
+      "destination": [
+        101.7214928,
+        3.2201082
+      ]
+    },
+    {
+      "id": "mapped-crossing-1246879715",
+      "facility_expected_id": "mapped-crossing-1246879715",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7215086,
+        3.2204708
+      ],
+      "destination": [
+        101.7213225,
+        3.2202947
+      ]
+    },
+    {
+      "id": "mapped-crossing-11591856784",
+      "facility_expected_id": "mapped-crossing-11591856784",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72143860609897,
+        3.2204049457912403
+      ],
+      "destination": [
+        101.7214585,
+        3.2204232
+      ]
+    },
+    {
+      "id": "mapped-crossing-5485075667",
+      "facility_expected_id": "mapped-crossing-5485075667",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.7248118802243,
+        3.228606058262847
+      ],
+      "destination": [
+        101.7248415197757,
+        3.228560941737154
+      ]
+    },
+    {
+      "id": "mapped-crossing-11591856782",
+      "facility_expected_id": "mapped-crossing-11591856782",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72122109817288,
+        3.220397737411152
+      ],
+      "destination": [
+        101.72125750182711,
+        3.2203578625888483
+      ]
+    },
+    {
+      "id": "mapped-crossing-11754242281",
+      "facility_expected_id": "mapped-crossing-11754242281",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_crossing",
+      "origin": [
+        101.72486636154797,
+        3.228548710671565
+      ],
+      "destination": [
+        101.72489923845204,
+        3.228505889328435
+      ]
+    },
+    {
+      "id": "mapped-footbridge-972395325",
+      "facility_expected_id": "mapped-footbridge-972395325",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.7238619,
+        3.2255787
+      ],
+      "destination": [
+        101.723919,
+        3.2255653
+      ]
+    },
+    {
+      "id": "mapped-footbridge-1201000335",
+      "facility_expected_id": "mapped-footbridge-1201000335",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.7355462,
+        3.227566
+      ],
+      "destination": [
+        101.7355945,
+        3.2275071
+      ]
+    },
+    {
+      "id": "mapped-footbridge-1201000337",
+      "facility_expected_id": "mapped-footbridge-1201000337",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.7357798,
+        3.2277401
+      ],
+      "destination": [
+        101.7357977,
+        3.2277066
+      ]
+    },
+    {
+      "id": "mapped-footbridge-263021873",
+      "facility_expected_id": "mapped-footbridge-263021873",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.735901,
+        3.2190694
+      ],
+      "destination": [
+        101.7359788,
+        3.2193881
+      ]
+    },
+    {
+      "id": "mapped-footbridge-1201000340",
+      "facility_expected_id": "mapped-footbridge-1201000340",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.732705,
+        3.2280383
+      ],
+      "destination": [
+        101.7326545,
+        3.2280307
+      ]
+    },
+    {
+      "id": "mapped-footbridge-1359811270",
+      "facility_expected_id": "mapped-footbridge-1359811270",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.7245983,
+        3.2309682
+      ],
+      "destination": [
+        101.7245676,
+        3.2309677
+      ]
+    },
+    {
+      "id": "mapped-footbridge-391638566",
+      "facility_expected_id": "mapped-footbridge-391638566",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.7216589,
+        3.2199112
+      ],
+      "destination": [
+        101.7218716,
+        3.2201197
+      ]
+    },
+    {
+      "id": "mapped-footbridge-391638563",
+      "facility_expected_id": "mapped-footbridge-391638563",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.7225346,
+        3.2207438
+      ],
+      "destination": [
+        101.7224306,
+        3.2206423
+      ]
+    },
+    {
+      "id": "mapped-footbridge-1252137887",
+      "facility_expected_id": "mapped-footbridge-1252137887",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.7279261,
+        3.2265064
+      ],
+      "destination": [
+        101.7275541,
+        3.2263208
+      ]
+    },
+    {
+      "id": "mapped-footbridge-773642816",
+      "facility_expected_id": "mapped-footbridge-773642816",
+      "area": "kl-east-pilot",
+      "category": "openstreetmap_footbridge",
+      "origin": [
+        101.7289729,
+        3.2250938
+      ],
+      "destination": [
+        101.7297455,
+        3.2255272
+      ]
+    },
+    {
+      "id": "simulated-crossing-1529705547-2-0",
+      "facility_expected_id": "simulated-crossing-1529705547-2-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72591871749685,
+        3.232821207613961
+      ],
+      "destination": [
+        101.72587388250318,
+        3.2327910923860506
+      ]
+    },
+    {
+      "id": "simulated-crossing-1450016180-3-0",
+      "facility_expected_id": "simulated-crossing-1450016180-3-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72285364061163,
+        3.220258032906817
+      ],
+      "destination": [
+        101.72279965468148,
+        3.220206089224332
+      ]
+    },
+    {
+      "id": "simulated-crossing-609364969-5-0",
+      "facility_expected_id": "simulated-crossing-609364969-5-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.7212575557349,
+        3.222619131314322
+      ],
+      "destination": [
+        101.72122004426511,
+        3.222657968685693
+      ]
+    },
+    {
+      "id": "simulated-crossing-488987261-6-0",
+      "facility_expected_id": "simulated-crossing-488987261-6-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73694857909503,
+        3.2197164784146155
+      ],
+      "destination": [
+        101.73692522090496,
+        3.219667821585393
+      ]
+    },
+    {
+      "id": "simulated-crossing-759916857-7-0",
+      "facility_expected_id": "simulated-crossing-759916857-7-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72592475200379,
+        3.2260688012804084
+      ],
+      "destination": [
+        101.72587314799624,
+        3.2260847987195853
+      ]
+    },
+    {
+      "id": "simulated-crossing-866156672-0-0",
+      "facility_expected_id": "simulated-crossing-866156672-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72537962299015,
+        3.233179439415738
+      ],
+      "destination": [
+        101.72542567700988,
+        3.233207660584252
+      ]
+    },
+    {
+      "id": "simulated-crossing-39921500-2-0",
+      "facility_expected_id": "simulated-crossing-39921500-2-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72480340994599,
+        3.220302288407249
+      ],
+      "destination": [
+        101.72484119005402,
+        3.2202637115927266
+      ]
+    },
+    {
+      "id": "simulated-crossing-931300600-3-0",
+      "facility_expected_id": "simulated-crossing-931300600-3-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72442687535306,
+        3.217257605400531
+      ],
+      "destination": [
+        101.72451548626312,
+        3.2173222183654184
+      ]
+    },
+    {
+      "id": "simulated-crossing-751350572-8-0",
+      "facility_expected_id": "simulated-crossing-751350572-8-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.74013264839161,
+        3.225422518061238
+      ],
+      "destination": [
+        101.7400872516084,
+        3.225451781938766
+      ]
+    },
+    {
+      "id": "simulated-crossing-39911048-1-0",
+      "facility_expected_id": "simulated-crossing-39911048-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73709920757462,
+        3.218359127212376
+      ],
+      "destination": [
+        101.73709799242538,
+        3.218413072787623
+      ]
+    },
+    {
+      "id": "simulated-crossing-39914556-1-0",
+      "facility_expected_id": "simulated-crossing-39914556-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73983263511386,
+        3.2178478490707447
+      ],
+      "destination": [
+        101.73983006488616,
+        3.2177939509292557
+      ]
+    },
+    {
+      "id": "simulated-crossing-609378701-3-1",
+      "facility_expected_id": "simulated-crossing-609378701-3-1",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73022344126437,
+        3.22197865929993
+      ],
+      "destination": [
+        101.73026292268254,
+        3.2220130152955133
+      ]
+    },
+    {
+      "id": "simulated-crossing-759916857-2-0",
+      "facility_expected_id": "simulated-crossing-759916857-2-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72516995934069,
+        3.224519580446068
+      ],
+      "destination": [
+        101.72520454065933,
+        3.2244781195539347
+      ]
+    },
+    {
+      "id": "simulated-crossing-609378693-0-0",
+      "facility_expected_id": "simulated-crossing-609378693-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72915089585524,
+        3.217909974103622
+      ],
+      "destination": [
+        101.72914980414478,
+        3.2178560258963795
+      ]
+    },
+    {
+      "id": "simulated-crossing-438510508-2-0",
+      "facility_expected_id": "simulated-crossing-438510508-2-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73441225110786,
+        3.2221549700482304
+      ],
+      "destination": [
+        101.73437394889216,
+        3.2221930299517836
+      ]
+    },
+    {
+      "id": "simulated-crossing-610108612-0-0",
+      "facility_expected_id": "simulated-crossing-610108612-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72606711046309,
+        3.229173646986882
+      ],
+      "destination": [
+        101.72610358953692,
+        3.229213453013118
+      ]
+    },
+    {
+      "id": "simulated-crossing-488987262-0-1",
+      "facility_expected_id": "simulated-crossing-488987262-0-1",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.7380195995061,
+        3.2177418170326604
+      ],
+      "destination": [
+        101.73798365049392,
+        3.217701532967344
+      ]
+    },
+    {
+      "id": "simulated-crossing-39926596-16-0",
+      "facility_expected_id": "simulated-crossing-39926596-16-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73982029602459,
+        3.222233928489453
+      ],
+      "destination": [
+        101.73987390397542,
+        3.222227171510545
+      ]
+    },
+    {
+      "id": "simulated-crossing-886824491-0-0",
+      "facility_expected_id": "simulated-crossing-886824491-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73114316195526,
+        3.225007014074695
+      ],
+      "destination": [
+        101.73115463804474,
+        3.2249542859253078
+      ]
+    },
+    {
+      "id": "simulated-crossing-1032986503-0-0",
+      "facility_expected_id": "simulated-crossing-1032986503-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.7354428200273,
+        3.218504155578103
+      ],
+      "destination": [
+        101.7353926799727,
+        3.2184840444218903
+      ]
+    },
+    {
+      "id": "simulated-crossing-759916856-4-0",
+      "facility_expected_id": "simulated-crossing-759916856-4-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72280553462882,
+        3.2214954610973123
+      ],
+      "destination": [
+        101.72285956537117,
+        3.221494938902688
+      ]
+    },
+    {
+      "id": "simulated-crossing-1381070567-1-0",
+      "facility_expected_id": "simulated-crossing-1381070567-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.7249472197757,
+        3.2286301917371514
+      ],
+      "destination": [
+        101.7249175802243,
+        3.2286753082628445
+      ]
+    },
+    {
+      "id": "simulated-crossing-39913827-6-0",
+      "facility_expected_id": "simulated-crossing-39913827-6-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73183672798365,
+        3.2220785502939058
+      ],
+      "destination": [
+        101.73187197201635,
+        3.222037649706089
+      ]
+    },
+    {
+      "id": "simulated-crossing-609378734-8-0",
+      "facility_expected_id": "simulated-crossing-609378734-8-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72688201723783,
+        3.2190389506373425
+      ],
+      "destination": [
+        101.72691198276218,
+        3.2189940493626623
+      ]
+    },
+    {
+      "id": "simulated-crossing-609378715-0-0",
+      "facility_expected_id": "simulated-crossing-609378715-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72813998116243,
+        3.2236232076860807
+      ],
+      "destination": [
+        101.72817611883755,
+        3.223583092313914
+      ]
+    },
+    {
+      "id": "simulated-crossing-317185018-7-0",
+      "facility_expected_id": "simulated-crossing-317185018-7-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.7285095287139,
+        3.222089802074121
+      ],
+      "destination": [
+        101.7285505712861,
+        3.222124897925879
+      ]
+    },
+    {
+      "id": "simulated-crossing-609378701-9-0",
+      "facility_expected_id": "simulated-crossing-609378701-9-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73100855062854,
+        3.2226808253380272
+      ],
+      "destination": [
+        101.73097524563882,
+        3.222650330686977
+      ]
+    },
+    {
+      "id": "simulated-crossing-871914515-1-0",
+      "facility_expected_id": "simulated-crossing-871914515-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.73533934292429,
+        3.218027528069471
+      ],
+      "destination": [
+        101.7353816570757,
+        3.2179939719305137
+      ]
+    },
+    {
+      "id": "simulated-crossing-39909040-0-0",
+      "facility_expected_id": "simulated-crossing-39909040-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72361008849711,
+        3.225807660332393
+      ],
+      "destination": [
+        101.7236507115029,
+        3.225843239667608
+      ]
+    },
+    {
+      "id": "simulated-crossing-543851613-0-0",
+      "facility_expected_id": "simulated-crossing-543851613-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_crossing",
+      "origin": [
+        101.72794486869644,
+        3.224159101284061
+      ],
+      "destination": [
+        101.72789613130355,
+        3.2241823987159446
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1180007882-1-0",
+      "facility_expected_id": "simulated-footbridge-1180007882-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.7274680902933,
+        3.22650447333149
+      ],
+      "destination": [
+        101.72781743134557,
+        3.2266678380599436
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1173675746-3-0",
+      "facility_expected_id": "simulated-footbridge-1173675746-3-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72761268500753,
+        3.2260305998605467
+      ],
+      "destination": [
+        101.7275252954664,
+        3.2262805246725406
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1229619633-4-0",
+      "facility_expected_id": "simulated-footbridge-1229619633-4-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.722956621504,
+        3.2186887241631994
+      ],
+      "destination": [
+        101.722916778496,
+        3.2186522758368117
+      ]
+    },
+    {
+      "id": "simulated-footbridge-773633127-1-0",
+      "facility_expected_id": "simulated-footbridge-773633127-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72151345609899,
+        3.2203235957912475
+      ],
+      "destination": [
+        101.72158257816237,
+        3.2203834079377214
+      ]
+    },
+    {
+      "id": "simulated-footbridge-930867859-2-0",
+      "facility_expected_id": "simulated-footbridge-930867859-2-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72571057483896,
+        3.2323857865328174
+      ],
+      "destination": [
+        101.72564308395303,
+        3.232755479443017
+      ]
+    },
+    {
+      "id": "simulated-footbridge-773637740-0-0",
+      "facility_expected_id": "simulated-footbridge-773637740-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72173916001964,
+        3.2248604403404877
+      ],
+      "destination": [
+        101.72177763998036,
+        3.224822559659507
+      ]
+    },
+    {
+      "id": "simulated-footbridge-227276638-8-0",
+      "facility_expected_id": "simulated-footbridge-227276638-8-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.73368036098849,
+        3.221040114346358
+      ],
+      "destination": [
+        101.73379153468055,
+        3.220658490073367
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1180007882-8-0",
+      "facility_expected_id": "simulated-footbridge-1180007882-8-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72824843486366,
+        3.225587626565588
+      ],
+      "destination": [
+        101.7285334,
+        3.2259484000000005
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1265341940-3-0",
+      "facility_expected_id": "simulated-footbridge-1265341940-3-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72473956832422,
+        3.233101003121634
+      ],
+      "destination": [
+        101.72469153167577,
+        3.2330762968783744
+      ]
+    },
+    {
+      "id": "simulated-footbridge-131315825-2-0",
+      "facility_expected_id": "simulated-footbridge-131315825-2-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.73145450517212,
+        3.223293416104929
+      ],
+      "destination": [
+        101.7312818288226,
+        3.2229502804985946
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1160311989-0-0",
+      "facility_expected_id": "simulated-footbridge-1160311989-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72633902115537,
+        3.226790531871979
+      ],
+      "destination": [
+        101.72632597884463,
+        3.2267381681280303
+      ]
+    },
+    {
+      "id": "simulated-footbridge-608825823-9-0",
+      "facility_expected_id": "simulated-footbridge-608825823-9-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.73537649672072,
+        3.21894990999662
+      ],
+      "destination": [
+        101.73571598407102,
+        3.219524704768619
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1424928741-0-0",
+      "facility_expected_id": "simulated-footbridge-1424928741-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72530906393888,
+        3.228780999445033
+      ],
+      "destination": [
+        101.72524668387187,
+        3.228866719377278
+      ]
+    },
+    {
+      "id": "simulated-footbridge-506838341-5-0",
+      "facility_expected_id": "simulated-footbridge-506838341-5-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72132246076738,
+        3.224515330111173
+      ],
+      "destination": [
+        101.72128403923261,
+        3.224553269888817
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1170474286-0-0",
+      "facility_expected_id": "simulated-footbridge-1170474286-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.74065193894442,
+        3.2220500231643534
+      ],
+      "destination": [
+        101.74062816105557,
+        3.2220984768356336
+      ]
+    },
+    {
+      "id": "simulated-footbridge-871914533-1-0",
+      "facility_expected_id": "simulated-footbridge-871914533-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.735901,
+        3.2190694
+      ],
+      "destination": [
+        101.7354223032793,
+        3.2189212900033795
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1175704723-0-0",
+      "facility_expected_id": "simulated-footbridge-1175704723-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.73701061833391,
+        3.217920631383808
+      ],
+      "destination": [
+        101.73672662875816,
+        3.218063995271081
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1418604591-1-0",
+      "facility_expected_id": "simulated-footbridge-1418604591-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.73949583186906,
+        3.2172762979952974
+      ],
+      "destination": [
+        101.73944416813092,
+        3.217292102004695
+      ]
+    },
+    {
+      "id": "simulated-footbridge-773633127-3-0",
+      "facility_expected_id": "simulated-footbridge-773633127-3-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.722173045411,
+        3.219757020385164
+      ],
+      "destination": [
+        101.72210424233296,
+        3.2196914525101317
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1174227305-0-0",
+      "facility_expected_id": "simulated-footbridge-1174227305-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72212450923485,
+        3.225250839545432
+      ],
+      "destination": [
+        101.72216299076514,
+        3.22521296045458
+      ]
+    },
+    {
+      "id": "simulated-footbridge-773637737-1-0",
+      "facility_expected_id": "simulated-footbridge-773637737-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72325137685883,
+        3.2265165069082844
+      ],
+      "destination": [
+        101.72328932314119,
+        3.2264780930917065
+      ]
+    },
+    {
+      "id": "simulated-footbridge-39912001-4-0",
+      "facility_expected_id": "simulated-footbridge-39912001-4-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72340417239708,
+        3.2265238828039284
+      ],
+      "destination": [
+        101.72344112760294,
+        3.226484517196084
+      ]
+    },
+    {
+      "id": "simulated-footbridge-227276638-15-0",
+      "facility_expected_id": "simulated-footbridge-227276638-15-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.735770015929,
+        3.219525095231381
+      ],
+      "destination": [
+        101.73571598407102,
+        3.219524704768619
+      ]
+    },
+    {
+      "id": "simulated-footbridge-773633126-0-0",
+      "facility_expected_id": "simulated-footbridge-773633126-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.7211750456988,
+        3.2206808812124983
+      ],
+      "destination": [
+        101.72125046278363,
+        3.2207509316823524
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1291979228-1-0",
+      "facility_expected_id": "simulated-footbridge-1291979228-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72372918973956,
+        3.2269293922434894
+      ],
+      "destination": [
+        101.72375331026045,
+        3.2268811077565007
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1489066847-1-0",
+      "facility_expected_id": "simulated-footbridge-1489066847-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.73371994142211,
+        3.2206035310725167
+      ],
+      "destination": [
+        101.73363036738623,
+        3.2209867279647084
+      ]
+    },
+    {
+      "id": "simulated-footbridge-39912001-0-0",
+      "facility_expected_id": "simulated-footbridge-39912001-0-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72409550696574,
+        3.226934108681632
+      ],
+      "destination": [
+        101.72407669303423,
+        3.2269846913183677
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1221467539-8-0",
+      "facility_expected_id": "simulated-footbridge-1221467539-8-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.735901,
+        3.2190694
+      ],
+      "destination": [
+        101.73557085776366,
+        3.2196448901863803
+      ]
+    },
+    {
+      "id": "simulated-footbridge-543851615-3-0",
+      "facility_expected_id": "simulated-footbridge-543851615-3-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.72603311026997,
+        3.2238308130190965
+      ],
+      "destination": [
+        101.72607688973001,
+        3.2237991869809037
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1222400750-1-0",
+      "facility_expected_id": "simulated-footbridge-1222400750-1-0",
+      "area": "kl-east-pilot",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.7294964622642,
+        3.2251610244003017
+      ],
+      "destination": [
+        101.72924555130005,
+        3.224835382010077
+      ]
+    },
+    {
+      "id": "simulated-crossing-203830024-6-0",
+      "facility_expected_id": "simulated-crossing-203830024-6-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.79988842502253,
+        3.001744516697146
+      ],
+      "destination": [
+        101.79984467497746,
+        3.001776183302858
+      ]
+    },
+    {
+      "id": "simulated-crossing-1034163929-0-0",
+      "facility_expected_id": "simulated-crossing-1034163929-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80889971728445,
+        3.0067036479450566
+      ],
+      "destination": [
+        101.80893168271555,
+        3.0067471520549485
+      ]
+    },
+    {
+      "id": "simulated-crossing-931278820-0-0",
+      "facility_expected_id": "simulated-crossing-931278820-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.7963451763212,
+        3.0007563864769238
+      ],
+      "destination": [
+        101.79638212367881,
+        3.000717013523053
+      ]
+    },
+    {
+      "id": "simulated-crossing-844049215-2-0",
+      "facility_expected_id": "simulated-crossing-844049215-2-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80423139916287,
+        3.0073324029055244
+      ],
+      "destination": [
+        101.80426240083716,
+        3.0073765970944732
+      ]
+    },
+    {
+      "id": "simulated-crossing-28495712-0-0",
+      "facility_expected_id": "simulated-crossing-28495712-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80688664187556,
+        3.01288751172763
+      ],
+      "destination": [
+        101.80684080812445,
+        3.012916088272379
+      ]
+    },
+    {
+      "id": "simulated-crossing-494881873-0-0",
+      "facility_expected_id": "simulated-crossing-494881873-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80239169086352,
+        2.9993598608650807
+      ],
+      "destination": [
+        101.80237830913647,
+        2.999412139134921
+      ]
+    },
+    {
+      "id": "simulated-crossing-28495746-0-0",
+      "facility_expected_id": "simulated-crossing-28495746-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80273738304517,
+        3.0177124953598735
+      ],
+      "destination": [
+        101.80269501695484,
+        3.01767900464012
+      ]
+    },
+    {
+      "id": "simulated-crossing-844097385-6-0",
+      "facility_expected_id": "simulated-crossing-844097385-6-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80673328104793,
+        3.007706033078479
+      ],
+      "destination": [
+        101.80677731895209,
+        3.007674766921497
+      ]
+    },
+    {
+      "id": "simulated-crossing-858344187-3-0",
+      "facility_expected_id": "simulated-crossing-858344187-3-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.81234194675527,
+        3.0114203758721225
+      ],
+      "destination": [
+        101.81238655324472,
+        3.0113899241278754
+      ]
+    },
+    {
+      "id": "simulated-crossing-1411385498-0-0",
+      "facility_expected_id": "simulated-crossing-1411385498-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80711741771773,
+        3.0068975226591497
+      ],
+      "destination": [
+        101.80716168228227,
+        3.0068665773408494
+      ]
+    },
+    {
+      "id": "simulated-crossing-1548879404-0-0",
+      "facility_expected_id": "simulated-crossing-1548879404-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.7980786082982,
+        3.008432775535795
+      ],
+      "destination": [
+        101.79806929170181,
+        3.008379624464213
+      ]
+    },
+    {
+      "id": "simulated-crossing-260224574-6-1",
+      "facility_expected_id": "simulated-crossing-260224574-6-1",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80131513408138,
+        3.017174801149143
+      ],
+      "destination": [
+        101.80134911591865,
+        3.0171328488508724
+      ]
+    },
+    {
+      "id": "simulated-crossing-494881894-0-0",
+      "facility_expected_id": "simulated-crossing-494881894-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80676466233939,
+        2.999469363160232
+      ],
+      "destination": [
+        101.80679993766063,
+        2.9995102368397557
+      ]
+    },
+    {
+      "id": "simulated-crossing-606608954-1-0",
+      "facility_expected_id": "simulated-crossing-606608954-1-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.81334518037058,
+        3.0028364504835436
+      ],
+      "destination": [
+        101.81338431962944,
+        3.002799249516446
+      ]
+    },
+    {
+      "id": "simulated-crossing-606633276-0-0",
+      "facility_expected_id": "simulated-crossing-606633276-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80635156699631,
+        3.0109024282531434
+      ],
+      "destination": [
+        101.80639703300368,
+        3.0108732717468567
+      ]
+    },
+    {
+      "id": "simulated-crossing-843643804-2-0",
+      "facility_expected_id": "simulated-crossing-843643804-2-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80144641714458,
+        3.0170395829579806
+      ],
+      "destination": [
+        101.8014778828554,
+        3.0169957170420068
+      ]
+    },
+    {
+      "id": "simulated-crossing-142705193-3-0",
+      "facility_expected_id": "simulated-crossing-142705193-3-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80900031382578,
+        3.0121740371002916
+      ],
+      "destination": [
+        101.80895438617421,
+        3.0122024628997086
+      ]
+    },
+    {
+      "id": "simulated-crossing-606570186-6-0",
+      "facility_expected_id": "simulated-crossing-606570186-6-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.81163108392656,
+        3.012603688644383
+      ],
+      "destination": [
+        101.81158391607346,
+        3.012630011355595
+      ]
+    },
+    {
+      "id": "simulated-crossing-494881900-3-0",
+      "facility_expected_id": "simulated-crossing-494881900-3-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80630497283472,
+        3.000789840871016
+      ],
+      "destination": [
+        101.80631872716528,
+        3.000737659128985
+      ]
+    },
+    {
+      "id": "simulated-crossing-494811513-10-0",
+      "facility_expected_id": "simulated-crossing-494811513-10-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80601604199823,
+        3.0046494975932267
+      ],
+      "destination": [
+        101.80597525800178,
+        3.0046141024067756
+      ]
+    },
+    {
+      "id": "simulated-crossing-606570184-10-1",
+      "facility_expected_id": "simulated-crossing-606570184-10-1",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.81392918075768,
+        3.011219278232699
+      ],
+      "destination": [
+        101.81389226924233,
+        3.011179871767295
+      ]
+    },
+    {
+      "id": "simulated-crossing-142705192-4-1",
+      "facility_expected_id": "simulated-crossing-142705192-4-1",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.8070735884625,
+        3.0088797365149635
+      ],
+      "destination": [
+        101.80702766153752,
+        3.00890816348504
+      ]
+    },
+    {
+      "id": "simulated-crossing-494807594-0-0",
+      "facility_expected_id": "simulated-crossing-494807594-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.81391304925859,
+        3.0130001229268197
+      ],
+      "destination": [
+        101.8138756507414,
+        3.01296117707316
+      ]
+    },
+    {
+      "id": "simulated-crossing-260224602-1-2",
+      "facility_expected_id": "simulated-crossing-260224602-1-2",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80675396548088,
+        3.0167144553898746
+      ],
+      "destination": [
+        101.80671970118578,
+        3.0167561779434426
+      ]
+    },
+    {
+      "id": "simulated-crossing-1416478923-2-0",
+      "facility_expected_id": "simulated-crossing-1416478923-2-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.81449625706303,
+        3.0149459636840055
+      ],
+      "destination": [
+        101.814547742937,
+        3.0149623363160045
+      ]
+    },
+    {
+      "id": "simulated-crossing-844042184-2-0",
+      "facility_expected_id": "simulated-crossing-844042184-2-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.79586746302668,
+        3.0038746418351785
+      ],
+      "destination": [
+        101.79590213697333,
+        3.003833258164821
+      ]
+    },
+    {
+      "id": "simulated-crossing-606570184-8-0",
+      "facility_expected_id": "simulated-crossing-606570184-8-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.8132864751996,
+        3.0124050143083627
+      ],
+      "destination": [
+        101.8133340248004,
+        3.0123793856916223
+      ]
+    },
+    {
+      "id": "simulated-crossing-606585924-0-0",
+      "facility_expected_id": "simulated-crossing-606585924-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.81150253854189,
+        3.008313264806828
+      ],
+      "destination": [
+        101.81146356145808,
+        3.008350635193161
+      ]
+    },
+    {
+      "id": "simulated-crossing-765613187-1-0",
+      "facility_expected_id": "simulated-crossing-765613187-1-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.79884675391925,
+        2.999855031431428
+      ],
+      "destination": [
+        101.79883694608077,
+        2.9998019685685655
+      ]
+    },
+    {
+      "id": "simulated-crossing-494806143-0-0",
+      "facility_expected_id": "simulated-crossing-494806143-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_crossing",
+      "origin": [
+        101.80817809860675,
+        3.0119016387381468
+      ],
+      "destination": [
+        101.80822460139325,
+        3.011874161261842
+      ]
+    },
+    {
+      "id": "simulated-footbridge-579938418-4-0",
+      "facility_expected_id": "simulated-footbridge-579938418-4-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79769064069605,
+        3.012236255672417
+      ],
+      "destination": [
+        101.79761280158674,
+        3.011395911527879
+      ]
+    },
+    {
+      "id": "simulated-footbridge-23335080-1-0",
+      "facility_expected_id": "simulated-footbridge-23335080-1-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79844298166894,
+        3.0105537450849673
+      ],
+      "destination": [
+        101.79905795385716,
+        3.011492067556928
+      ]
+    },
+    {
+      "id": "simulated-footbridge-142705213-4-0",
+      "facility_expected_id": "simulated-footbridge-142705213-4-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80596490292479,
+        3.0058965591865867
+      ],
+      "destination": [
+        101.80600629707526,
+        3.0059312408134176
+      ]
+    },
+    {
+      "id": "simulated-footbridge-776070982-1-0",
+      "facility_expected_id": "simulated-footbridge-776070982-1-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80005242251261,
+        3.010013415830663
+      ],
+      "destination": [
+        101.8001660346969,
+        3.009422324243194
+      ]
+    },
+    {
+      "id": "simulated-footbridge-779959856-0-0",
+      "facility_expected_id": "simulated-footbridge-779959856-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80519351678026,
+        3.0062550716504988
+      ],
+      "destination": [
+        101.8046753016131,
+        3.006255954014946
+      ]
+    },
+    {
+      "id": "simulated-footbridge-579913222-1-2",
+      "facility_expected_id": "simulated-footbridge-579913222-1-2",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80776083641018,
+        3.0022418932438835
+      ],
+      "destination": [
+        101.80835389449337,
+        3.00246672054174
+      ]
+    },
+    {
+      "id": "simulated-footbridge-579938421-6-0",
+      "facility_expected_id": "simulated-footbridge-579938421-6-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79641336859393,
+        3.012273452066526
+      ],
+      "destination": [
+        101.79645036450262,
+        3.0116566747194113
+      ]
+    },
+    {
+      "id": "simulated-footbridge-142702043-3-0",
+      "facility_expected_id": "simulated-footbridge-142702043-3-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80364130220818,
+        3.0074665893560577
+      ],
+      "destination": [
+        101.80388954624136,
+        3.0075743458999136
+      ]
+    },
+    {
+      "id": "simulated-footbridge-776070166-0-0",
+      "facility_expected_id": "simulated-footbridge-776070166-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80022688200185,
+        3.0100547687064485
+      ],
+      "destination": [
+        101.8001660346969,
+        3.009422324243194
+      ]
+    },
+    {
+      "id": "simulated-footbridge-779969810-0-0",
+      "facility_expected_id": "simulated-footbridge-779969810-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.8100412332158,
+        3.000853877365325
+      ],
+      "destination": [
+        101.80972085575928,
+        3.000110310160654
+      ]
+    },
+    {
+      "id": "simulated-footbridge-579913222-1-0",
+      "facility_expected_id": "simulated-footbridge-579913222-1-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80943870773058,
+        3.001501938619213
+      ],
+      "destination": [
+        101.80960993030483,
+        3.0003974843239516
+      ]
+    },
+    {
+      "id": "simulated-footbridge-494809395-0-0",
+      "facility_expected_id": "simulated-footbridge-494809395-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80062953788908,
+        3.0057658112056735
+      ],
+      "destination": [
+        101.80061366211093,
+        3.005817388794326
+      ]
+    },
+    {
+      "id": "simulated-footbridge-776070167-0-0",
+      "facility_expected_id": "simulated-footbridge-776070167-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80220810185179,
+        3.008746233732696
+      ],
+      "destination": [
+        101.80188081290287,
+        3.0083402791933
+      ]
+    },
+    {
+      "id": "simulated-footbridge-482320847-36-0",
+      "facility_expected_id": "simulated-footbridge-482320847-36-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.7957633190577,
+        3.0093978793937595
+      ],
+      "destination": [
+        101.79578688094232,
+        3.0093493206062485
+      ]
+    },
+    {
+      "id": "simulated-footbridge-814050743-0-0",
+      "facility_expected_id": "simulated-footbridge-814050743-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80026736551181,
+        3.0100598924006774
+      ],
+      "destination": [
+        101.8001660346969,
+        3.009422324243194
+      ]
+    },
+    {
+      "id": "simulated-footbridge-494809394-0-0",
+      "facility_expected_id": "simulated-footbridge-494809394-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80052243407468,
+        3.006372513257657
+      ],
+      "destination": [
+        101.80053676592532,
+        3.0063204867423425
+      ]
+    },
+    {
+      "id": "simulated-footbridge-782466079-0-0",
+      "facility_expected_id": "simulated-footbridge-782466079-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79976452914792,
+        3.0100151904773087
+      ],
+      "destination": [
+        101.79975397085208,
+        3.0100681095226878
+      ]
+    },
+    {
+      "id": "simulated-footbridge-494878244-1-0",
+      "facility_expected_id": "simulated-footbridge-494878244-1-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80312535956368,
+        2.9990961139960373
+      ],
+      "destination": [
+        101.8036762844779,
+        2.999060562493594
+      ]
+    },
+    {
+      "id": "simulated-footbridge-142702043-5-0",
+      "facility_expected_id": "simulated-footbridge-142702043-5-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80437028067747,
+        3.0072387216689083
+      ],
+      "destination": [
+        101.8041920066871,
+        3.0067517818763565
+      ]
+    },
+    {
+      "id": "simulated-footbridge-579938418-7-0",
+      "facility_expected_id": "simulated-footbridge-579938418-7-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79861717538209,
+        3.0119891643317573
+      ],
+      "destination": [
+        101.79772639521713,
+        3.0112450118281453
+      ]
+    },
+    {
+      "id": "simulated-footbridge-779959855-0-0",
+      "facility_expected_id": "simulated-footbridge-779959855-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80540078578477,
+        3.0056546478503283
+      ],
+      "destination": [
+        101.8055433040585,
+        3.0059076357578145
+      ]
+    },
+    {
+      "id": "simulated-footbridge-779959854-0-5",
+      "facility_expected_id": "simulated-footbridge-779959854-0-5",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80958451933985,
+        3.0014539983564386
+      ],
+      "destination": [
+        101.80960993030483,
+        3.0003974843239516
+      ]
+    },
+    {
+      "id": "simulated-footbridge-1166320981-0-0",
+      "facility_expected_id": "simulated-footbridge-1166320981-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79951165430975,
+        3.0100166527844263
+      ],
+      "destination": [
+        101.79965779018787,
+        3.0099939524778625
+      ]
+    },
+    {
+      "id": "simulated-footbridge-779959854-0-4",
+      "facility_expected_id": "simulated-footbridge-779959854-0-4",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80816302636822,
+        3.00177654900429
+      ],
+      "destination": [
+        101.80907912975991,
+        3.0018068332632053
+      ]
+    },
+    {
+      "id": "simulated-footbridge-579938418-0-0",
+      "facility_expected_id": "simulated-footbridge-579938418-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79562875623785,
+        3.011696922119461
+      ],
+      "destination": [
+        101.79562282474335,
+        3.0122513768431056
+      ]
+    },
+    {
+      "id": "simulated-footbridge-781132332-0-0",
+      "facility_expected_id": "simulated-footbridge-781132332-0-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79982559064787,
+        3.009964562906402
+      ],
+      "destination": [
+        101.79981480935211,
+        3.0100174370935915
+      ]
+    },
+    {
+      "id": "simulated-footbridge-779959859-1-0",
+      "facility_expected_id": "simulated-footbridge-779959859-1-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80631293102024,
+        3.0047858200915147
+      ],
+      "destination": [
+        101.80611916388631,
+        3.004530372775264
+      ]
+    },
+    {
+      "id": "simulated-footbridge-579938421-3-0",
+      "facility_expected_id": "simulated-footbridge-579938421-3-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.79755991944718,
+        3.0113773253765546
+      ],
+      "destination": [
+        101.79748591611857,
+        3.0123259138309884
+      ]
+    },
+    {
+      "id": "simulated-footbridge-779959854-0-3",
+      "facility_expected_id": "simulated-footbridge-779959854-0-3",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.80811757313796,
+        3.0018081196200295
+      ],
+      "destination": [
+        101.8084936052509,
+        3.0023218499623137
+      ]
+    },
+    {
+      "id": "simulated-footbridge-776070163-4-0",
+      "facility_expected_id": "simulated-footbridge-776070163-4-0",
+      "area": "kajang-prima-saujana",
+      "category": "simulation_footbridge",
+      "origin": [
+        101.8027924525396,
+        3.0084003093686316
+      ],
+      "destination": [
+        101.8025534012186,
+        3.0080121215597866
+      ]
+    }
+  ]
+}
