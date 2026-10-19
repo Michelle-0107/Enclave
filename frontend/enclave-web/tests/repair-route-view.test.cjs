@@ -84,7 +84,7 @@ test('plan renders path selectors, both distances, legend and reference warning'
   const html = renderToStaticMarkup(React.createElement(Component, { baseline,
     plan: { id: 'plan1', name: 'Repair plan 1', paths } }));
   for (const label of ['Journey 1', 'Before repairs: ', 'After repairs: ', '200 m', '150 m',
-    'Dashed orange', 'Solid teal', 'accessibility unverified']) {
+    'Dashed orange', 'Solid teal']) {
     assert.ok(html.includes(label), label);
   }
 });
@@ -162,40 +162,42 @@ test('selected facility names and map controls render even without restriction g
   for (const label of ['Selected repairs','R1','North pavement','Show route and selected repairs','locations only'])assert.ok(html.includes(label),label);
 });
 
-test('overview retains both independent journeys, separate geometries, and stable focus numbers', () => {
+
+test('one journey is selected by default and switching retains only that path and mode', () => {
   const secondPoints = [[101.735, 3.23], [101.737, 3.232]];
-  const secondRoute = { ...route(591), geometry: { type: 'LineString', coordinates: secondPoints } };
-  const rows = view.repairPathViews([...baseline,
-    { ...baseline[0], path_id: 'two', path_name: 'Journey 2', current: secondRoute }],
-    [...paths, { ...paths[0], path_id: 'two', path_name: 'Journey 2', after: secondRoute }]);
-  const overview = view.repairMapPaths(rows);
-  assert.equal(overview.length, 2, 'walking references must not duplicate journeys');
-  assert.equal(overview[0].beforePoints, points);
-  assert.equal(overview[1].beforePoints, secondPoints);
-  assert.equal(overview[1].beforeLabel, 'Before: 591 m');
+  const second = { ...route(591), geometry: { type: 'LineString', coordinates: secondPoints } };
+  const rows = view.repairPathViews([...baseline, { ...baseline[0], path_id: 'two', current: second }],
+    [...paths, { ...paths[0], path_id: 'two', path_name: 'Journey 2', after: second }]);
+  const first = view.repairMapPaths(rows);
+  assert.equal(first.length, 1);
+  assert.equal(first[0].beforePoints, points);
   const focus = view.repairMapPaths(rows, 'two:avoid_damage');
   assert.equal(focus.length, 1);
-  assert.equal(focus[0].number, 2, 'focused path keeps the same number as the overview');
-  assert.equal(view.repairMapPaths(rows, 'deleted-path').length, 2);
-  const accessible = view.repairMapPaths(rows, 'all:accessible');
-  assert.equal(accessible.length, 1);
-  assert.equal(accessible[0].view.before.reference, true);
+  assert.equal(focus[0].number, 2);
+  assert.equal(focus[0].beforePoints, secondPoints);
+  assert.equal(focus[0].beforeLabel, 'Before: 591 m');
+  assert.equal(view.repairMapPaths(rows, 'deleted-path')[0].view.key, rows[0].key);
+  assert.equal(view.repairMapPaths(rows, 'one:accessible')[0].view.before.reference, true);
+  assert.equal(view.repairMapPaths([]).length, 0);
 });
 
-test('map creates four distinct route sources, fits both journeys, and cleans up on selection change', async () => {
-  const effects = [], sources = new Map(), layers = new Map(), markers = [];
+test('switching route removes old geometry, endpoints and distances before drawing the selected pair', async () => {
+  const effects = [], sources = new Map(), layers = new Map(), markers = [], refs = [];
   let fitted, refIndex = 0;
   const React = fromWeb('react');
   const hooks = { ...React,
     useMemo: fn => fn(), useEffect: fn => effects.push(fn),
     useState: value => [value === 0 ? 1 : value, () => {}],
-    useRef: value => ({ current: refIndex++ === 1 ? {} : value }),
+    useRef: value => {
+      const index = refIndex++;
+      return refs[index] ??= { current: index === 1 ? {} : value };
+    },
   };
   class FakeMap {
     scrollZoom = { disable() {} };
     addControl() {} on() {} resize() {} remove() {}
-    addSource(id, source) { sources.set(id, source); }
-    addLayer(layer) { layers.set(layer.id, layer); }
+    addSource(id, source) { assert.ok(!sources.has(id)); sources.set(id, source); }
+    addLayer(layer) { assert.ok(!layers.has(layer.id)); layers.set(layer.id, layer); }
     getSource(id) { return sources.get(id); }
     getLayer(id) { return layers.get(id); }
     removeSource(id) { sources.delete(id); }
@@ -215,18 +217,75 @@ test('map creates four distinct route sources, fits both journeys, and cleans up
   }, { document: { createElement: () => ({ style: {} }) }, ResizeObserver: class { observe() {} disconnect() {} } }).default;
   const secondPoints = [[101.735, 3.23], [101.737, 3.232]];
   const second = { ...route(591), geometry: { type: 'LineString', coordinates: secondPoints } };
-  Component({ baseline: [...baseline, { ...baseline[0], path_id: 'two', current: second }],
-    plan: { name: 'Repair plan', paths: [...paths, { ...paths[0], path_id: 'two', path_name: 'Journey 2', after: second }] } });
+  const props = { baseline: [...baseline, { ...baseline[0], path_id: 'two', current: second }],
+    plan: { name: 'Repair plan', paths: [...paths, { ...paths[0], path_id: 'two', path_name: 'Journey 2', after: second }] } };
+  Component(props);
   const unmount = effects[0]();
   await new Promise(resolve => setImmediate(resolve));
   const cleanup = effects[1]();
-  assert.deepEqual([...sources.keys()], ['repair-1-before', 'repair-2-before', 'repair-1-after', 'repair-2-after']);
-  assert.equal(sources.get('repair-2-after').data.geometry.coordinates, secondPoints);
-  assert.ok(fitted.includes(points[0]) && fitted.includes(secondPoints[1]));
-  for (const label of ['1A', '1B', '2A', '2B']) assert.ok(markers.some(m => m.options.element.textContent === label), label);
-  assert.ok(markers.some(m => m.options.element.textContent.includes('P2 · Journey 2 · After: 591 m')));
+  assert.deepEqual([...sources.keys()], ['repair-1-before', 'repair-1-after']);
   cleanup();
   assert.equal(sources.size, 0); assert.equal(layers.size, 0);
   assert.ok(markers.every(m => m.removed));
-  unmount();
+  effects.length = 0; refIndex = 0;
+  Component({ ...props, selectedKey: 'two:avoid_damage' });
+  const cleanupSecond = effects[1]();
+  assert.deepEqual([...sources.keys()], ['repair-2-before', 'repair-2-after']);
+  assert.equal(sources.get('repair-2-after').data.geometry.coordinates, secondPoints);
+  assert.ok(fitted.includes(secondPoints[1]));
+  assert.ok(!fitted.includes(points[0]));
+  const active = markers.filter(m => !m.removed);
+  for (const label of ['2A', '2B']) assert.ok(active.some(m => m.options.element.textContent === label));
+  assert.ok(active.every(m => !m.options.element.textContent.includes('P1')));
+  assert.ok(active.some(m => m.options.element.textContent.includes('P2 · Journey 2 · After: 591 m')));
+  cleanupSecond(); unmount();
+});
+
+test('a shared selection displays route 2 in every plan and hides route 1 result details', () => {
+  const Component = load('src/components/management/RepairPlanRoutes.tsx', {
+    '@/lib/repairRouteView': view, 'maplibre-gl/dist/maplibre-gl.css': {},
+  }).default;
+  const React = fromWeb('react');
+  const { renderToStaticMarkup } = fromWeb('react-dom/server');
+  const extraBefore = { ...baseline[0], path_id: 'two', path_name: 'Journey 2', current: route(591) };
+  const extraAfter = { ...paths[0], path_id: 'two', path_name: 'Journey 2', after: route(278) };
+  for (const name of ['Repair plan 1', 'Repair plan 2']) {
+    const html = renderToStaticMarkup(React.createElement(Component, { baseline: [...baseline, extraBefore],
+      plan: { name, paths: [...paths, extraAfter] }, selectedKey: 'two:avoid_damage' }));
+    assert.ok(html.includes('value="two:avoid_damage" selected=""'));
+    assert.ok(html.includes('Before: 591 m') && html.includes('After: 278 m'));
+    assert.ok(!html.includes('Before: 200 m') && !html.includes('After repairs: 150 m'));
+    assert.ok(!html.includes('All paths'));
+    assert.ok(html.includes('Journey 1'), 'route 1 remains selectable');
+  }
+});
+
+test('planner passes the same route selection and change handler to every repair plan', () => {
+  const React = fromWeb('react');
+  const captured = [];
+  const select = () => {};
+  const result = { simulation_id: 's', snapshot_at: '2026-10-20T00:00:00Z', warnings: [], baseline,
+    plans: ['Plan 1','Plan 2'].map((name, i) => ({ id: String(i), name, paths, summaries: [],
+      total_estimated_cost_myr: null, budget_status: 'unknown' })) };
+  let stateIndex = 0;
+  const hooks = { ...React, useEffect() {}, useCallback: fn => fn, useMemo: fn => fn(),
+    useState(value) {
+      const index = stateIndex++;
+      if (index === 0) return [3, () => {}];
+      if (value === null) return [result, () => {}];
+      if (index === 8) return ['two:avoid_damage', select];
+      return [value, () => {}];
+    },
+  };
+  const Planner = load('src/components/management/WhatIfPlanner.tsx', {
+    react: hooks, '@/lib/api': { ApiError: class extends Error {} },
+    './WhatIfPathMap': { __esModule: true, default: () => null, parseMapPoint: () => null, pathDistance: () => 0 }, './RepairPlanRoutes': { default: props => { captured.push(props); return null; }, __esModule: true },
+  }).default;
+  const { renderToStaticMarkup } = fromWeb('react-dom/server');
+  renderToStaticMarkup(React.createElement(Planner));
+  assert.equal(captured.length, 2);
+  for (const props of captured) {
+    assert.equal(props.selectedKey, 'two:avoid_damage');
+    assert.equal(props.onSelectionChange, select);
+  }
 });

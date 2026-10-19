@@ -92,16 +92,11 @@ export function repairMapBoundsPoints(before:[number,number][],after:[number,num
   return [...before,...after,...facilities.filter(item=>item.selected && item.coordinate).map(item=>item.coordinate!)];
 }
 
-// Overview includes each journey once, rather than duplicating walking fallbacks.
-export function repairMapPaths(views: RepairPathView[], selection = 'all:avoid_damage') {
+// A comparison map shows exactly one journey and route mode at a time.
+export function repairMapPaths(views: RepairPathView[], selection = '') {
   const ids = [...new Set(views.map(view => view.pathId))];
-  const focused = views.find(view => view.key === selection);
-  const visible = focused ? [focused] : ids.flatMap(id => {
-    const mode = selection === 'all:accessible' ? 'accessible' : 'avoid_damage';
-    const row = views.find(view => view.pathId === id && view.mode === mode)
-      ?? (mode === 'avoid_damage' ? views.find(view => view.pathId === id) : undefined);
-    return row ? [row] : [];
-  });
+  const focused = views.find(view => view.key === selection) ?? views[0];
+  const visible = focused ? [focused] : [];
   return visible.map(view => ({
     view, number: ids.indexOf(view.pathId) + 1,
     beforePoints: routeCoordinates(view.before.route), afterPoints: routeCoordinates(view.after.route),
