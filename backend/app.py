@@ -291,8 +291,13 @@ def create_app(
         return {"message": "Welcome to Enclave API"}
 
     @application.get("/health", tags=["Health"])
-    def health() -> dict[str, str]:
+    def health(response: Response) -> dict[str, str]:
+        response.headers['X-Enclave-Routing-Revision']='demo-crossings-v1'
         return {"status": "ok"}
+
+    @application.get('/health/routing', tags=['Health'])
+    def routing_revision() -> dict[str, str]:
+        return {'routing_revision':'demo-crossings-v1'}
 
     @application.get("/auth/me", response_model=CurrentUserResponse, tags=["Authentication"], responses={
         401: {"description": "Missing, invalid, or expired access token."},

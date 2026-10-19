@@ -16,7 +16,7 @@ export function geometryDistances(points: Coordinate[]): number[] {
 function instructionKind(text: string, type?: number): InstructionKind {
   if (/arriv|destination reached/i.test(text) || type === 4) return 'arrive';
   if (/u[ -]?turn|turn around/i.test(text)) return 'uturn';
-  if (/\bcross\b|crossing/i.test(text)) return 'crossing';
+  if (/\bcross\b|crossing|footbridge|underpass/i.test(text)) return 'crossing';
   if (/\bleft\b/i.test(text)) return 'left';
   if (/\bright\b/i.test(text)) return 'right';
   return 'continue';

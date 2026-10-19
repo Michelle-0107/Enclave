@@ -129,7 +129,11 @@ class RealMallAccessTests(unittest.TestCase):
                          json={'origin':payload['origin'],'destination':payload['destination']},headers=headers)
         self.assertEqual(live.status_code,200,live.text)
         self.assertEqual(demo.status_code,200,demo.text)
-        self.assertEqual(live.json()['geometry'],demo.json()['options'][0]['route']['geometry'])
+        demo_route=demo.json()['options'][0]['route']
+        self.assertIsNotNone(demo_route)
+        self.assertEqual(live.json()['simulated_crossing_count'],0)
+        self.assertFalse(any(identifier.startswith('simulated-') for identifier in live.json()['demo_facility_ids']))
+        self.assertEqual(live.json()['geometry']['coordinates'][-1],demo_route['geometry']['coordinates'][-1])
         self.assertTrue(any('inferred outdoor' in warning for warning in live.json()['warnings']))
         self.assertEqual(fixture.requests,[])
 

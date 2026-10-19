@@ -64,6 +64,9 @@ export default function NavigationView(p: Props) {
         {p.route.facilities.map(f => <Marker key={f.id} id={`guidance-facility-${f.id}`} lngLat={f.coordinate}>
           <View collapsable={false} style={s.facility}><MaterialCommunityIcons name={f.kind === 'stairs' ? 'stairs' : f.kind === 'crossing' ? 'walk' : 'map-marker-alert-outline'} size={16} color="#7D4613" /></View>
         </Marker>)}
+        {p.route.navigationFacilities?.map(f => <Marker key={f.id} id={`guidance-crossing-${f.id}`} lngLat={f.coordinate}>
+          <View collapsable={false} style={[s.facility, { backgroundColor: f.routingSource === 'simulation' ? '#EADDFA' : '#D4EFEC' }]}><MaterialCommunityIcons name={f.kind === 'footbridge' ? 'bridge' : 'walk'} size={18} color={f.routingSource === 'simulation' ? '#8147B4' : '#056364'} /></View>
+        </Marker>)}
         {p.stage === 'entry' && <Marker id="guidance-start" lngLat={p.route.originSnap.coordinate}><View collapsable={false} style={s.pin}><Text style={s.pinText}>S</Text></View></Marker>}
         <Marker id="guidance-destination" lngLat={p.destination}><View collapsable={false} style={s.pin}><MaterialCommunityIcons name="flag-checkered" size={22} color="#FFFFFF" /></View></Marker>
         {p.position && <Marker id="guidance-user" lngLat={p.position}><View collapsable={false} style={s.user}>
@@ -96,6 +99,7 @@ export default function NavigationView(p: Props) {
         <MaterialCommunityIcons name={p.route.profile === 'wheelchair' ? 'wheelchair-accessibility' : 'walk'} size={26} color="#202C46" />
       </View>
       <Text numberOfLines={2} style={s.status}>{p.status}</Text>
+      {p.route.navigationFacilities?.some(f => f.routingSource === 'simulation') && <Text style={s.error}>Demo only: includes fictional crossing facilities. Do not follow these crossings on a real road.</Text>}
       {transfer && <Text style={s.status}>Access transfer is a distance reference. Use a visible passage.</Text>}
       {p.voiceStatus ? <Text style={s.error}>{p.voiceStatus}</Text> : null}
       {p.error ? <Text accessibilityRole="alert" style={s.error}>{p.error}</Text> : null}

@@ -62,9 +62,19 @@ test('Real-place search resolves coordinates only when a suggestion is selected'
 });
 test('Facility selection stops event propagation and does not silently choose endpoints',()=>{
  let t=tree(),stopped=false;const f=raw.facilities[0];find(t,n=>n.props?.id==='demo-facilities').props.onPress({stopPropagation:()=>stopped=true,nativeEvent:{features:[{properties:{id:f.id}}]}});t=tree();
- assert.ok(stopped);assert.ok(text(t).includes(f.name));assert.equal(all(t).filter(n=>n.type==='Marker').length,1);
- assert.deepEqual(find(t,n=>n.props?.id==='demo-selection-frame').props.lngLat,f.coordinate);
+ assert.ok(stopped);assert.ok(text(t).includes(f.name));assert.equal(all(t).filter(n=>n.type==='Marker').length,0);
+ assert.deepEqual(find(t,n=>n.props?.id==='demo-selection-highlight').props.data.features[0].geometry.coordinates,f.coordinate);
  button(t,'Use as start').props.onPress();t=tree();assert.equal(all(t).filter(n=>n.type==='Marker').length,1);
+});
+test('Simulated crossing selection shows its geometry and demo label; route facility reaches guidance',async()=>{
+ let t=tree();const f=raw.navigationFacilities.find(f=>f.routingSource==='simulation');let stopped=false;
+ find(t,n=>n.props?.id==='demo-navigation-facilities').props.onPress({stopPropagation:()=>stopped=true,nativeEvent:{features:[{properties:{id:f.id}}]}});
+ t=tree();assert.ok(stopped);assert.ok(text(t).includes('Simulated infrastructure'));
+ assert.ok(find(t,n=>n.props?.id==='demo-navigation-lines').props.data.features.some(x=>x.id===f.id));
+ responder=payload=>{const r=serverResponse(payload);for(const option of r.options)option.route.demo_facility_ids.push(f.id);return r;};
+ t=await chooseJourney();assert.ok(text(t).includes(f.name));
+ button(t,'Start Enclave guidance').props.onPress();t=tree();
+ const guidance=find(t,n=>n.type==='JourneyGuidance');assert.ok(guidance.props.route.navigationFacilities.some(x=>x.id===f.id));
 });
 test('Invalid point is rejected instead of drawing a cross-area connector',()=>{
  let t=tree();mapTap(t,[0,0]);t=tree();assert.ok(text(t).includes('inside the current service area'));assert.equal(all(t).filter(n=>n.type==='Marker').length,0);

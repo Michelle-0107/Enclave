@@ -90,18 +90,21 @@ def _options(area_id, dataset, graph, origin, destination, profile, *, modes=Non
             continue
 
         coordinates = route.geometry.coordinates
-        route.demo_facility_ids = [
+        route.demo_facility_ids = sorted(set(route.demo_facility_ids) | {
             item['id'] for item in dataset.get('facilities', [])
             if isinstance(item.get('coordinate'), list) and len(item['coordinate']) == 2
             and route_intersects_zone(coordinates, zone_bounds(
                 item['coordinate'][1], item['coordinate'][0],
                 min(10, max(1, item.get('restrictionRadiusMeters', 3)))))
-        ]
+        })
         result.append(DemoRouteOption(mode=mode, route=route))
     return result
 
 
 def calculate_demo_routes(area_id, bounds, request, dataset, graph):
+    if dataset.get('navigationFacilities'):
+        from .demo_network import demo_walking_graph
+        graph=demo_walking_graph(area_id)
     origin = (request.origin.longitude, request.origin.latitude)
     destination = (request.destination.longitude, request.destination.latitude)
     if not _inside(origin, bounds) or not _inside(destination, bounds):

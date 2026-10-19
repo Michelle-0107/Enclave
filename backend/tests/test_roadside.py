@@ -341,8 +341,11 @@ class LiveAreaApiTests(unittest.TestCase):
             self.assertEqual(demo.status_code,200,demo.text)
             option=demo.json()['options'][0]['route']
             self.assertIsNotNone(option)
-            self.assertEqual(data['geometry'],option['geometry'])
-            self.assertEqual(data['unmarked_crossing_count'],option['unmarked_crossing_count'])
+            self.assertEqual(data['geometry']['coordinates'][0],option['geometry']['coordinates'][0])
+            self.assertEqual(data['geometry']['coordinates'][-1],option['geometry']['coordinates'][-1])
+            self.assertEqual(data['simulated_crossing_count'],0)
+            if not option['simulated_crossing_count']:
+                self.assertEqual(data['unmarked_crossing_count'],option['unmarked_crossing_count'])
             self.assertEqual(data['mapped_crossing_count'],0)
             self.assertFalse(data['field_verified'])
             if end[0]<101.8034422:

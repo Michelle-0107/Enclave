@@ -77,6 +77,7 @@ class RouteResponse(BaseModel):
     crossing_policy: Literal['provider_default','mapped_facilities_only','resident_local_roads'] = 'provider_default'
     mapped_crossing_count: int = Field(default=0,ge=0)
     unmarked_crossing_count: int = Field(default=0,ge=0)
+    simulated_crossing_count: int = Field(default=0,ge=0)
     geometry: RouteGeometry
     distance_meters: Meters
     duration_seconds: Seconds
