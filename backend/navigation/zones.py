@@ -1,6 +1,7 @@
 """Small management-confirmed exclusion squares in geographic coordinates."""
 
 import math
+from collections import defaultdict
 
 from .config import PILOT_BBOX, in_bounds
 
@@ -52,3 +53,49 @@ def segment_intersects_zone(a, b, bounds):
 
 def route_intersects_zone(coordinates, bounds):
     return any(segment_intersects_zone(a,b,bounds) for a,b in zip(coordinates,coordinates[1:]))
+
+
+class BoundsIndex:
+    """Conservative candidate lookup; exact geometry checks still decide exclusion."""
+
+    CELL_SIZE = 0.0005
+    MAX_CELLS = 256
+
+    def __init__(self, bounds):
+        self.bounds = tuple(bounds)
+        self.grid = defaultdict(set)
+        self.large = set()
+        for i, box in enumerate(self.bounds):
+            cells = self._cells(box)
+            if cells is None:
+                self.large.add(i)
+            else:
+                for cell in cells:
+                    self.grid[cell].add(i)
+
+    @classmethod
+    def _cells(cls, bounds):
+        w, s, e, n = bounds
+        west, south = math.floor((w-1e-10)/cls.CELL_SIZE), math.floor((s-1e-10)/cls.CELL_SIZE)
+        east, north = math.floor((e+1e-10)/cls.CELL_SIZE), math.floor((n+1e-10)/cls.CELL_SIZE)
+        if (east-west+1)*(north-south+1) > cls.MAX_CELLS:
+            return None
+        return ((x, y) for x in range(west, east+1) for y in range(south, north+1))
+
+    def candidates(self, a, b):
+        if not self.bounds:
+            return ()
+        w, s, e, n = min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1])
+        cells = self._cells((w, s, e, n))
+        if cells is None:
+            indices = range(len(self.bounds))
+        else:
+            indices = self.large.copy()
+            for cell in cells:
+                indices.update(self.grid.get(cell, ()))
+            indices = sorted(indices)
+        return (i for i in indices if self.bounds[i][0]-1e-10 <= e and self.bounds[i][2]+1e-10 >= w
+                and self.bounds[i][1]-1e-10 <= n and self.bounds[i][3]+1e-10 >= s)
+
+    def intersects(self, a, b):
+        return any(segment_intersects_zone(a, b, self.bounds[i]) for i in self.candidates(a, b))
