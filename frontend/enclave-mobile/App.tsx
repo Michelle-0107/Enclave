@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     fontWeight: '700',
     letterSpacing: 5,
-    color: colors.navy,
+    color: colors.brand,
   },
   tagline: {
     fontSize: 12,

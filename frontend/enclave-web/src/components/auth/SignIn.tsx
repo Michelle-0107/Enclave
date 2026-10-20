@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import Image from 'next/image';
+import EnclaveLogo from '@/components/ui/EnclaveLogo';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -59,15 +59,9 @@ export default function SignIn() {
     <div className="min-h-dvh bg-background text-primary lg:flex">
       <aside className="flex flex-col gap-9 bg-white p-4 lg:min-h-dvh lg:w-[248px] lg:shrink-0">
         <div className="flex items-center gap-3">
-          <Image
-            src="/images/enclave-logo.png"
-            alt=""
-            width={24}
-            height={29}
-            className="object-contain"
-          />
+          <EnclaveLogo className="h-[29px] w-6" />
 
-          <span className="text-[23px] font-bold tracking-[5px]">
+          <span className="text-[23px] font-bold tracking-[5px] text-[#526B8A]">
             ENCLAVE
           </span>
         </div>
@@ -76,14 +70,8 @@ export default function SignIn() {
           Staff portal
         </p>
 
-        <div className="hidden flex-col gap-6 rounded-3xl bg-enclave-lavender px-5 py-8 lg:flex">
-          <Image
-            src="/images/enclave-logo.png"
-            alt=""
-            width={64}
-            height={76}
-            className="object-contain"
-          />
+        <div className="hidden flex-col gap-6 rounded-3xl bg-[#526B8A] px-5 py-8 text-white lg:flex">
+          <EnclaveLogo white className="h-[76px] w-16" />
 
           <p className="text-[22px] font-semibold leading-[1.45]">
             Better care.
@@ -91,7 +79,7 @@ export default function SignIn() {
             Better living.
           </p>
 
-          <p className="text-[13px] leading-[1.45] text-muted-foreground">
+          <p className="text-[13px] leading-[1.45] text-[#E6EDF5]">
             Your community.
             <br />
             One shared workspace.

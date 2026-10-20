@@ -149,7 +149,7 @@ export default function SignUpScreen({ onBack, onSignInPress, onRegistered }: Pr
 const styles = StyleSheet.create({
   flex: { flex: 1 }, screen: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 20 }, brand: { fontSize: 21, fontWeight: '700', letterSpacing: 5, color: colors.navy },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 20 }, brand: { fontSize: 21, fontWeight: '700', letterSpacing: 5, color: colors.brand },
   introduction: { marginTop: 32, gap: 10 }, title: { fontSize: 30, lineHeight: 38, fontWeight: '700', color: colors.navy }, subtitle: { fontSize: 14, lineHeight: 22, color: colors.muted },
   form: { marginTop: 28, gap: 18 }, field: { gap: 10 }, label: { fontSize: 14, fontWeight: '600', color: colors.navy },
   input: { minHeight: 54, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, color: colors.navy, fontSize: 14 },

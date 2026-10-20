@@ -15,8 +15,9 @@ import {
   Status,
   control,
 } from "./Common";
-import { statusLabels } from "@/lib/maintenance/types";
 import WorkflowGuide from '@/components/ui/WorkflowGuide';
+import ReportLocationMap from '@/components/management/ReportLocationMap';
+import { PriorityBadge } from '@/components/ui/ReportBadges';
 import TaskHistory from './TaskHistory';
 export type TaskView =
   "details" | "update" | "evidence" | "blocker" | "rework" | "submitted";
@@ -217,21 +218,23 @@ export default function TaskScreen({
           title={task.title}
           subtitle={`#${task.ticketId ?? id} · Assigned ${task.assignedAt}`}
         />
-        <Status status={task.status}>
-          {statusLabels[task.status]} · {task.priority}
-        </Status>
-        <div className="grid gap-6 lg:grid-cols-2 lg:divide-x">
-          <div className="flex flex-col gap-[18px] lg:pr-3">
+        <div className="flex flex-wrap gap-2"><Status status={task.status} /><PriorityBadge priority={task.priority} /></div>
+        <div className="task-detail-grid">
+          <div className="task-evidence flex min-w-0 flex-col gap-[18px]">
             <Photo
               label="Resident photo / before repair"
               url={task.beforePhotoUrl}
             />
             <p className="font-semibold">{task.location}</p>
+
             <p className="text-sm leading-relaxed text-muted-foreground">
               {task.description}
             </p>
           </div>
-          <div className="lg:pl-3">
+          <div className="task-workspace flex min-w-0 flex-col gap-5">
+            {typeof task.latitude === 'number' && typeof task.longitude === 'number' && Number.isFinite(task.latitude) && Number.isFinite(task.longitude)
+              ? <ReportLocationMap latitude={task.latitude} longitude={task.longitude} />
+              : <p className="text-sm text-muted-foreground">Map location is unavailable for this task.</p>}
             <div className="flex flex-col gap-[14px] rounded-3xl bg-white p-5">
               <h2 className="text-xl font-semibold">{task.team}</h2>
               <p className="text-sm">Target completion: {task.targetDate}</p>
@@ -239,21 +242,11 @@ export default function TaskScreen({
                 {task.instructions}
               </p>
             </div>
-          </div>
-        </div>
-        {task.reviewNote && task.status === "changes-requested" && (
-          <div className="rounded-3xl bg-secondary p-5">
-            <h2 className="font-semibold">Management review note</h2>
-            <p className="mt-3 text-sm text-muted-foreground">
-              {task.reviewNote}
-            </p>
-          </div>
-        )}
         <div className="flex flex-col gap-3 sm:flex-row">
           {task.status === "assigned" ? (
             <Button
               disabled={busy}
-              className={`${action} sm:w-[280px]`}
+              className={`${action} min-w-0 flex-1`}
               onClick={() =>
                 run(() => gateway.startWork(id), undefined, base + "/update")
               }
@@ -266,7 +259,7 @@ export default function TaskScreen({
                 base +
                 (task.status === "changes-requested" ? "/rework" : "/update")
               }
-              className={`${primaryLink} sm:w-[280px]`}
+              className={`${primaryLink} min-w-0 flex-1`}
             >
               {task.status === "changes-requested"
                 ? "Update repair evidence"
@@ -280,12 +273,23 @@ export default function TaskScreen({
           {canEdit && (
             <Link
               href={base + "/blocker"}
-              className={`${secondaryLink} bg-status-red-bg text-status-red sm:w-[280px]`}
+              className={`${secondaryLink} bg-status-red-bg text-status-red min-w-0 flex-1`}
             >
               Report a blocker
             </Link>
           )}
         </div>
+          </div>
+        </div>
+        {task.reviewNote && task.status === "changes-requested" && (
+          <div className="rounded-3xl bg-secondary p-5">
+            <h2 className="font-semibold">Management review note</h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {task.reviewNote}
+            </p>
+          </div>
+        )}
+
         {messages}
         <TaskHistory id={task.id} updatedAt={task.updatedAt} />
       </section>

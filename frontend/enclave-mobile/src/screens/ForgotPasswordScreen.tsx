@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: '700',
     lineHeight: 26,
-    color: colors.navy,
+    color: colors.brand,
   },
 
   heading: {

@@ -1,5 +1,7 @@
 'use client';
 
+import { ReportStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -107,20 +109,11 @@ export default function ReportDetails({ report: initialReport }: Props) {
 
   const reviews = history.filter(event => event.actor_role === 'management' && event.from_status === 'pending' && ['approved', 'rejected'].includes(event.to_status));
 
-  const statusColor = report.status === 'resolved'
-    ? 'bg-status-green-bg text-status-green'
-    : report.status === 'rejected'
-      ? 'bg-status-red-bg text-status-red'
-      : 'bg-status-orange-bg text-status-orange';
-
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-[30px] font-semibold leading-[1.35] text-primary lg:text-[36px]">{report.title}</h1>
       <p className="text-sm leading-relaxed text-muted-foreground">#{report.id} · Submitted {report.submittedAt}</p>
-      <div className={`inline-flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-xs ${statusColor}`}>
-        <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
-        {reportStatusLabels[report.status]}
-      </div>
+      <ReportStatusBadge status={report.status} />
 
       {report.status === 'pending' && <WorkflowGuide steps={['Review', 'Assign', 'Repair', 'Verify', 'Resolved']} active={0} next="Next: review the evidence, then approve or reject the report." />}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
@@ -141,7 +134,7 @@ export default function ReportDetails({ report: initialReport }: Props) {
           <h2 className="text-lg font-semibold text-primary">Report details</h2>
           <dl className="grid gap-4 text-sm">
             <div><dt className="font-semibold text-primary">Category</dt><dd className="mt-1 text-muted-foreground">{report.category}</dd></div>
-            <div><dt className="font-semibold text-primary">Priority</dt><dd className="mt-1 text-muted-foreground">{report.priority}</dd></div>
+            <div><dt className="font-semibold text-primary">Priority</dt><dd className="mt-2"><PriorityBadge priority={report.priority} /></dd></div>
             <div>
               <dt className="font-semibold text-primary">Description</dt>
               <dd className="mt-1 whitespace-pre-wrap leading-relaxed text-muted-foreground">

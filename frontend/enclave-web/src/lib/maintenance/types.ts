@@ -9,6 +9,8 @@ export type MaintenanceTask = {
   ticketId?: string;
   title: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   description: string;
   priority: "Low" | "Medium" | "High";
   status: TaskStatus;

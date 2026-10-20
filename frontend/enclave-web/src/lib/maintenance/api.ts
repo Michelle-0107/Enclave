@@ -38,6 +38,7 @@ export function toMaintenanceTask(value: BackendTask): MaintenanceTask {
   return {
     id: task.id, ticketId: task.ticket_id, title: task.title, description: task.description,
     location: `${task.latitude.toFixed(5)}, ${task.longitude.toFixed(5)}`,
+    latitude: task.latitude, longitude: task.longitude,
     priority: ({ low: 'Low', medium: 'Medium', high: 'High' } as const)[task.priority],
     status: statuses[task.status], assignedAt: new Date(task.created_at).toLocaleString(),
     targetDate: task.target_date, team: task.assigned_team_id ? 'Assigned to your team' : 'Assigned to you',

@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 26,
     letterSpacing: 4,
-    color: colors.navy,
+    color: colors.brand,
   },
   heading: {
     gap: 10,
