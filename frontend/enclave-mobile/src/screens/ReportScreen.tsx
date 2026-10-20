@@ -36,6 +36,7 @@ type Props = {
   onViewReports: () => void;
   onReportCreated: (report: ResidentReport) => void;
   onDescriptionFocus?: () => void;
+  onMapTouchChange?: (active: boolean) => void;
   onStepChange?: () => void;
 };
 
@@ -103,6 +104,7 @@ export default function ReportScreen({
   onViewReports,
   onReportCreated,
   onDescriptionFocus,
+  onMapTouchChange,
   onStepChange,
 }: Props) {
   const [step, setStep] = useState<Step>('photo');
@@ -441,6 +443,7 @@ export default function ReportScreen({
         return (
           <ReportLocationScreen
             initialDetails={details}
+            onMapTouchChange={onMapTouchChange}
             onDescriptionFocus={onDescriptionFocus}
             onBack={() => goToStep('photo')}
             onDetailsChange={handleLocationChange}

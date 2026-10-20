@@ -409,6 +409,7 @@ function ResidentApp({
       case 'Report':
         return (
           <ReportScreen
+            onMapTouchChange={setMapTouchActive}
             onGoHome={() => changeTab('Home')}
             onStepChange={scrollToTop}
             onDescriptionFocus={() => {
