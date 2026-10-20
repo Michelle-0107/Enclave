@@ -174,7 +174,7 @@ export default function Residents() {
         ) : filteredResidents.length === 0 ? (
           <p className="rounded-2xl bg-white p-5 text-sm text-muted-foreground">No residents match that search.</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl bg-white">
+          <div className="relative overflow-x-auto rounded-2xl bg-white">
             <table className="w-full min-w-[900px] border-collapse text-left text-sm">
               <thead className="border-b border-border text-xs text-muted-foreground">
                 <tr>
