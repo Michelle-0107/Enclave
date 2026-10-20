@@ -17,28 +17,47 @@ ROOT=Path(__file__).resolve().parents[1]
 CATEGORIES=('cross_road','same_side','local_streets','long_distance')
 
 
-def samples(seed=20261019,count=30):
+def samples(seed=20261019,count=30,*,walking_eligible=False):
     rng=random.Random(seed); result=[]
     for area in service_areas().items:
         if not area.resident_demo_supported: continue
         graph=walking_graph(area.id)
-        paths=[e for e in graph.edges if e.kind in {'footpath','sidewalk','road_fallback'} and e.grade==('0',False,False) and distance(*e.points)>15]
+        paths=[e for e in graph.edges if e.kind in {'footpath','sidewalk','road_fallback'} and e.grade==('0',False,False) and distance(*e.points)>15
+               and all(graph.endpoint_inside(p) for p in e.points)]
         roads=[e for e in paths if e.kind in {'sidewalk','road_fallback'}]
         root=ET.parse(ROOT/'data/demo_areas'/f'{area.id}.osm').getroot()
         minor_ids={way.attrib['id'] for way in root.findall('way')
                    if any(t.attrib['k']=='highway' and t.attrib['v'] in {'residential','service','living_street','unclassified'} for t in way.findall('tag'))}
         minor_roads=[e for e in roads if e.way_id in minor_ids]
+        sampled_roads=graph.carriageways
+        if walking_eligible:
+            # Eligibility uses mapped walking coverage and endpoint access only.
+            # Never compare components or call route() while choosing samples.
+            road_ids={e.way_id for e in roads}
+            points={n.attrib['id']:(float(n.attrib['lon']),float(n.attrib['lat'])) for n in root.findall('node')}
+            segments=set()
+            for way in root.findall('way'):
+                if way.attrib['id'] not in road_ids: continue
+                refs=[n.attrib['ref'] for n in way.findall('nd')]
+                segments.update((points[a],points[b]) for a,b in zip(refs,refs[1:]) if a in points and b in points)
+            sampled_roads=[(a,b,g) for a,b,g in graph.carriageways if (a,b) in segments
+                           and all(graph.endpoint_inside(p) for p in (a,b))]
         def at(edge):
             t=rng.uniform(.15,.85)
             return tuple(a+(b-a)*t for a,b in zip(*edge.points))
         def valid(point):
-            return graph.inside(point) and graph.land_access.clear(point,point,own_buildings=graph.land_access.buildings_at(point))
+            if not graph.endpoint_inside(point): return False
+            if not graph.land_access.clear(point,point,own_buildings=graph.land_access.buildings_at(point)): return False
+            if walking_eligible:
+                try: graph.snap_candidates(point)
+                except NavigationRejected: return False
+            return True
         for category in CATEGORIES:
             seen=set(); rows=[]; attempts=0
             while len(rows)<count and attempts<100_000:
                 attempts+=1
                 if category=='cross_road':
-                    c,d,grade=rng.choice(graph.carriageways)
+                    c,d,grade=rng.choice(sampled_roads)
                     if grade!=('0',False,False) or distance(c,d)<20: continue
                     c,d=xy(c),xy(d);length=distance(coordinate(c),coordinate(d));t=rng.uniform(.2,.8)
                     vx,vy=(d[0]-c[0])/length,(d[1]-c[1])/length
@@ -66,7 +85,9 @@ def samples(seed=20261019,count=30):
                              'origin':list(a),'destination':list(b)})
             if len(rows)!=count: raise RuntimeError(f'Cannot sample {count} distinct {area.id}/{category} pairs')
             result.extend(rows)
-    return {'seed':seed,'per_category_per_area':count,'eligibility':'Mapped ground walking/roadside points or opposite sides of a sampled road; known physical endpoint obstacles excluded. No connected-component or route-success filtering.',
+    return {'seed':seed,'per_category_per_area':count,'walking_eligible':walking_eligible,'eligibility':
+            ('Endpoints inside the service window on mapped walking/roadside coverage; cross-road samples use roads with mapped walking access. Both endpoints must independently satisfy the existing 20 m outdoor/nearest-building access policy. Known physical endpoint obstacles excluded. No connected-component or route-success filtering.' if walking_eligible else
+             'Mapped ground walking/roadside points or opposite sides of a sampled road; known physical endpoint obstacles excluded. No connected-component or route-success filtering.'),
             'cases':result}
 
 

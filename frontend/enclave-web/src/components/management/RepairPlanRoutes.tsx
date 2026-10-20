@@ -5,7 +5,7 @@ import type * as MapLibre from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { WhatIfResult, RoutingRestriction, FacilityIssue } from '@/lib/api';
 import {
-  lineMidpoint, repairPathViews, routeChange, repairMapPaths, routeDistance, formatRouteSeconds, routeTimeChange, repairMapFacilities, repairMapBoundsPoints,
+  repairPathViews, routeChange, repairMapPaths, routeDistance, formatRouteSeconds, routeTimeChange, repairMapFacilities, repairMapBoundsPoints,
   type RepairPlanResult,
 } from '@/lib/repairRouteView';
 
@@ -69,7 +69,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     const markerIndex = facilityMarkers.current;
     const layers: string[] = [];
     const sources: string[] = [];
-    function draw(id: string, points: [number, number][], color: string, label: string, before: boolean, offset: [number, number]) {
+    function draw(id: string, points: [number, number][], color: string, before: boolean) {
       if (points.length < 2 || !instance || !M) return;
       instance.addSource(id, { type: 'geojson', data: {
         type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points },
@@ -82,15 +82,6 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
           : { 'line-color': color, 'line-width': 4.5 },
       });
       layers.push(id);
-      const midpoint = lineMidpoint(points);
-      if (midpoint) {
-        const el = document.createElement('div');
-        el.textContent = label;
-        Object.assign(el.style, { color, background: '#fff', border: `2px solid ${color}`,
-          borderRadius: '7px', padding: '4px 7px', fontSize: '12px', fontWeight: '700',
-          whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 1px 5px #0003' });
-        markers.push(new M.Marker({ element: el, offset }).setLngLat(midpoint).addTo(instance));
-      }
     }
     if (restrictions.length) {
       const features = restrictions.flatMap(item => item.exclusion_rings.map(ring => ({
@@ -120,7 +111,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       el.type='button'; el.textContent=item.label;
       const label=`${item.label} · ${item.name}: ${item.selected?'selected for this simulated repair plan':'not selected for repair'}${item.hasRestrictionGeometry?'':'; facility location only, affected road area unavailable'}`;
       el.title=label; el.setAttribute('aria-label',label);
-      Object.assign(el.style,{background:item.selected?'#199366':'#d42b35',color:'#fff',border:'3px solid white',borderRadius:'50%',width:'32px',height:'32px',fontWeight:'700',fontSize:'12px',boxShadow:'0 1px 5px #0005'});
+      Object.assign(el.style,{background:item.selected?'#199366':'#d42b35',color:'#fff',border:'3px solid white',borderRadius:'50%',width:item.selected?'32px':'36px',height:item.selected?'32px':'36px',fontWeight:'700',fontSize:item.selected?'12px':'18px',boxShadow:item.selected?'0 1px 5px #0005':'0 0 0 5px #d42b3533, 0 2px 8px #0006'});
       const marker=new M.Marker({element:el}).setLngLat(item.coordinate)
         .setPopup(new M.Popup({offset:18}).setText(label)).addTo(instance);
       markerIndex.set(item.id,marker); markers.push(marker);
@@ -129,8 +120,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     for (const phase of ['before', 'after'] as const) for (const path of mapPaths) {
       const before = phase === 'before';
       draw(`repair-${path.number}-${phase}`, before ? path.beforePoints : path.afterPoints,
-        before ? BEFORE : AFTER, `P${path.number} · ${path.view.name} · ${before ? path.beforeLabel : path.afterLabel}`,
-        before, [before ? -25 : 25, (before ? -24 : 24) + ((path.number - 1) % 3) * 18]);
+        before ? BEFORE : AFTER, before);
     }
     const points = repairMapBoundsPoints(beforePoints,afterPoints,facilities);
     if (points.length) {

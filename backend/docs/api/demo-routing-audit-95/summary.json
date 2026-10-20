@@ -1,0 +1,479 @@
+{
+  "acceptance": {
+    "overall_success": 477,
+    "overall_total": 480,
+    "overall_rate": 0.99375,
+    "overall_strictly_above_95": true,
+    "all_walking_groups_at_least_95": true,
+    "all_facility_groups_at_least_95": true,
+    "threshold": 0.95,
+    "passed": true
+  },
+  "audits": {
+    "random-primary": {
+      "seed": 20261019,
+      "demo_overlay": true,
+      "eligibility": "Mapped ground walking/roadside points or opposite sides of a sampled road; known physical endpoint obstacles excluded. No connected-component or route-success filtering.",
+      "summary": [
+        {
+          "area": "kajang-prima-saujana",
+          "category": "cross_road",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 30,
+          "median_ms": 68.8,
+          "max_ms": 96.41
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 76.06,
+          "max_ms": 152.96
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "long_distance",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 103.69,
+          "max_ms": 147.64
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 68.56,
+          "max_ms": 98.29
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "cross_road",
+          "success": 26,
+          "total": 30,
+          "rate": 0.8667,
+          "crossing_traversals": 26,
+          "median_ms": 84.46,
+          "max_ms": 139.82
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 90.2,
+          "max_ms": 184.17
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "long_distance",
+          "success": 29,
+          "total": 30,
+          "rate": 0.9667,
+          "crossing_traversals": 0,
+          "median_ms": 130.71,
+          "max_ms": 159.38
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 86.14,
+          "max_ms": 118.32
+        }
+      ],
+      "algorithm_sha256": "616cdf1a2f222a3638eb2766dab09554fdfb56101eb9f20aefd652ff1bf846e7",
+      "sample_sha256": "15b1a8c01698cfb612642bb1cd3a49db996f7158f6c5fd4e518c83a4ef143be5",
+      "demo_overlay_sha256": "43f75115c8f514223e9f08b0fec52d63e6e2b80920e7aa7007fab05da1984069",
+      "access_policy": {
+        "inferred_gap_limit_meters": 20.0,
+        "outdoor_approach_limit_meters": 20.0,
+        "building_access": "nearest usable mapped road without distance cap",
+        "route_objective": "minimize inferred gap distance, then actual walk distance",
+        "routing_coverage": "OSM extract buffer; service-area endpoints unchanged"
+      }
+    },
+    "random-holdout": {
+      "seed": 20261020,
+      "demo_overlay": true,
+      "eligibility": "Mapped ground walking/roadside points or opposite sides of a sampled road; known physical endpoint obstacles excluded. No connected-component or route-success filtering.",
+      "summary": [
+        {
+          "area": "kajang-prima-saujana",
+          "category": "cross_road",
+          "success": 29,
+          "total": 30,
+          "rate": 0.9667,
+          "crossing_traversals": 28,
+          "median_ms": 67.75,
+          "max_ms": 102.37
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 82.5,
+          "max_ms": 115.05
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "long_distance",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 104.97,
+          "max_ms": 160.55
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 66.2,
+          "max_ms": 102.05
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "cross_road",
+          "success": 26,
+          "total": 30,
+          "rate": 0.8667,
+          "crossing_traversals": 25,
+          "median_ms": 83.33,
+          "max_ms": 116.74
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 106.77,
+          "max_ms": 179.72
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "long_distance",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 143.5,
+          "max_ms": 196.97
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 86.25,
+          "max_ms": 129.68
+        }
+      ],
+      "algorithm_sha256": "616cdf1a2f222a3638eb2766dab09554fdfb56101eb9f20aefd652ff1bf846e7",
+      "sample_sha256": "03af2fc221acc26f8b9926666cf7e6b41b295ec1c0db48881cd1d6a76cc44a7f",
+      "demo_overlay_sha256": "43f75115c8f514223e9f08b0fec52d63e6e2b80920e7aa7007fab05da1984069",
+      "access_policy": {
+        "inferred_gap_limit_meters": 20.0,
+        "outdoor_approach_limit_meters": 20.0,
+        "building_access": "nearest usable mapped road without distance cap",
+        "route_objective": "minimize inferred gap distance, then actual walk distance",
+        "routing_coverage": "OSM extract buffer; service-area endpoints unchanged"
+      }
+    },
+    "walking-primary": {
+      "seed": 20261022,
+      "demo_overlay": true,
+      "eligibility": "Endpoints inside the service window on mapped walking/roadside coverage; cross-road samples use roads with mapped walking access. Both endpoints must independently satisfy the existing 20 m outdoor/nearest-building access policy. Known physical endpoint obstacles excluded. No connected-component or route-success filtering.",
+      "summary": [
+        {
+          "area": "kajang-prima-saujana",
+          "category": "cross_road",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 30,
+          "median_ms": 66.32,
+          "max_ms": 138.77
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 76.81,
+          "max_ms": 134.77
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "long_distance",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 101.59,
+          "max_ms": 156.09
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 70.06,
+          "max_ms": 105.61
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "cross_road",
+          "success": 29,
+          "total": 30,
+          "rate": 0.9667,
+          "crossing_traversals": 29,
+          "median_ms": 85.38,
+          "max_ms": 139.53
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "local_streets",
+          "success": 29,
+          "total": 30,
+          "rate": 0.9667,
+          "crossing_traversals": 0,
+          "median_ms": 92.79,
+          "max_ms": 143.41
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "long_distance",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 135.25,
+          "max_ms": 190.6
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 83.09,
+          "max_ms": 131.56
+        }
+      ],
+      "algorithm_sha256": "616cdf1a2f222a3638eb2766dab09554fdfb56101eb9f20aefd652ff1bf846e7",
+      "sample_sha256": "9f77fa022d3b86103dd72ec73426c7e9f56ab445130f05ad2f35545cf3ddc2f5",
+      "demo_overlay_sha256": "43f75115c8f514223e9f08b0fec52d63e6e2b80920e7aa7007fab05da1984069",
+      "access_policy": {
+        "inferred_gap_limit_meters": 20.0,
+        "outdoor_approach_limit_meters": 20.0,
+        "building_access": "nearest usable mapped road without distance cap",
+        "route_objective": "minimize inferred gap distance, then actual walk distance",
+        "routing_coverage": "OSM extract buffer; service-area endpoints unchanged"
+      }
+    },
+    "walking-holdout": {
+      "seed": 20261023,
+      "demo_overlay": true,
+      "eligibility": "Endpoints inside the service window on mapped walking/roadside coverage; cross-road samples use roads with mapped walking access. Both endpoints must independently satisfy the existing 20 m outdoor/nearest-building access policy. Known physical endpoint obstacles excluded. No connected-component or route-success filtering.",
+      "summary": [
+        {
+          "area": "kajang-prima-saujana",
+          "category": "cross_road",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 30,
+          "median_ms": 69.59,
+          "max_ms": 132.69
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 73.69,
+          "max_ms": 132.58
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "long_distance",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 95.96,
+          "max_ms": 132.56
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 66.77,
+          "max_ms": 111.47
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "cross_road",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 29,
+          "median_ms": 90.59,
+          "max_ms": 128.65
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 88.62,
+          "max_ms": 153.37
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "long_distance",
+          "success": 29,
+          "total": 30,
+          "rate": 0.9667,
+          "crossing_traversals": 0,
+          "median_ms": 131.44,
+          "max_ms": 204.6
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 81.44,
+          "max_ms": 126.06
+        }
+      ],
+      "algorithm_sha256": "616cdf1a2f222a3638eb2766dab09554fdfb56101eb9f20aefd652ff1bf846e7",
+      "sample_sha256": "aa5bb6db603d0e8b38e88847e41606c85ca0cd334791e7005596fea6e171ae8e",
+      "demo_overlay_sha256": "43f75115c8f514223e9f08b0fec52d63e6e2b80920e7aa7007fab05da1984069",
+      "access_policy": {
+        "inferred_gap_limit_meters": 20.0,
+        "outdoor_approach_limit_meters": 20.0,
+        "building_access": "nearest usable mapped road without distance cap",
+        "route_objective": "minimize inferred gap distance, then actual walk distance",
+        "routing_coverage": "OSM extract buffer; service-area endpoints unchanged"
+      }
+    },
+    "facilities": {
+      "seed": 20261021,
+      "demo_overlay": true,
+      "eligibility": "Independent facility sample; all mapped facilities up to 30 per kind and 30 simulated facilities per kind, without reachability filtering. Exact facility ID must occur on the returned route.",
+      "summary": [
+        {
+          "area": "kajang-prima-saujana",
+          "category": "simulation_crossing",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 65.62,
+          "max_ms": 110.55
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "simulation_footbridge",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 65.78,
+          "max_ms": 107.08
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "openstreetmap_crossing",
+          "success": 27,
+          "total": 27,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 93.59,
+          "max_ms": 131.25
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "openstreetmap_footbridge",
+          "success": 10,
+          "total": 10,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 82.2,
+          "max_ms": 129.59
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "simulation_crossing",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0,
+          "crossing_traversals": 0,
+          "median_ms": 84.05,
+          "max_ms": 121.34
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "simulation_footbridge",
+          "success": 29,
+          "total": 30,
+          "rate": 0.9667,
+          "crossing_traversals": 0,
+          "median_ms": 84.26,
+          "max_ms": 127.27
+        }
+      ],
+      "algorithm_sha256": "616cdf1a2f222a3638eb2766dab09554fdfb56101eb9f20aefd652ff1bf846e7",
+      "sample_sha256": "2aaaadca2c49cd3cb0165c9211e491cfc66211c48a984cccb8f18de1d8f8536a",
+      "demo_overlay_sha256": "43f75115c8f514223e9f08b0fec52d63e6e2b80920e7aa7007fab05da1984069",
+      "access_policy": {
+        "inferred_gap_limit_meters": 20.0,
+        "outdoor_approach_limit_meters": 20.0,
+        "building_access": "nearest usable mapped road without distance cap",
+        "route_objective": "minimize inferred gap distance, then actual walk distance",
+        "routing_coverage": "OSM extract buffer; service-area endpoints unchanged"
+      }
+    }
+  }
+}

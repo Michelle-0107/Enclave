@@ -116,6 +116,20 @@ class Edge:
     grade: tuple = ('0', False, False)
 
 
+def coverage_bounds(root, service_bounds):
+    """Use the downloaded road buffer for detours, not to admit new endpoints."""
+    element = root.find('bounds')
+    if element is None:
+        return tuple(service_bounds)
+    result = tuple(float(element.attrib[key]) for key in ('minlon','minlat','maxlon','maxlat'))
+    w,s,e,n = result
+    if (not all(math.isfinite(value) for value in result) or not -180 <= w < e <= 180
+            or not -90 <= s < n <= 90 or w > service_bounds[0] or s > service_bounds[1]
+            or e < service_bounds[2] or n < service_bounds[3]):
+        raise ValueError('OSM extract must cover the endpoint service window')
+    return result
+
+
 class RoadsideGraph:
     def __init__(self, source, bounds, *, resident_access=False):
         root = ET.parse(source).getroot()
@@ -123,15 +137,20 @@ class RoadsideGraph:
         points = {n.attrib['id']: (float(n.attrib['lon']), float(n.attrib['lat'])) for n in root.findall('node')}
         node_tags = {n.attrib['id']: tags(n) for n in root.findall('node')}
         self.bounds = tuple(bounds)
+        self.routing_bounds = coverage_bounds(root, self.bounds)
+        bounds = self.routing_bounds
         self.nodes = {}
         self.edges = []
         self.carriageways = []
         self.private_way_ids = set()
+        self.explicit_trunk_way_ids = set()
         local_segments = []
         roads, paths = defaultdict(list), defaultdict(list)
         ways = [(w.attrib['id'], [n.attrib['ref'] for n in w.findall('nd')], tags(w)) for w in root.findall('way')]
         for wid, refs, t in ways:
             highway = t.get('highway')
+            explicit_trunk = highway == 'trunk' and t.get('access') == 'yes' and t.get('motorroad') != 'yes'
+            walkable_road = highway in ROADS or explicit_trunk
             grade = level(t)
             # Nonwalkable roads remain barriers; ignoring a motorway/foot=no road
             # must never permit a footpath to cut across it without a facility.
@@ -143,8 +162,10 @@ class RoadsideGraph:
                     self.carriageways.append((pa,pb,grade))
                     roads[(a,grade)].append((math.atan2(pb[1]-pa[1],(pb[0]-pa[0])*math.cos(math.radians(pa[1]))),0,None,t,wid))
                     roads[(b,grade)].append((math.atan2(pa[1]-pb[1],(pa[0]-pb[0])*math.cos(math.radians(pb[1]))),0,None,t,wid))
-            if highway not in ROADS | PATHS or forbidden(t, resident_access=resident_access) or t.get('area') == 'yes' or t.get('indoor') == 'yes':
+            if not (walkable_road or highway in PATHS) or forbidden(t, resident_access=resident_access) or t.get('area') == 'yes' or t.get('indoor') == 'yes':
                 continue
+            if explicit_trunk:
+                self.explicit_trunk_way_ids.add(wid)
             if t.get('access') == 'private' or t.get('foot') == 'private':
                 self.private_way_ids.add(wid)
             # Traffic speed/road class is not evidence of pedestrian permission on highways.
@@ -163,7 +184,7 @@ class RoadsideGraph:
                     continue
                 eid = f'{wid}:{index}'
                 name = t.get('name', 'mapped footpath' if highway in PATHS else 'mapped local road')
-                if highway in ROADS:
+                if walkable_road:
                     for side in (1,-1):
                         na, nb = f'{eid}:a:{side}', f'{eid}:b:{side}'
                         qa, qb = side_offset(pa,pb,side), side_offset(pb,pa,-side)
@@ -287,6 +308,27 @@ class RoadsideGraph:
                         members.append(port)
                 for port in members[1:]:
                     self.add(members[0],port,'same-side road corner','connection','',grade=grade)
+        # A mapped road bridge/underpass ends at its shared OSM approach node.
+        # Keep its two road sides continuous across that grade transition;
+        # geometric intersections with unrelated roads still never connect.
+        graded_roads=defaultdict(list)
+        for (nid,grade),arms in roads.items():
+            graded_roads[nid].extend((*arm,grade) for arm in arms)
+        ground=('0',False,False)
+        for nid,arms in graded_roads.items():
+            if len({arm[-1] for arm in arms})<2: continue
+            headings=sorted({arm[0] for arm in arms})
+            for index,start in enumerate(headings):
+                end=headings[(index+1)%len(headings)]
+                left=[arm for arm in arms if arm[0]==start and arm[1]==1 and arm[2] is not None]
+                right=[arm for arm in arms if arm[0]==end and arm[1]==-1 and arm[2] is not None]
+                if len(left)!=1 or len(right)!=1: continue
+                first,second=left[0],right[0];grades={first[-1],second[-1]}
+                if ground not in grades or not any(grade[1] or grade[2] for grade in grades): continue
+                self.join_corner(first[2],second[2],road_ports,ground)
+                if any(grade in grades and proper_intersection(self.nodes[first[2]],self.nodes[second[2]],c,d)
+                       for c,d,grade in self.nearby(self.nodes[first[2]],self.nodes[second[2]])): continue
+                self.add(first[2],second[2],'mapped bridge approach','connection','',grade=ground)
         # Rebuild coordinates after adjusting path access ports; disallow inferred
         # corner shortcuts that would cut a carriageway or leave the service area.
         self.edges = [Edge(e.a,e.b,(self.nodes[e.a],self.nodes[e.b]),e.name,e.kind,e.way_id,e.direction,e.grade) for e in self.edges]
@@ -462,6 +504,10 @@ class RoadsideGraph:
         return (self.carriageways[i] for i in seen)
 
     def inside(self,p):
+        w,s,e,n = self.routing_bounds
+        return w <= p[0] <= e and s <= p[1] <= n
+
+    def endpoint_inside(self,p):
         w,s,e,n = self.bounds
         return w <= p[0] <= e and s <= p[1] <= n
 
@@ -524,6 +570,7 @@ class RoadsideGraph:
                             q=tuple(a+(b-a)*fraction for a,b in zip(*edge.points))
                             projections.append((distance(point,q),fraction,q))
             for gap,fraction,q in projections:
+                if not self.endpoint_inside(q): continue
                 if (buildings and self.land_access.buildings_at(q)&buildings
                         and not self.land_access.on_building_boundary(q,buildings)): continue
                 if gap>radius+1e-6 or not self.access_clear(point,q,own_buildings=buildings,allow_road_endpoint=True): continue
@@ -584,6 +631,8 @@ class RoadsideGraph:
         if body.route_mode == 'accessible' and not demo_mode:
             raise NavigationRejected(422,'No field-verified step-free network is available in this service area. Ordinary road walking cannot be labelled wheelchair accessible.')
         origin=(body.origin.longitude,body.origin.latitude); target=(body.destination.longitude,body.destination.latitude)
+        if not all(self.endpoint_inside(point) for point in (origin,target)):
+            raise NavigationRejected(422,'Choose both points inside the selected service area.')
         start,end = self.matched_snaps(origin,target)
         origin_building=bool(self.land_access.buildings_at(origin))
         target_building=bool(self.land_access.buildings_at(target))
@@ -606,14 +655,17 @@ class RoadsideGraph:
             for a,b in zip(cuts,cuts[1:]): link(a[1],b[1],edge,a[2],b[2])
         if zone_index.intersects(origin,start[3]) or zone_index.intersects(end[3],target):
             raise NavigationRejected(422,'A walking approach intersects a reported damaged area; choose another access point.')
-        queue=[(0.0,'@start')]; best={'@start':0.0}; previous={}
+        # Lexicographic cost: recorded roads/facilities first. Only when they
+        # cannot connect the fixed endpoints do inferred <=20 m gaps participate.
+        # The second component remains actual walked distance, never a reported penalty.
+        queue=[((0.0,0.0),'@start')]; best={'@start':(0.0,0.0)}; previous={}
         while queue:
             cost,node=heapq.heappop(queue)
             if cost != best[node]: continue
             if node=='@end': break
             for to,length,edge,pa,pb in adjacency[node]:
-                candidate=cost+length
-                if candidate < best.get(to,float('inf')):
+                candidate=(cost[0]+(length if edge.kind=='open_access' else 0.0),cost[1]+length)
+                if candidate < best.get(to,(float('inf'),float('inf'))):
                     best[to]=candidate; previous[to]=(node,edge,pa,pb,length)
                     heapq.heappush(queue,(candidate,to))
         if '@end' not in previous:
@@ -684,6 +736,10 @@ class RoadsideGraph:
                  if unmarked_ids else 'Uses simulated crossing facilities; this route is for demo testing only.' if simulated_ids
                  else 'This route uses only mapped pedestrian facilities when crossing roads. Missing map data can prevent routing.'),
                 'Road walking and endpoint approaches are not field verified or certified accessible. Check traffic and local access before proceeding.',
+                *(['Includes roadside walking on trunk roads explicitly tagged access=yes under the selected product policy; no surveyed sidewalk or safe crossing is implied.']
+                  if any(edge.way_id in self.explicit_trunk_way_ids for edge,_,_,_ in selected) else []),
+                *(['Includes a detour along recorded roads in the OSM extract buffer outside the endpoint service window.']
+                  if any(not self.endpoint_inside(point) for point in geometry) else []),
                 *(['Includes inferred outdoor connections across open land; these are not mapped or field-verified footpaths.']
                   if 'open_access' in kinds else []),
                 *(['Building endpoint access is assumed. The route begins or ends at the associated outdoor path or mapped building entrance; indoor directions are not provided.']
