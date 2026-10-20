@@ -53,8 +53,25 @@ export function meters(a: Coordinate, b: Coordinate): number {
   const q = Math.sin(radians(b[1] - a[1]) / 2) ** 2 + Math.cos(radians(a[1])) * Math.cos(radians(b[1])) * Math.sin(radians(b[0] - a[0]) / 2) ** 2;
   return 12742017.6 * Math.asin(Math.min(1, Math.sqrt(q)));
 }
+function insideBounds(point: Coordinate, bounds: Dataset['bbox']): boolean {
+  return point.length === 2 && point.every(Number.isFinite) && point[0] >= bounds[0] && point[0] <= bounds[2] && point[1] >= bounds[1] && point[1] <= bounds[3];
+}
 export function insidePilot(point: Coordinate, data: Dataset): boolean {
-  return point.length === 2 && point.every(Number.isFinite) && point[0] >= data.bbox[0] && point[0] <= data.bbox[2] && point[1] >= data.bbox[1] && point[1] <= data.bbox[3];
+  return insideBounds(point, data.bbox);
+}
+function navigationBounds(data: Dataset): Dataset['bbox'] {
+  // Backend routing can detour within the original OSM extract, while journey
+  // endpoints and the built-in road snapshot stay inside the service window.
+  const match = /^https:\/\/api\.openstreetmap\.org\/api\/0\.6\/map\?bbox=([^&]+)(?:&|$)/.exec(data.provenance.extractUrl);
+  if (!match) return data.bbox;
+  const bounds = match[1].split(',').map(Number);
+  if (bounds.length !== 4 || !bounds.every(Number.isFinite) || match[1].split(',').some(value => !value.trim()) ||
+      bounds[0] < -180 || bounds[2] > 180 || bounds[1] < -90 || bounds[3] > 90 ||
+      bounds[0] >= bounds[2] || bounds[1] >= bounds[3] ||
+      bounds[0] > data.bbox[0] || bounds[1] > data.bbox[1] || bounds[2] < data.bbox[2] || bounds[3] < data.bbox[3]) {
+    throw new Error('Invalid navigation extract bounds.');
+  }
+  return bounds as Dataset['bbox'];
 }
 function project(point: Coordinate, a: Coordinate, b: Coordinate) {
   const scale = Math.cos(point[1] * Math.PI / 180);
@@ -88,8 +105,9 @@ export function validateDataset(data: Dataset): Dataset {
         !e.geometry.slice(1).some((p, i) => project(f.coordinate, e.geometry[i], p).distance < 0.02)) throw new Error('Invalid fictional facility.');
   }
   for (const p of data.landmarks) if (!insidePilot(p.coordinate, data) || !p.name || !/^\d+$/.test(p.osmId)) throw new Error('Invalid real landmark.');
+  const facilityBounds = navigationBounds(data);
   for (const f of data.navigationFacilities ?? []) {
-    if (!insidePilot(f.coordinate, data) || f.geometry.length < 2 || f.geometry.some(p => !insidePilot(p, data)) ||
+    if (!insideBounds(f.coordinate, facilityBounds) || f.geometry.length < 2 || f.geometry.some(p => !insideBounds(p, facilityBounds)) ||
         !['openstreetmap', 'simulation'].includes(f.routingSource) || f.fieldVerified !== false || !f.routingWayId) throw new Error('Invalid navigation facility.');
   }
   return data;
