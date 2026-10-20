@@ -1,0 +1,138 @@
+{
+  "acceptance": {
+    "passed": false,
+    "overall_success": 450,
+    "overall_total": 480,
+    "overall_rate": 0.9375,
+    "all_groups_at_least_80": false,
+    "threshold": 0.8
+  },
+  "audits": {
+    "walking-primary": {
+      "seed": 20261022,
+      "summary": [
+        {
+          "area": "kajang-prima-saujana",
+          "category": "cross_road",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "long_distance",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "cross_road",
+          "success": 26,
+          "total": 30,
+          "rate": 0.8666666666666667
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "local_streets",
+          "success": 29,
+          "total": 30,
+          "rate": 0.9666666666666667
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "long_distance",
+          "success": 29,
+          "total": 30,
+          "rate": 0.9666666666666667
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "same_side",
+          "success": 28,
+          "total": 30,
+          "rate": 0.9333333333333333
+        }
+      ],
+      "sample_sha256": "c741d589985b40954a484b03a69fedc291c71619eb68f2245942da016cb43ef8",
+      "algorithm_sha256": "91a3a32729ab2de5a5e23a1c31bd0d8f0263b54b47f8f61ad04a2314b9a0c313"
+    },
+    "walking-holdout": {
+      "seed": 20261023,
+      "summary": [
+        {
+          "area": "kajang-prima-saujana",
+          "category": "cross_road",
+          "success": 22,
+          "total": 30,
+          "rate": 0.7333333333333333
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "local_streets",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "long_distance",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0
+        },
+        {
+          "area": "kajang-prima-saujana",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "cross_road",
+          "success": 25,
+          "total": 30,
+          "rate": 0.8333333333333334
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "local_streets",
+          "success": 26,
+          "total": 30,
+          "rate": 0.8666666666666667
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "long_distance",
+          "success": 25,
+          "total": 30,
+          "rate": 0.8333333333333334
+        },
+        {
+          "area": "kl-east-pilot",
+          "category": "same_side",
+          "success": 30,
+          "total": 30,
+          "rate": 1.0
+        }
+      ],
+      "sample_sha256": "df1e904cf559171f1e2c9837950314ff3e7f862238890e8b0af7f2d3222a2f2e",
+      "algorithm_sha256": "91a3a32729ab2de5a5e23a1c31bd0d8f0263b54b47f8f61ad04a2314b9a0c313"
+    }
+  }
+}

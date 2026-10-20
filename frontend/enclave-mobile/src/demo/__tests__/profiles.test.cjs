@@ -6,7 +6,7 @@ const n=m.exports,a=[101.7307337,3.2254158],b=[101.732159,3.2277914],cases=[];
 function check(name,fn){try{fn();cases.push({name,passed:true});}catch(e){cases.push({name,passed:false,error:e.message});}}
 check('Walking offers all three requested route choices',()=>{
  const r=n.calculateProfileRoutes('walking',a,b);assert.equal(r.map(x=>x.mode).join(','),'shortest,avoid_damage,accessible');
- assert.equal(n.labels.accessible,'Verified step-free route');assert.ok(r.every(x=>!x.route||x.route.profile==='walking'));
+ assert.equal(n.labels.accessible,'Demo step-free route');assert.ok(r.every(x=>!x.route||x.route.profile==='walking'));
 });
 check('Wheelchair offers only step-free travel and excludes stairs/damage',()=>{
  const r=n.calculateProfileRoutes('wheelchair',a,b);assert.equal(r.length,1);assert.equal(r[0].mode,'accessible');assert.ok(r[0].route);

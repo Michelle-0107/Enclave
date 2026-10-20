@@ -37,17 +37,18 @@ OpenFreeMap supplies the real basemap with map attribution enabled.
 | Profile | Resident choices | Routing source |
 |---|---|---|
 | Car | Open driving navigation | Google Maps with explicit driving mode |
-| Walking | Shortest route; Avoid damaged facilities; Verified step-free route | Bundled mapped walking graph |
-| Wheelchair | Verified step-free route only | Same graph with mandatory step-free and damage restrictions |
+| Walking | Shortest route; Avoid damaged facilities; Demo step-free route | Authenticated backend OSM graph; separate simulated accessibility overlay |
+| Wheelchair | Demo step-free route only | Backend graph with explicit simulated dropped kerbs, lift bridges, ramp connectors and registered building entrances; mandatory step-free and damage restrictions |
 
 Walking is initially selected. Switching profiles retains the selected geographic
 locations and clears the old route. Car pins use those original locations, without
 pretending a pedestrian snap is a vehicle access point. Returning to Walking or
 Wheelchair retains those pins for explicit access planning, including off-network selections. Wheelchair never falls back to an ordinary path.
 
-"Verified step-free route" is the requested product option name. Its card and
-profile description explicitly identify **simulated verification**, with no field
-survey claim. The JSON and every computed route retain `fieldVerified: false`.
+"Demo step-free route" explicitly identifies hypothetical accessibility, with no field
+survey claim. Facilities used by the chosen route appear as `SF` markers by default;
+other markers remain hidden unless Show facility markers is enabled. Indoor access
+to registered simulated building entrances is assumed, without surveyed indoor directions. The JSON and every computed route retain `fieldVerified: false`.
 Driving is not computed by relabelling pedestrian paths. Only pressing Open driving
 navigation launches an encoded [Google Maps directions URL](https://developers.google.com/maps/documentation/urls/get-started)
 with the user-selected origin/destination and `travelmode=driving`. It contains no
@@ -119,7 +120,7 @@ for these service areas.
 |---|---|
 | Shortest | Ignore damage and use the minimum distance in the server graph |
 | Avoid damaged facilities | Exclude confirmed fictional damage; stairs allowed |
-| Verified step-free route | Also exclude mapped/simulated stairs and non-step-free assumptions; verification remains a demo assumption |
+| Demo step-free route | Also exclude mapped/simulated stairs and non-step-free assumptions; verification remains a demo assumption |
 
 Identical routes are valid when no relevant restriction affects a journey.
 Disconnected or off-network selections can offer the explicit nearby-access flow
@@ -226,3 +227,12 @@ accessible-route failures, cancellation, arrival races, and camera gestures.
 Three Python checks distinguish
 vehicle one-way from pedestrian direction. Native GPS/map behavior still needs a
 phone test; no field survey is claimed.
+
+## Frozen step-free acceptance (2026-10-20)
+
+The original 480 walking-eligible samples are unchanged: both areas, all four
+categories, primary and holdout. Overall **470/480 (97.92%)**, and all 16 groups
+are >=80% (minimum 26/30, 86.67%). Every failure and the failed first attempt are
+retained. See [the audit report](../../../../backend/docs/api/DEMO_STEP_FREE_80_REPORT_ZH.md)
+for assumptions, sample hashes, full route artifacts and reproduction commands.
+These are demo availability results; the virtual facilities never enter Live routing.

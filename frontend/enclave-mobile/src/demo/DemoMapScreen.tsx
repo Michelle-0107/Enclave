@@ -69,16 +69,24 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const route = results.find(item => item.mode === mode)?.route;
   const facility = selected?.type === 'facility' ? dataset.facilities.find(f => f.id === selected.id) : undefined;
   const place = selected?.type === 'place' ? dataset.landmarks.find(p => p.id === selected.id) : undefined;
-  const navigationFacility = selected?.type === 'navigation' ? dataset.navigationFacilities?.find(f => f.id === selected.id) : undefined;
+  const navigationFacility = selected?.type === 'navigation' ? [...(dataset.navigationFacilities ?? []), ...(dataset.accessibilityFacilities ?? [])].find(f => f.id === selected.id) : undefined;
   const feature = facility || place || navigationFacility;
+  const usingStepFree = transport === 'wheelchair' || (mode === 'accessible' && Boolean(route));
+  const visibleNavigationFacilities = useMemo(() => {
+    const facilities = usingStepFree ? (dataset.accessibilityFacilities ?? []) : (dataset.navigationFacilities ?? []);
+    if (showFacilityMarkers) return facilities;
+    const used = new Set(route?.mode === 'accessible' ? route.navigationFacilities?.map(f => f.id) : []);
+    return facilities.filter(f => f.stepFree && used.has(f.id));
+  }, [dataset, usingStepFree, showFacilityMarkers, route]);
+  const showNavigationOverlay = showFacilityMarkers || visibleNavigationFacilities.length > 0;
   const navigationPoints = useMemo(() => ({ type: 'FeatureCollection' as const,
-    features: (dataset.navigationFacilities ?? []).map(f => ({ type: 'Feature' as const, id: f.id,
-      properties: { id: f.id, simulated: f.routingSource === 'simulation', symbol: `${f.routingSource === 'simulation' ? 'S' : ''}${f.kind === 'crossing' ? 'ZX' : f.kind === 'footbridge' ? 'FB' : 'U'}` },
-      geometry: { type: 'Point' as const, coordinates: f.coordinate } })) }), [dataset]);
+    features: visibleNavigationFacilities.map(f => ({ type: 'Feature' as const, id: f.id,
+      properties: { id: f.id, stepFree: f.stepFree === true, simulated: f.routingSource === 'simulation', symbol: f.stepFree ? 'SF' : `${f.routingSource === 'simulation' ? 'S' : ''}${f.kind === 'crossing' ? 'ZX' : f.kind === 'footbridge' ? 'FB' : 'U'}` },
+      geometry: { type: 'Point' as const, coordinates: f.coordinate } })) }), [visibleNavigationFacilities]);
   const navigationLines = useMemo(() => ({ type: 'FeatureCollection' as const,
-    features: (dataset.navigationFacilities ?? []).map(f => ({ type: 'Feature' as const, id: f.id,
-      properties: { simulated: f.routingSource === 'simulation' },
-      geometry: { type: 'LineString' as const, coordinates: f.geometry } })) }), [dataset]);
+    features: visibleNavigationFacilities.map(f => ({ type: 'Feature' as const, id: f.id,
+      properties: { stepFree: f.stepFree === true, simulated: f.routingSource === 'simulation' },
+      geometry: { type: 'LineString' as const, coordinates: f.geometry } })) }), [visibleNavigationFacilities]);
   const facilityData = useMemo(() => ({ type: 'FeatureCollection' as const,
     features: dataset.facilities.filter(f => showFacilityMarkers || isBlocked(f, state)).map(f => ({ type: 'Feature' as const, id: f.id,
       properties: { id: f.id, blocked: isBlocked(f, state), symbol: symbols[f.kind] },
@@ -148,7 +156,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         profile: transport === 'wheelchair' ? 'wheelchair' : 'walking', mode: option.mode,
         distance: source.distance_meters, seconds: source.duration_seconds, coordinates, segments: [],
         facilities: dataset.facilities.filter(item => facilityIds.has(item.id)),
-        navigationFacilities: dataset.navigationFacilities?.filter(item => facilityIds.has(item.id)),
+        navigationFacilities: [...(dataset.navigationFacilities ?? []), ...(dataset.accessibilityFacilities ?? [])].filter(item => facilityIds.has(item.id)),
         originSnap: snap(coordinates[0], source.origin_snap_distance_meters, `${source.route_id}-start`),
         destinationSnap: snap(coordinates[coordinates.length - 1], source.destination_snap_distance_meters, `${source.route_id}-end`),
         dataSource: dataset.source, fieldVerified: false,
@@ -322,7 +330,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
     </View>
     {transport === 'driving' ? <Text style={styles.hint}>Car navigation opens Google Maps with your selected locations. Demo facility restrictions are not sent to Google Maps.</Text> :
       transport === 'wheelchair' ? <Text style={styles.hint}>Wheelchair travel uses step-free paths and avoids reported damage. Demo access conditions are not field verified.</Text> :
-        <Text style={styles.hint}>Walking: shortest, avoid damaged facilities, or verified step-free route. Verification is simulated in this demo.</Text>}
+        <Text style={styles.hint}>Walking: shortest, avoid damaged facilities, or a demo step-free route with simulated accessible facilities.</Text>}
     <View accessibilityLabel="Location selection method" style={styles.row}>
       {(['search', 'map'] as const).map(method => <Pressable key={method} accessibilityRole="button"
         accessibilityState={{ selected: inputMode === method }} onPress={() => { setInputMode(method); setSearching(method === 'search'); Keyboard.dismiss(); }}
@@ -409,12 +417,12 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
             'circle-color': ['case', ['get', 'blocked'], '#A63E37', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
           <Layer id="demo-facility-labels" type="symbol" minzoom={15.5} layout={{ 'text-field': ['get', 'symbol'], 'text-font': ['Noto Sans Regular'], 'text-size': 9, 'text-allow-overlap': true }} paint={{ 'text-color': '#FFFFFF' }} />
         </GeoJSONSource>
-        {showFacilityMarkers && <GeoJSONSource id="demo-navigation-lines" data={navigationLines}>
-          <Layer id="demo-navigation-lines-layer" type="line" minzoom={14} paint={{ 'line-width': 2, 'line-color': ['case', ['get', 'simulated'], '#8147B4', '#247A80'] }} />
+        {showNavigationOverlay && <GeoJSONSource id="demo-navigation-lines" data={navigationLines}>
+          <Layer id="demo-navigation-lines-layer" type="line" minzoom={14} paint={{ 'line-width': 2, 'line-color': ['case', ['get', 'stepFree'], '#087F8C', ['get', 'simulated'], '#8147B4', '#247A80'] }} />
         </GeoJSONSource>}
-        {showFacilityMarkers && <GeoJSONSource id="demo-navigation-facilities" data={navigationPoints} hitbox={{ top: 10, right: 10, bottom: 10, left: 10 }}
+        {showNavigationOverlay && <GeoJSONSource id="demo-navigation-facilities" data={navigationPoints} hitbox={{ top: 10, right: 10, bottom: 10, left: 10 }}
           onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'navigation', id }); setSearching(false); Keyboard.dismiss(); } }}>
-          <Layer id="demo-navigation-points" type="circle" minzoom={14.5} paint={{ 'circle-radius': ['interpolate', ['linear'], ['zoom'], 14.5, 3, 17, 7], 'circle-color': ['case', ['get', 'simulated'], '#8147B4', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
+          <Layer id="demo-navigation-points" type="circle" minzoom={14.5} paint={{ 'circle-radius': ['interpolate', ['linear'], ['zoom'], 14.5, 3, 17, 7], 'circle-color': ['case', ['get', 'stepFree'], '#087F8C', ['get', 'simulated'], '#8147B4', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
           <Layer id="demo-navigation-labels" type="symbol" minzoom={16} layout={{ 'text-field': ['get', 'symbol'], 'text-font': ['Noto Sans Regular'], 'text-size': 9 }} paint={{ 'text-color': '#FFFFFF' }} />
         </GeoJSONSource>}
         {feature && selectedMarkerData && <GeoJSONSource id="demo-selection-highlight" data={selectedMarkerData}>
@@ -448,11 +456,12 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <Text style={styles.link}>{showFacilityMarkers ? 'Hide facility markers' : 'Show facility markers'}</Text>
     </Pressable>
     <Text style={styles.hint}>{showFacilityMarkers ? 'Red: reported damage · Teal: facilities · Blue: places.' : 'Landmarks are shown by the basemap. Red markers show reported damage.'} A gold frame marks your selection. {inputMode === 'map' ? `Tap the map to choose ${field === 'origin' ? 'your start' : 'your destination'}.` : 'Search for an address or place above, or switch to Pick on map.'}</Text>
-    {showFacilityMarkers && Boolean(dataset.navigationFacilities?.length) && <Text style={styles.hint}>Purple SZX/SFB: simulated crossings/footbridges, demo only. Teal ZX/FB: mapped facilities. {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'simulation').length} simulated · {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'openstreetmap').length} mapped.</Text>}
+    {usingStepFree && <Text style={styles.hint}>SF: simulated dropped-kerb crossings, lift-access footbridges, ramp connectors and building entrances. Only facilities used by the chosen route appear by default; these are demo assumptions.</Text>}
+    {showFacilityMarkers && !usingStepFree && Boolean(dataset.navigationFacilities?.length) && <Text style={styles.hint}>Purple SZX/SFB: simulated crossings/footbridges, demo only. Teal ZX/FB: mapped facilities. {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'simulation').length} simulated · {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'openstreetmap').length} mapped.</Text>}
     {feature && <View style={styles.selectedPanel}>
       <Text style={styles.cardTitle}>{feature.name}</Text>
       <Text style={styles.body}>{facility ? `${facility.kind.replaceAll('_', ' ')} · ${isBlocked(facility, state) ? `${facility.reporters} residents reported` : 'No confirmed damage'}` : navigationFacility ? navigationFacility.routingSource === 'simulation' ? 'Simulated infrastructure · demo only' : 'Mapped pedestrian infrastructure' : 'Real mapped landmark'}</Text>
-      <Text style={styles.hint}>{facility ? 'Facility type follows mapped OSM tags; damage and reports are simulated.' : navigationFacility ? navigationFacility.routingSource === 'simulation' ? 'Fictional crossing connected to the demo route network. Do not use it to cross a real road.' : 'OSM geometry is connected to the walking network; conditions are not field verified.' : place?.positionBasis}</Text>
+      <Text style={styles.hint}>{facility ? 'Facility type follows mapped OSM tags; damage and reports are simulated.' : navigationFacility ? navigationFacility.stepFree ? 'Simulated step-free access connected to the demo route. Building entrances assume indoor step-free access; conditions are not surveyed.' : navigationFacility.routingSource === 'simulation' ? 'Fictional crossing connected to the demo route network. Do not use it to cross a real road.' : 'OSM geometry is connected to the walking network; conditions are not field verified.' : place?.positionBasis}</Text>
       <View style={styles.row}>{(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="button"
         onPress={() => choose(feature.coordinate, feature.name, which)} style={styles.textButton}><Text style={styles.link}>{which === 'origin' ? 'Use as start' : 'Use as end'}</Text></Pressable>)}
         <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={styles.textButton}><Text style={styles.link}>Close</Text></Pressable></View>
