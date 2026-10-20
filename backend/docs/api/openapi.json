@@ -8210,6 +8210,13 @@
             "type": "string",
             "title": "Ticket Id"
           },
+          "related_ticket_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Related Ticket Ids"
+          },
           "title": {
             "type": "string",
             "title": "Title"

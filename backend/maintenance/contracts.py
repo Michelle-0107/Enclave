@@ -113,6 +113,7 @@ class EvidenceInput(Progress):
 class Task(BaseModel):
     id: UUID
     ticket_id: str
+    related_ticket_ids: list[str] = Field(default_factory=list)
     title: str
     description: str
     latitude: float

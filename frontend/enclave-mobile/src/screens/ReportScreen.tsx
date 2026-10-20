@@ -22,6 +22,7 @@ import {
   communityIssuesApi,
   facilitiesApi,
   navigationApi,
+  locationsApi,
   reportsApi,
   type CommunityIssueRecord,
   type FacilityRecord,
@@ -496,7 +497,7 @@ export default function ReportScreen({
           />
 
           <Text style={styles.label}>
-            Submitting report and linking issueÃ¢â‚¬Â¦
+            Submitting report and linking issue...
           </Text>
         </View>
       )}
@@ -533,6 +534,7 @@ function IssueSelection({
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [roadPointNotice, setRoadPointNotice] = useState('');
+  const [showAllFacilities, setShowAllFacilities] = useState(false);
   const reportLatitude = details.coordinates?.latitude;
   const reportLongitude = details.coordinates?.longitude;
 
@@ -542,6 +544,7 @@ function IssueSelection({
     async function load() {
       setLoading(true);
       setError('');
+      setShowAllFacilities(false);
 
       try {
         const token = await getAccessToken();
@@ -613,6 +616,32 @@ function IssueSelection({
             if (failure instanceof ApiError && failure.status === 404) {
               if (mounted) setRoadPointNotice('Road report points are unavailable on this backend version; existing facilities remain available.');
             } else throw failure;
+          }
+        }
+        if (reportLatitude !== undefined && reportLongitude !== undefined) {
+          // Existing facility/road reporting remains usable during an optional
+          // named-place lookup outage. Publish place results only after all pages
+          // have passed area/storage checks, never a partial or stale response.
+          const namedPlaces: FacilityRecord[] = [];
+          try {
+            offset = 0;
+            while (mounted) {
+              const page = await locationsApi.lookup(token, area.id, { latitude: reportLatitude, longitude: reportLongitude, limit: 100, offset });
+              if (!mounted) return;
+              if (page.area_id !== area.id || page.storage !== 'database') throw new Error('Location results do not match this area.');
+              for (const place of page.items) if (place.kind === 'place') namedPlaces.push({
+                id: place.id, name: place.name, facility_type: 'other', latitude: place.latitude, longitude: place.longitude, created_at: '',
+              });
+              if (!page.has_more) break;
+              if (!page.items.length) throw new Error('Unable to load nearby places.');
+              offset += page.items.length;
+            }
+            if (!mounted) return;
+            facilityItems.push(...namedPlaces);
+          } catch (failure) {
+            if (!mounted) return;
+            if (failure instanceof ApiError && (failure.status === 401 || failure.status === 403)) throw failure;
+            setRoadPointNotice(previous => [previous, 'Named places are temporarily unavailable. You can still report listed facilities and road sections.'].filter(Boolean).join(' '));
           }
         }
         offset = 0;
@@ -718,6 +747,8 @@ function IssueSelection({
     (item) => item.facility.id === facilityId,
   )?.facility;
 
+  const visibleFacilities = showAllFacilities ? nearby : nearby.filter((item, index) => index < 3 || item.facility.id === facilityId);
+
   const existingIssue = selected
     ? issues.find(
         (issue) =>
@@ -734,9 +765,7 @@ function IssueSelection({
       <Text style={styles.sectionTitle}>Choose a facility</Text>
 
       <Text style={styles.body}>
-        Choose the facility or road section at the issue location.
-        Roads have report points for sections of about 100 m, with separate reporter counts.
-        Your report must be within 100 m of the selected point.
+        Choose a facility, building, station, mall or road section within 100 m. Road sections are counted separately.
       </Text>
 
       {roadPointNotice ? <Text style={styles.body}>{roadPointNotice}</Text> : null}
@@ -766,7 +795,7 @@ function IssueSelection({
           to be registered before linking.
         </Text>
       ) : (
-        nearby.map(({ facility, distance, sectionDistance }) => (
+        visibleFacilities.map(({ facility, distance, sectionDistance }) => (
           <Pressable
             key={facility.id}
             accessibilityRole="radio"
@@ -787,21 +816,26 @@ function IssueSelection({
             </Text>
 
             <Text style={styles.body}>
-              {facility.road_section ? `Road section Ã‚Â· ${Math.round(facility.road_section.length_meters)} m long` : facility.facility_type.replace(/_/g, ' ')}
-              {' Ã‚Â· '}
-              {facility.road_section && sectionDistance !== null ? `${Math.round(sectionDistance)} m from section Ã‚Â· ` : ''}
+              {facility.road_section ? `Road section - ${Math.round(facility.road_section.length_meters)} m long` : facility.facility_type === 'other' ? 'Place or facility' : facility.facility_type.replace(/_/g, ' ')}
+              {' - '}
+              {facility.road_section && sectionDistance !== null ? `${Math.round(sectionDistance)} m from section - ` : ''}
               {Math.round(distance)} m to report point
             </Text>
           </Pressable>
         ))
       )}
 
+      {!loading && !error && nearby.length > 3 && <Pressable accessibilityRole="button"
+        accessibilityState={{ expanded: showAllFacilities }} onPress={() => setShowAllFacilities(value => !value)} style={styles.textButton}>
+        <Text style={styles.link}>{showAllFacilities ? 'Show fewer facilities' : `Show more facilities (${nearby.length - 3})`}</Text>
+      </Pressable>}
+
       {selected && !loading && !error && (
         <View style={styles.summary}>
           <Text style={styles.label}>Report preview</Text>
           <Image source={{ uri: photoUri }} style={styles.confirmPhoto} resizeMode="contain" />
           <Text style={styles.body}>Location: {selected.name}</Text>
-          {coordinates && <Text style={styles.body}>{coordinates.latitude.toFixed(5)}, {coordinates.longitude.toFixed(5)} · actual issue pin</Text>}
+          {coordinates && <Text style={styles.body}>{coordinates.latitude.toFixed(5)}, {coordinates.longitude.toFixed(5)} - actual issue pin</Text>}
           <Text style={styles.body}>Facility: {selected.name}</Text>
           {selected.road_section && <Text style={styles.body}>Reports are grouped within this road section only; adjacent sections are counted separately.</Text>}
           <Text style={styles.body}>

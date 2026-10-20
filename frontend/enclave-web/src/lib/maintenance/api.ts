@@ -3,7 +3,7 @@ import type { MaintenanceGateway, MaintenanceTask, TaskStatus } from './types';
 
 export type BackendTask = {
   location_id?: string | null; location_name?: string | null; location_address?: string | null; location_storage?: 'database' | 'unavailable' | null;
-  id: string; ticket_id: string; title: string; description: string;
+  id: string; ticket_id: string; related_ticket_ids?: string[]; title: string; description: string;
   latitude: number; longitude: number; priority: 'low' | 'medium' | 'high';
   status: 'assigned' | 'in_progress' | 'awaiting_verification' | 'changes_requested' | 'resolved';
   version: number; assigned_staff_id: string | null; assigned_team_id: string | null;
@@ -28,7 +28,8 @@ export function validateTask(task: BackendTask): BackendTask {
   if (!task || !Object.hasOwn(statuses, task.status) || !Number.isSafeInteger(task.version) || task.version < 1 ||
       typeof task.id !== 'string' || typeof task.ticket_id !== 'string' || typeof task.title !== 'string' ||
       !Number.isFinite(task.latitude) || !Number.isFinite(task.longitude) ||
-      !['low', 'medium', 'high'].includes(task.priority)) {
+      !['low', 'medium', 'high'].includes(task.priority) ||
+      (task.related_ticket_ids !== undefined && (!Array.isArray(task.related_ticket_ids) || task.related_ticket_ids.some(id => typeof id !== 'string')))) {
     throw new ApiError('The server returned an invalid maintenance task. Refresh and try again.', 503);
   }
   return task;
@@ -118,7 +119,7 @@ export const getMaintenanceStaff = () => allPages<Staff>(`${management}/staff`);
 export const getMaintenanceTeams = () => allPages<Team>(`${management}/teams`);
 export async function getReportTask(ticketId: string) {
   const rows = await allPages<BackendTask>(`${management}/tasks`);
-  return rows.find(task => task.ticket_id === ticketId) ?? null;
+  return rows.map(validateTask).find(task => task.ticket_id === ticketId || task.related_ticket_ids?.includes(ticketId)) ?? null;
 }
 export type AssignmentInput = {
   ticket_id: string; title: string; instructions: string; priority: 'low' | 'medium' | 'high'; target_date: string;

@@ -157,6 +157,8 @@ class CommunityIssues:
             if not isinstance(data,dict): raise IssueUnavailable()
             if action=='open_road_issue' and data.get('road_reporting_version')!=1:
                 raise IssueRejected(503,'Road section reporting is unavailable on this backend. Retry issue linking after the service is updated.')
+            if action=='open_place_issue' and data.get('place_reporting_version')!=1:
+                raise IssueRejected(503,'Place reporting needs SQL 022 on this database. Your report is saved; retry linking after the update.')
             errors={'forbidden':(403,'Active verified residency required'),
                 'not_found':(404,'Facility, issue, or owned report not found'),
                 'invalid':(422,'Invalid issue link; report must be near the selected facility'),
@@ -196,6 +198,9 @@ class CommunityIssues:
                     if rows:
                         selected=SharedLocation.model_validate(rows[0])
                         if selected.id!=body.facility_id:raise IssueUnavailable()
+                        if selected.kind=='place':
+                            action='open_place_issue'
+                            point=None
                         if selected.kind=='road_section':
                             values['road_point']={'id':str(selected.id),'name':selected.name,'facility_type':'path_surface','latitude':selected.latitude,'longitude':selected.longitude}
                             action='open_road_issue'

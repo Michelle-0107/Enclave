@@ -4,12 +4,13 @@ const root=path.join(__dirname,'..');const raw=JSON.parse(fs.readFileSync(path.j
 function compile(name,requires){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,name),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:requires,fetch:()=>{throw Error('Resident demo must not call live APIs');},console,Error});return m.exports;}
 const network=compile('network.ts',()=>raw);const driving=compile('driving.ts',()=>network);const access=compile('access.ts',()=>network);const progress=compile('navigationProgress.ts',()=>network);let states=[],cursor=0,exited=false,reported=false,cameraCalls=[],openedUrls=[],serverCalls=[],responder=null;
 function serverResponse(payload){const adjusted=Math.abs(payload.origin.longitude-101.7310841)<1e-7;const selected=adjusted?(payload.start_candidates[0]||payload.origin):payload.origin;const modes=payload.profile==='wheelchair'?['accessible']:['shortest','avoid_damage','accessible'];return{area_id:'kl-east-pilot',requested_origin:payload.origin,selected_origin:selected,start_adjustment_meters:adjusted?35:0,adjusted_start:adjusted,options:modes.map((mode,i)=>({mode,unavailable_reason:null,route:{route_id:`demo-${serverCalls.length}-${mode}`,generated_at:new Date().toISOString(),area:'kl-east-pilot',routing_engine:'osm_roadside',road_fallback_used:true,crossing_policy:'mapped_facilities_only',mapped_crossing_count:0,route_mode:mode,geometry:{type:'LineString',coordinates:[[selected.longitude,selected.latitude],[payload.destination.longitude,payload.destination.latitude]]},distance_meters:160+i*25,duration_seconds:160,origin_snap_distance_meters:0,destination_snap_distance_meters:0,maneuvers:[],community_issue_avoidance:'not_applied',obstacle_count:0,obstacle_snapshot_at:null,obstacle_source:null,confirmation_threshold:2,data_source:'openstreetmap_unverified',field_verified:false,accessibility_status:mode==='accessible'?'synthetic_network':'not_requested',warnings:['Demo-only route'],attribution:'OpenStreetMap contributors',attribution_url:'https://www.openstreetmap.org/copyright',demo_facility_ids:[raw.facilities[0].id]}}))};}
-const react={useEffect:()=>{},useCallback:fn=>fn,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return[states[i],next=>states[i]=typeof next==='function'?next(states[i]):next];},useMemo:fn=>fn(),useRef(initial){const i=cursor++;if(!(i in states))states[i]={current:initial===null?{fitBounds:(bounds,options)=>{assert.ok(Array.isArray(bounds)&&bounds.length===4&&bounds.every(Number.isFinite));assert.ok(options.padding);cameraCalls.push(bounds);},easeTo:x=>cameraCalls.push(x)}:initial};return states[i];}};
+let collectEffects=false,queuedEffects=[],communityResponder=null,communityCalls=[];
+const react={useEffect:fn=>{if(collectEffects)queuedEffects.push(fn);},useCallback:fn=>fn,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return[states[i],next=>states[i]=typeof next==='function'?next(states[i]):next];},useMemo:fn=>fn(),useRef(initial){const i=cursor++;if(!(i in states))states[i]={current:initial===null?{fitBounds:(bounds,options)=>{assert.ok(Array.isArray(bounds)&&bounds.length===4&&bounds.every(Number.isFinite));assert.ok(options.padding);cameraCalls.push(bounds);},easeTo:x=>cameraCalls.push(x)}:initial};return states[i];}};
 const Screen=compile('DemoMapScreen.tsx',name=>{
  if(name==='../navigation/NamedMapPoint')return{__esModule:true,default:'NamedMapPoint'};
  if(name==='../navigation/PlaceSearch')return{__esModule:true,default:'PlaceSearch'};
  if(name==='../savedPlaces/SavedPlacesControl')return{__esModule:true,default:'SavedPlacesControl'};
- if(name==='../lib/api')return{demoAreasApi:{getRoutes:async(token,areaId,payload)=>{serverCalls.push({token,areaId,payload});return responder?responder(payload):serverResponse(payload);}}};
+ if(name==='../lib/api')return{reportsApi:{getCommunityIssues:async(...args)=>{communityCalls.push(args);return communityResponder(...args);}},demoAreasApi:{getRoutes:async(token,areaId,payload)=>{serverCalls.push({token,areaId,payload});return responder?responder(payload):serverResponse(payload);}}};
  if(name==='../lib/supabase')return{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'fixture-token'}},error:null})}}};
  if(name==='expo-location')return {};
  if(name==='react')return react;
@@ -209,4 +210,20 @@ test('Following GPS does not fight user map gestures and can be resumed explicit
  button(t,'Follow my location').props.onPress();assert.equal(cameraCalls.length,count+1);
 });
 
+test('confirmed resident reports share the issue marker layer and labels, with all pages loaded',async()=>{
+ const point=(id,count=2,status='open')=>({type:'Feature',id,geometry:{type:'Point',coordinates:[101.731,3.226]},properties:{issue_id:id,facility_id:'facility-'+id,facility_name:'Taman Melati Station',facility_type:'other',status,reporter_count:count}});
+ communityCalls=[];communityResponder=async(token,limit,offset)=>offset===0?{features:[point('confirmed'),point('single',1),point('resolved',3,'resolved')],pagination:{offset:0,returned:3,has_more:true}}:{features:[point('next-page')],pagination:{offset:3,returned:1,has_more:false}};
+ collectEffects=true;queuedEffects=[];tree();collectEffects=false;const stop=queuedEffects[0]();await new Promise(resolve=>setImmediate(resolve));let t=tree();
+ const source=find(t,n=>n.props?.id==='demo-facilities'),reports=source.props.data.features.filter(f=>f.properties.entryType==='report');
+ assert.equal(reports.length,2);assert.ok(reports.every(f=>f.properties.blocked));assert.equal(communityCalls.length,2);assert.equal(communityCalls[1][2],3);
+ source.props.onPress({stopPropagation(){},nativeEvent:{features:[reports[0]]}});t=tree();
+ assert.ok(text(t).includes('Taman Melati Station'));assert.ok(text(t).includes('2 residents reported'));assert.ok(!text(t).includes('Real damaged'));
+ stop();
+});
+test('leaving the map cancels a pending resident report response',async()=>{
+ let finish;communityResponder=()=>new Promise(resolve=>finish=resolve);
+ collectEffects=true;queuedEffects=[];tree();collectEffects=false;const stop=queuedEffects[0]();await new Promise(resolve=>setImmediate(resolve));stop();
+ finish({features:[{id:'stale',geometry:{type:'Point',coordinates:[101.731,3.226]},properties:{status:'open',reporter_count:2,facility_type:'other'}}],pagination:{offset:0,returned:1,has_more:false}});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(find(tree(),n=>n.props?.id==='demo-facilities').props.data.features.filter(f=>f.properties.entryType==='report').length,0);
+});
 void(async()=>{for(const run of pending)await run();console.log(JSON.stringify(cases,null,2));process.exitCode=cases.some(c=>!c.passed)?1:0;})();
