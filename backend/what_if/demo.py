@@ -42,7 +42,7 @@ def create_demo_app(*, navigation_transport=None, accessibility_network=None):
             'id': ISSUE, 'facility_id': FACILITY, 'facility_name': 'SYNTHETIC walkway damage',
             'facility_type': 'path_surface', 'latitude': 3.22649, 'longitude': 101.730755,
             'fault_kind': 'damage', 'status': 'open', 'reporter_count': 2, 'affects_routes': True,
-            'created_at': now, 'resolved_at': None}]})
+            'created_at': now, 'resolved_at': None, 'review_ticket_id': 'SYNTHETIC-REVIEW'}]})
 
     app = create_app(Settings('https://exampleproject.supabase.co', 'sb_secret_what_if_fixture'),
         auth_transport=httpx.MockTransport(no_cloud), reports_transport=httpx.MockTransport(no_cloud),

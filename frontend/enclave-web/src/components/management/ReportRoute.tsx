@@ -8,10 +8,11 @@ import { getManagementReport, type ManagementReport } from '@/lib/api';
 
 type Props = {
   reportId: string;
+  reviewKey?: string;
   unavailableFeature?: 'request-information' | 'rework';
 };
 
-export default function ReportRoute({ reportId, unavailableFeature }: Props) {
+export default function ReportRoute({ reportId, unavailableFeature, reviewKey }: Props) {
   const [report, setReport] = useState<ManagementReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -69,5 +70,5 @@ export default function ReportRoute({ reportId, unavailableFeature }: Props) {
     );
   }
 
-  return <ReportDetails report={report} />;
+  return <ReportDetails key={report.id} report={report} reviewKey={reviewKey} />;
 }

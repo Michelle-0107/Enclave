@@ -7,13 +7,15 @@ community incidents, maintenance audits, resident navigation, or existing
 
 ## Setup and access
 
-- Review and run `backend/sql/010_management_what_if_snapshot.sql` manually after SQL 009.
-  It adds one private read-only RPC and its execute grant. It creates no tables.
+- Run `backend/sql/010_management_what_if_snapshot.sql` after SQL 009, then
+  `backend/sql/018_what_if_candidate_review.sql` for candidate approval links.
+  These maintain one private read-only RPC; they create no tables or public grants.
+  Deploy SQL 018 before the updated API. Missing review metadata fails closed with 503.
 - Use the normal `main:app` application and a working private routing engine.
 - Send `Authorization: Bearer <Supabase access_token>` from an account whose trusted
   `profiles.role` is `management`. A resident binding is not required. A resident
   token returns 403. Do not send actor/user/role fields in the request.
-- No environment variables, keys, teammate routers/services, or frontend code change.
+- No new environment variables or keys are required.
 - Responses use `Cache-Control: private, no-store`. Database/provider errors are generic.
 
 ## GET /api/v1/management/what-if/candidates
@@ -23,11 +25,15 @@ Reads one current snapshot. Returns `snapshot_at`, `issues`, `confirmation_thres
 
 Each issue contains `id`, `facility_id`, `facility_name`, `facility_type`, `latitude`,
 `longitude`, `fault_kind`, `status`, `reporter_count`, `affects_routes`, `created_at`,
-`resolved_at`. Only open incidents with at least two distinct resident reporters are
-included. No reporter IDs, report tickets/photos/descriptions, or staff notes are exposed.
+`resolved_at`, and management-only `review_ticket_id`. Only open incidents reported
+by at least two distinct residents, with a pending report and no approved linked report
+(including approval history), are included. The ticket is the earliest pending linked
+report by creation time/id. No reporter IDs, photos, descriptions, or staff notes are exposed.
+Public community/map projections continue to omit report tickets.
 
 Group candidates by `facility_id` for repair selection. A repair at one selected
-facility hypothetically clears all its current qualified incidents. The cost is
+facility hypothetically clears only its current unapproved qualified incidents.
+Approved, unrepaired incidents still remain routing obstacles, including at that facility. The cost is
 entered once per facility, not once per incident. Bench/other incidents may be
 selected but do not remove road restrictions or manufacture route benefits.
 
@@ -316,3 +322,18 @@ candidate coordinates, and the UI clearly labels them as facility locations only
 No affected area is fabricated. Multiple incidents at one facility are deduplicated;
 selected non-road facilities are still marked. A facility lacking coordinates is
 listed as location unavailable, without creating a fake map position.
+
+
+## Review recommended candidates
+
+The AI summary offers one **Review candidates** button per calculated recommended
+plan. Tied alternatives stay separate. The button rechecks current qualification
+and opens the first pending report from that plan's exact `repaired_issue_ids`.
+Approval still requires the ordinary resident-visible note and explicit Approve action.
+After a successful approval, management sees a Yes/No dialog only if another candidate
+in that plan is still qualified. Yes rechecks again and opens the next report; No stops
+on the saved report. The last candidate ends the sequence without a dialog. Failed
+approvals and rejected reports do not advance. Another manager's approvals are skipped;
+new issues that were not in the compared plan are never appended to the sequence.
+The queue is tab-local sessionStorage with a two-hour expiry; it stores only issue IDs,
+the current ticket and plan label. It does not save simulations or bulk-approve reports.

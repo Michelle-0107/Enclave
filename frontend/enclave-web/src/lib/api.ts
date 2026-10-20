@@ -144,9 +144,11 @@ export type FacilityIssue = {
   resolved_at: string | null;
 };
 
+export type RepairCandidate = FacilityIssue & { review_ticket_id: string };
+
 export type RepairCandidates = {
   snapshot_at: string;
-  issues: FacilityIssue[];
+  issues: RepairCandidate[];
   confirmation_threshold: number;
   main_path_source: 'management_defined';
   currency: 'MYR';
@@ -222,7 +224,7 @@ export type WhatIfResult = {
     total_estimated_cost_myr: string | null;
     budget_status: 'within_budget' | 'over_budget' | 'unknown_cost' | 'not_set';
     repaired_issue_count: number;
-    facility_impacts?: Array<{facility_id: string; facility_name: string}>;
+    facility_impacts?: Array<{facility_id: string; facility_name: string; repaired_issue_ids: string[]}>;
     remaining_road_obstacle_count: number;
     affected_major_path_count: number;
     improved_major_path_count: number;

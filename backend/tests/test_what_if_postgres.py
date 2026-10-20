@@ -36,7 +36,7 @@ class WhatIfPostgresTests(unittest.TestCase):
                 INSERT INTO profiles VALUES (%s,'management'),(%s,'resident'),
                     ('00000000-0000-4000-8000-000000000002','resident');''', (MANAGER, RESIDENT))
             folder = Path(__file__).resolve().parents[1] / 'sql'
-            for name in ['007_report_workflow.sql', '009_community_issue_points.sql', '010_management_what_if_snapshot.sql']:
+            for name in ['007_report_workflow.sql', '009_community_issue_points.sql', '010_management_what_if_snapshot.sql', '018_what_if_candidate_review.sql']:
                 cursor.execute((folder / name).read_text(encoding='utf-8'))
 
     @classmethod
@@ -103,6 +103,34 @@ class WhatIfPostgresTests(unittest.TestCase):
             cursor.execute("UPDATE community_facilities SET facility_type='bench'")
         self.assertFalse(self.call()['issues'][0]['affects_routes'])
 
+    def test_pending_review_target_is_stable_and_moves_past_rejected_evidence(self):
+        self.assertEqual(self.call()['issues'][0]['review_ticket_id'], 'A')
+        with self.db.cursor() as cursor:
+            cursor.execute("UPDATE reports SET status='rejected' WHERE ticket_id='A'")
+        self.assertEqual(self.call()['issues'][0]['review_ticket_id'], 'B')
+        with self.db.cursor() as cursor:
+            cursor.execute("UPDATE reports SET status='rejected'")
+        self.assertIsNone(self.call()['issues'][0]['review_ticket_id'])
+
+    def test_any_approved_evidence_disqualifies_issue_but_keeps_open_obstacle(self):
+        for status in ('approved', 'in_progress', 'resolved'):
+            with self.subTest(status=status):
+                with self.db.cursor() as cursor:
+                    cursor.execute("UPDATE reports SET status=%s WHERE ticket_id='B'", (status,))
+                item = self.call()['issues'][0]
+                self.assertIsNone(item['review_ticket_id'])
+                self.assertEqual(item['status'], 'open')
+                self.assertEqual(item['reporter_count'], 2)
+        with self.db.cursor() as cursor:
+            cursor.execute("UPDATE reports SET status='pending',is_approved=true WHERE ticket_id='B'")
+        self.assertIsNone(self.call()['issues'][0]['review_ticket_id'])
+
+    def test_approval_history_disqualifies_even_if_report_state_was_reset(self):
+        with self.db.cursor() as cursor:
+            cursor.execute("""INSERT INTO report_status_events(report_id,from_status,to_status,changed_by,note)
+                SELECT id,'pending','approved',%s,'Synthetic review' FROM reports WHERE ticket_id='A'""", (MANAGER,))
+        self.assertIsNone(self.call()['issues'][0]['review_ticket_id'])
+
     def test_browser_roles_cannot_execute_or_read_candidate_tables(self):
         for role in ['anon', 'authenticated']:
             with self.db.cursor() as cursor:
@@ -130,7 +158,7 @@ class WhatIfPostgresTests(unittest.TestCase):
                 SELECT r.id,CASE WHEN e.n%%2=0 THEN %s::uuid ELSE '00000000-0000-4000-8000-000000000002'::uuid END,e.id
                 FROM ranked r JOIN evidence e ON (e.n+1)/2=r.n;''', (MANAGER, F1, RESIDENT, I1, RESIDENT))
         self.assertEqual(self.call()['state'], 'too_many')
-        migration = Path(__file__).resolve().parents[1] / 'sql/010_management_what_if_snapshot.sql'
+        migration = Path(__file__).resolve().parents[1] / 'sql/018_what_if_candidate_review.sql'
         with self.db.cursor() as cursor:
             cursor.execute(migration.read_text(encoding='utf-8'))
         self.assertEqual(self.call()['state'], 'too_many')
