@@ -73,7 +73,7 @@ class ReportPhotoTests(unittest.TestCase):
             requests.append('management-query')
             return httpx.Response(200, json={'state': 'forbidden'} if denied else
                                   {'state': 'ok', 'items': [ROW], 'has_more': False})
-        app = create_app(SETTINGS, reports_transport=httpx.MockTransport(report),
+        app = create_app(SETTINGS, locations_transport=httpx.MockTransport(lambda request: httpx.Response(404,json={'code':'PGRST202'})), reports_transport=httpx.MockTransport(report),
                          workflow_transport=httpx.MockTransport(workflow))
         actor = AuthenticatedUser(OWNER, 'fixture@example.test', 'fixture-token')
         app.dependency_overrides[current_user] = lambda: actor

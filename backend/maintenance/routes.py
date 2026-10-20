@@ -22,6 +22,8 @@ def checked(model, value):
 
 async def photo_task(request, value):
     task = checked(Task, value)
+    if not isinstance(value, Task):
+        task = (await request.app.state.locations.labels([task]))[0]
     media = request.app.state.report_photo_links
     before = await run_in_threadpool(media.signed_image_url, task.before_photo_url)
     after = await run_in_threadpool(media.signed_image_url, task.after_photo_url)
@@ -89,6 +91,7 @@ def create_router(authenticate):
         result = checked(TaskList, {**data, 'limit': limit, 'offset': offset})
         if len(result.items) > limit:
             raise MaintenanceUnavailable()
+        result.items = await request.app.state.locations.labels(result.items)
         result.items = [await photo_task(request, item) for item in result.items]
         return result
 

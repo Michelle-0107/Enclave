@@ -15,6 +15,7 @@ import {
   type CameraRef,
 } from '@maplibre/maplibre-react-native';
 
+import SharedLocationPicker from '../navigation/SharedLocationPicker';
 import { colors } from '../theme';
 import { ReportFacilityMarkers, ReportFacilityHint, useReportFacilityPoints } from '../facilities/ReportFacilityPoints';
 
@@ -222,6 +223,10 @@ export default function ReportLocationScreen({
         </Text>
       </View>
 
+      <SharedLocationPicker point={coordinates} onChoose={place => {
+        selectMapLocation(place.longitude, place.latitude);
+        cameraRef.current?.easeTo({ center: [place.longitude, place.latitude], zoom: 17, duration: 400 });
+      }} />
       <Pressable
         accessibilityRole="button"
         accessibilityState={{

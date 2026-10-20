@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 import PlaceSearch from '../navigation/PlaceSearch';
+import NamedMapPoint from '../navigation/NamedMapPoint';
 import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, nearbyAccessPoints, searchPlaces, selectLocation,
   type Coordinate, type Dataset, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
 import { drivingDirectionsUrl } from './driving';
@@ -349,6 +350,10 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         {transport !== 'driving' && destination?.snap && <Text style={styles.hint}>Road access {Math.round(destination.snap.distance)} m from selection</Text>}
       </View>
     </View>
+    {!navigating && <View style={{ gap: 4 }}>
+      <NamedMapPoint coordinate={origin?.coordinate} areaId={areaId} label="Starting place" />
+      <NamedMapPoint coordinate={destination?.coordinate} areaId={areaId} label="Destination" />
+    </View>}
     {inputMode === 'search' && searching && <PlaceSearch areaId={areaId} query={field === 'origin' ? startText : endText}
       field={field === 'origin' ? 'starting point' : 'destination'}
       local={suggestions.map(p => ({ id: p.id, label: p.name, coordinate: p.coordinate, address: '', basis: p.positionBasis }))}

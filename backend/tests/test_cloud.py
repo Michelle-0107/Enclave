@@ -110,7 +110,7 @@ class CloudTests(unittest.TestCase):
 
     def client(self, *, report_handler=None, auth_handler=None, residents_handler=None):
         client = TestClient(create_app(
-            self.settings, auth_transport=httpx.MockTransport(auth_handler or self.auth_handler),
+            self.settings, locations_transport=httpx.MockTransport(lambda request: httpx.Response(404,json={'code':'PGRST202'})), auth_transport=httpx.MockTransport(auth_handler or self.auth_handler),
             reports_transport=httpx.MockTransport(report_handler or self.report_handler), media_services=self.media,
             residents_transport=httpx.MockTransport(residents_handler or self.residents_handler),
         ))

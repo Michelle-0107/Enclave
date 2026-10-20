@@ -117,6 +117,10 @@ class Task(BaseModel):
     description: str
     latitude: float
     longitude: float
+    location_id: UUID | None = None
+    location_name: str | None = None
+    location_address: str | None = None
+    location_storage: Literal['database','unavailable'] | None = None
     before_photo_url: str | None
     report_status: str
     assigned_staff_id: UUID | None

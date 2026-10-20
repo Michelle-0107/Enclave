@@ -39,11 +39,11 @@ async function test(name, run) {
   try { await run(); results.push({ name, passed: true }); } catch (error) { results.push({ name, passed: false, error: error.message }); }
 }
 void (async () => {
-  await test('Bundled addresses work before a backend deployment and preserve coordinate order', () => {
+  await test('Place choices come from database search rather than an independent bundled catalogue', () => {
     const t = tree('20 Jalan Saujana Mutiara 3', 'kajang-prima-saujana');
     assert.equal(calls.length, 0);
     const result = all(t).find(n => n.props?.accessibilityLabel === 'Choose place: 20 Jalan Saujana Mutiara 3');
-    assert.ok(result); result.props.onPress(); assert.ok(chosen.coordinate[0] > 101 && chosen.coordinate[1] < 4);
+    assert.equal(result, undefined); assert.equal(chosen, null);
     assert.ok(!text(tree('20 Jalan Saujana Mutiara 3')).includes('Choose place: 20 Jalan Saujana Mutiara 3'));
   });
   await test('Search happens only on explicit action and carries the area and JWT', async () => {
@@ -64,10 +64,10 @@ void (async () => {
     responder = async () => ({ area_id: 'kajang-prima-saujana', items: [], storage: 'database' });
     await button(tree()).props.onPress(); assert.ok(text(tree()).includes('do not match'));
   });
-  await test('Network failure allows retry and retains bundled results', async () => {
+  await test('Network failure allows retry without inventing database search results', async () => {
     responder = async () => { throw Error('Temporary connection failure'); };
     await button(tree()).props.onPress();
-    assert.ok(text(tree()).includes('Temporary connection failure')); assert.ok(text(tree()).includes('KL East Mall'));
+    assert.ok(text(tree()).includes('Temporary connection failure')); assert.equal(all(tree()).filter(n => n.props?.accessibilityLabel?.startsWith('Choose place:')).length, 0);
     assert.equal(button(tree()).props.disabled, false);
   });
   await test('Closing search ignores an in-flight request', async () => {

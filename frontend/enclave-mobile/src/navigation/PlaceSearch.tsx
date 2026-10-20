@@ -4,12 +4,11 @@ import { placesApi } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import type { PlacePoint } from '../savedPlaces/store';
 import { colors } from '../theme';
-import catalogue from './map-places.json';
 
 export type PlaceOption = PlacePoint & { id: string; address: string; basis: string };
 type Props = { areaId: string; query: string; field: string; local?: PlaceOption[]; onChoose: (point: PlacePoint) => void };
 
-export default function PlaceSearch({ areaId, query, field, local = [], onChoose }: Props) {
+export default function PlaceSearch({ areaId, query, field, onChoose }: Props) {
   const scope = JSON.stringify([areaId, field, query]);
   const current = useRef(scope); current.current = scope;
   const version = useRef(0);
@@ -21,13 +20,7 @@ export default function PlaceSearch({ areaId, query, field, local = [], onChoose
   const result = response?.scope === scope ? response : null;
   const error = failure?.scope === scope ? failure.message : '';
   const busy = pending === scope;
-  const tokens = query.trim().toLocaleLowerCase().match(/[^\s,./;]+/gu) ?? [];
-  const bundled: PlaceOption[] = valid ? catalogue.filter(row => row.area_id === areaId && tokens.length > 0
-    && tokens.every(token => `${row.name} ${row.address}`.toLocaleLowerCase().includes(token)))
-    .sort((a, b) => Number(!a.name.toLocaleLowerCase().startsWith(query.trim().toLocaleLowerCase()))
-      - Number(!b.name.toLocaleLowerCase().startsWith(query.trim().toLocaleLowerCase())) || a.name.length - b.name.length || a.name.localeCompare(b.name))
-    .slice(0, 8).map(row => ({ id: row.id, label: row.name, coordinate: [row.longitude, row.latitude], address: row.address, basis: row.position_basis })) : [];
-  const items = result?.items ?? (bundled.length ? bundled : local);
+  const items = result?.items ?? [];
 
   async function search() {
     if (!valid || busy) return;

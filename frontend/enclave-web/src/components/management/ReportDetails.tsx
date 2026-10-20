@@ -176,7 +176,7 @@ export default function ReportDetails({ report: initialReport, reviewKey }: Prop
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         <section aria-label="Issue location" className="flex min-w-0 flex-col gap-5 rounded-3xl border border-border bg-white p-5">
           <h2 className="text-lg font-semibold text-primary">Issue Location</h2>
-          <ReportLocationMap latitude={report.latitude} longitude={report.longitude} />
+          <ReportLocationMap latitude={report.latitude} longitude={report.longitude} locationName={report.location} />
         </section>
 
         {report.status === 'pending' && (

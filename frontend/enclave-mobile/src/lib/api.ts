@@ -28,6 +28,7 @@ export type ResidencyRecord = {
 
 // Private report types: keep these separate from map issue types.
 export type ReportRecord = {
+  location_id?: string | null; location_name?: string | null; location_address?: string | null; location_storage?: 'database' | 'unavailable' | null;
   ticket_id: string;
   user_id: string;
   description: string;
@@ -150,6 +151,11 @@ export type NavigationArea = {
   crossing_policy?: 'provider_default' | 'mapped_facilities_only' | 'resident_local_roads';
 };
 
+export type RoadReportSection = {
+  area_id: string; road_name: string; osm_way_id: string; highway: string;
+  section_index: number; length_meters: number; geometry: [number, number][]; field_verified: false;
+};
+
 export type FacilityRecord = {
   id: string;
   name: string;
@@ -157,6 +163,7 @@ export type FacilityRecord = {
   latitude: number;
   longitude: number;
   created_at: string;
+  road_section?: RoadReportSection | null;
 };
 
 export type FacilityListResponse = {
@@ -561,6 +568,12 @@ export const reportsApi = {
 };
 
 export const facilitiesApi = {
+  getRoadSections(accessToken: string, latitude: number, longitude: number,
+    options: { limit?: number; offset?: number } = {}): Promise<FacilityListResponse> {
+    const query = `latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`
+      + `&limit=${options.limit ?? 100}&offset=${options.offset ?? 0}`;
+    return request<FacilityListResponse>(`/api/v1/facilities/road-sections?${query}`, { accessToken });
+  },
   getAll(
     accessToken: string,
     options: AreaQuery = {},
@@ -836,13 +849,13 @@ export type DemoRouteResponse = {
 
 export type MapPlace = {
   id: string; area_id: string; name: string; address: string; longitude: number; latitude: number;
-  position_basis: string; source: 'openstreetmap';
+  position_basis: string; source: 'openstreetmap' | 'community';
 };
 export const placesApi = {
   search(accessToken: string, areaId: string, query: string): Promise<{
     area_id: string; items: MapPlace[]; storage: 'database' | 'bundled_catalog'; attribution: string;
   }> {
-    return request(`/api/v1/navigation/areas/${encodeURIComponent(areaId)}/places?q=${encodeURIComponent(query)}`,
+    return request(`/api/v1/locations?area_id=${encodeURIComponent(areaId)}&q=${encodeURIComponent(query)}&limit=8`,
       { accessToken, timeoutMs: 12000 });
   },
 };
@@ -859,5 +872,18 @@ export const demoAreasApi = {
       method: 'POST', accessToken, body: payload, timeoutMs: 30000,
       timeoutMessage: 'Route calculation took too long. Please try Choose route again in a moment.',
     });
+  },
+};
+
+export type SharedLocation = MapPlace & {
+  kind: 'place' | 'road_section' | 'facility'; distance_meters: number | null;
+};
+export const locationsApi = {
+  lookup(accessToken: string, areaId: string, options: { q?: string; latitude?: number; longitude?: number; limit?: number; offset?: number }): Promise<{
+    area_id: string; items: SharedLocation[]; storage: 'database'; has_more: boolean;
+  }> {
+    const query = new URLSearchParams({ area_id: areaId });
+    for (const [key, value] of Object.entries(options)) if (value !== undefined) query.set(key, String(value));
+    return request(`/api/v1/locations?${query.toString()}`, { accessToken, timeoutMs: 12000 });
   },
 };

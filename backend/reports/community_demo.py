@@ -91,6 +91,7 @@ def create_community_demo_app(*,state=None,navigation_transport=None,accessibili
         actor=TOKENS.get(r.headers.get('authorization','').removeprefix('Bearer '))
         return httpx.Response(200,json=[{'profile_id':actor,'status':'active','verified_at':'2026-10-16T00:00:00Z'}] if actor in (A,B) else [])
     app=create_app(Settings('https://exampleproject.supabase.co','sb_secret_community_demo_fixture'),
+        locations_transport=httpx.MockTransport(lambda request: httpx.Response(404,json={'code':'PGRST202'})),
         auth_transport=httpx.MockTransport(unavailable),reports_transport=httpx.MockTransport(state.evidence),
         residents_transport=httpx.MockTransport(residency),community_transport=httpx.MockTransport(state.rpc),
         workflow_transport=httpx.MockTransport(unavailable),media_services=DemoMedia(),

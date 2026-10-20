@@ -36,6 +36,10 @@ class ReportResponse(BaseModel):
     image_url: str | None = None
     category: str | None = None
     priority: str | None = None
+    location_id: UUID | None = None
+    location_name: str | None = None
+    location_address: str | None = None
+    location_storage: Literal['database','unavailable'] | None = None
     is_approved: bool = False
 
 

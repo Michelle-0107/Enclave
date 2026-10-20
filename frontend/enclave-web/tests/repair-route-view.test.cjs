@@ -289,7 +289,7 @@ test('planner passes the same route selection and change handler to every repair
   };
   const Planner = load('src/components/management/WhatIfPlanner.tsx', {
     react: hooks, '@/lib/api': { ApiError: class extends Error {} },
-    './RepairSummaryPanel': { __esModule: true, default: () => null }, './WhatIfPathMap': { __esModule: true, default: () => null, parseMapPoint: () => null, pathDistance: () => 0 }, './RepairPlanRoutes': { default: props => { captured.push(props); return null; }, __esModule: true },
+    './SharedLocationPicker': { __esModule: true, default: () => null }, './RepairSummaryPanel': { __esModule: true, default: () => null }, './WhatIfPathMap': { __esModule: true, default: () => null, parseMapPoint: () => null, pathDistance: () => 0 }, './RepairPlanRoutes': { default: props => { captured.push(props); return null; }, __esModule: true },
   }).default;
   const { renderToStaticMarkup } = fromWeb('react-dom/server');
   renderToStaticMarkup(React.createElement(Planner));

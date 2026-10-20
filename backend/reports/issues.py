@@ -8,6 +8,7 @@ import httpx
 from pydantic import BaseModel,ConfigDict,Field,ValidationError,model_validator
 
 from .map import MapBounds,MapPagination,MapPoint
+from .road_sections import RoadSection, catalog as road_catalog
 from ..navigation.contracts import Location
 from ..navigation.zones import MAX_OBSTACLES
 from ..navigation.facility_segments import restriction_for
@@ -38,6 +39,7 @@ class Facility(FacilityCreate):
     model_config=ConfigDict(extra='ignore')
     id: UUID
     created_at: datetime
+    road_section: RoadSection | None = None
 
 
 class OpenIssue(BaseModel):
@@ -153,6 +155,8 @@ class CommunityIssues:
                 import json
                 data=json.loads(payload)
             if not isinstance(data,dict): raise IssueUnavailable()
+            if action=='open_road_issue' and data.get('road_reporting_version')!=1:
+                raise IssueRejected(503,'Road section reporting is unavailable on this backend. Retry issue linking after the service is updated.')
             errors={'forbidden':(403,'Active verified residency required'),
                 'not_found':(404,'Facility, issue, or owned report not found'),
                 'invalid':(422,'Invalid issue link; report must be near the selected facility'),
@@ -164,6 +168,12 @@ class CommunityIssues:
         except (httpx.HTTPError,ValueError,TypeError,RecursionError): raise IssueUnavailable() from None
 
     async def create_facility(self,actor_id,body):
+        try:
+            reserved=any(point.name==body.name and point.facility_type==body.facility_type
+                and abs(point.latitude-body.latitude)<1e-9 and abs(point.longitude-body.longitude)<1e-9
+                for point in road_catalog().values())
+        except (ValueError,OSError):raise IssueUnavailable() from None
+        if reserved:raise IssueRejected(409,'Use the existing road section report point instead of creating a duplicate facility')
         data=await self.call('create_facility',actor_id,**body.model_dump())
         try:
             item=Facility.model_validate(data['item'])
@@ -174,7 +184,31 @@ class CommunityIssues:
     async def link(self,actor_id,body,issue_id=None):
         values=body.model_dump(mode='json')
         if issue_id: values.update(issue_id=str(issue_id),fault_kind='damage')
-        data=await self.call('report_issue' if issue_id else 'open_issue',actor_id,**values)
+        action='report_issue' if issue_id else 'open_issue'
+        if not issue_id:
+            try:point=road_catalog().get(body.facility_id)
+            except (ValueError,OSError):raise IssueUnavailable() from None
+            if getattr(self,'locations',None) is not None:
+                from ..navigation.locations import LocationsNotInstalled,SharedLocation
+                try:
+                    rows=await self.locations.call('point',actor_id=str(actor_id),id=str(body.facility_id))
+                    if len(rows)>1:raise IssueUnavailable()
+                    if rows:
+                        selected=SharedLocation.model_validate(rows[0])
+                        if selected.id!=body.facility_id:raise IssueUnavailable()
+                        if selected.kind=='road_section':
+                            values['road_point']={'id':str(selected.id),'name':selected.name,'facility_type':'path_surface','latitude':selected.latitude,'longitude':selected.longitude}
+                            action='open_road_issue'
+                            point=None
+                    elif point:
+                        raise IssueRejected(503,'Road section missing from shared locations; confirm SQL 021 is installed')
+                except LocationsNotInstalled:
+                    pass
+            if point:
+                action='open_road_issue'
+                values['road_point']={key:value for key,value in point.model_dump(mode='json').items()
+                    if key in {'id','name','facility_type','latitude','longitude'}}
+        data=await self.call(action,actor_id,**values)
         try:
             item=CommunityIssue.model_validate(data['issue'])
             if type(data['deduplicated']) is not bool or item.status!='open' or item.reporter_count<1: raise ValueError()

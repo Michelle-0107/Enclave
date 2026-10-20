@@ -31,6 +31,7 @@ from .navigation.provider import ValhallaProvider, NavigationRejected, Navigatio
 from .navigation.demo_routes import DemoRouteRequest, DemoRouteResponse, calculate_demo_routes
 from .navigation.roadside import walking_graph
 from .navigation.places import PlacesRepository, PlacesUnavailable, PlaceSearchResult
+from .navigation.locations import LocationsRepository, LocationsUnavailable, LocationsNotInstalled, LocationResult
 from .navigation.service import NavigationService
 from .reports.issues import (CommunityIssues,FacilityCreate,Facility,FacilityList,OpenIssue,JoinIssue,
                              IssueLinked,IssueList,IssueMapResponse,CommunityObstacleSnapshot,IssueUnavailable,IssueRejected)
@@ -105,6 +106,7 @@ def create_app(
     registration_service: RegistrationService | None = None,
     places_transport: httpx.AsyncBaseTransport | None = None,
     maintenance_transport: httpx.AsyncBaseTransport | None = None,
+    locations_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
 
     @asynccontextmanager
@@ -123,6 +125,8 @@ def create_app(
         application.state.community_issues = CommunityIssues(configured,transport=community_transport if community_transport is not None else map_transport)
         application.state.notifications = notifications
         application.state.places = PlacesRepository(configured, transport=places_transport)
+        application.state.locations = LocationsRepository(configured, transport=locations_transport)
+        application.state.community_issues.locations = application.state.locations
         application.state.report_workflow = ReportWorkflow(configured, transport=workflow_transport)
         application.state.maintenance = MaintenanceRepository(configured, transport=maintenance_transport)
         routing_provider = ValhallaProvider(navigation_settings or NavigationSettings(), transport=navigation_transport)
@@ -149,6 +153,7 @@ def create_app(
             await application.state.community_issues.close()
             await notifications.close()
             await application.state.places.close()
+            await application.state.locations.close()
             await application.state.report_workflow.close()
             await application.state.maintenance.close()
             await routing_provider.close()
@@ -326,6 +331,7 @@ def create_app(
         description: str = Form(..., min_length=1, max_length=1000),
         latitude: float = Form(..., ge=-90, le=90), longitude: float = Form(..., ge=-180, le=180),
         file: UploadFile = File(...),
+        location_id: UUID | None = Form(default=None),
     ):
         description = description.strip()
         if not description:
@@ -357,7 +363,9 @@ def create_app(
             "status": "pending", "image_url": image_url, "category": analysis.category,
             "priority": analysis.priority, "latitude": latitude, "longitude": longitude, "is_approved": False,
         }
+        if location_id is not None: row["location_id"]=str(location_id)
         record = await request.app.state.reports.create(row, user.access_token, user.user_id)
+        record = (await request.app.state.locations.labels([record]))[0]
         return ReportCreatedResponse(ticket_id=ticket_id, ai_analysis=analysis, image_url=image_url, data=[record])
 
     @application.get("/api/v1/reports", response_model=ReportListResponse, tags=["Reports"],
@@ -368,6 +376,7 @@ def create_app(
         limit: int = Query(10, ge=1, le=100), offset: int = Query(0, ge=0),
     ):
         records = await request.app.state.reports.list_for_owner(user.access_token, user.user_id, limit=limit, offset=offset)
+        records = await request.app.state.locations.labels(records)
         records = [await with_report_photo(request, record) for record in records]
         return ReportListResponse(items=records, limit=limit, offset=offset)
 
@@ -414,6 +423,7 @@ def create_app(
         record = await request.app.state.reports.get_for_owner(user.access_token, user.user_id, ticket_id)
         if record is None:
             raise HTTPException(404, "Report not found")
+        record = (await request.app.state.locations.labels([record]))[0]
         return await with_report_photo(request, record)
 
     def community_bounds(bbox):
@@ -438,6 +448,31 @@ def create_app(
         bbox: str | None=Query(default=None,max_length=100),limit: int=Query(default=100,ge=1,le=200),offset: int=Query(default=0,ge=0)):
         response.headers["Cache-Control"]="private, no-store"
         return await request.app.state.community_issues.listing(user.user_id,"issues",bounds=community_bounds(bbox),limit=limit,offset=offset)
+
+    @application.get("/api/v1/facilities/road-sections",response_model=FacilityList,tags=["Community Issues"],responses=errors,
+                     description="Nearby fixed OSM road-section report points, approximately 100m per section. Read-only catalog; independent of route access or accessibility verification.")
+    async def road_report_points(request: Request,response: Response,user: AuthenticatedUser=Depends(active_resident),
+        latitude: float=Query(ge=-90,le=90,allow_inf_nan=False),longitude: float=Query(ge=-180,le=180,allow_inf_nan=False),
+        limit: int=Query(default=100,ge=1,le=200),offset: int=Query(default=0,ge=0)):
+        from .reports.road_sections import nearby
+        from .reports.map import MapPagination
+        response.headers["Cache-Control"]="private, no-store"
+        try:
+            area=next((a for a in service_areas().items if a.enabled and a.community_issues_supported and a.bbox[0]<=longitude<=a.bbox[2] and a.bbox[1]<=latitude<=a.bbox[3]),None)
+            if area is not None:
+                try:
+                    page=await request.app.state.locations.listing('road_sections',user.user_id,area,latitude=latitude,longitude=longitude,limit=limit,offset=offset)
+                    selected=[Facility(id=p.id,name=p.name,facility_type='path_surface',latitude=p.latitude,longitude=p.longitude,created_at=p.metadata['created_at'],road_section=p.metadata.get('road_section')) for p in page.items]
+                    response.headers['X-Enclave-Location-Storage']='database'
+                    return FacilityList(items=selected,pagination=MapPagination(limit=limit,offset=offset,returned=len(selected),has_more=page.has_more))
+                except LocationsNotInstalled:
+                    pass
+            response.headers['X-Enclave-Location-Storage']='bundled_catalog'
+            rows=nearby(latitude,longitude);selected=rows[offset:offset+limit]
+            return FacilityList(items=[Facility.model_validate(point.model_dump()) for point in selected],
+                pagination=MapPagination(limit=limit,offset=offset,returned=len(selected),has_more=offset+limit<len(rows)))
+        except (ValueError,OSError,KeyError,TypeError):
+            raise HTTPException(503,"Road reporting points are unavailable") from None
 
     @application.post("/api/v1/community/issues",response_model=IssueLinked,tags=["Community Issues"],responses=errors,
                       description="Open/reuse an incident at the selected facility using an existing owned report ticket. One resident counts once; report must be within 100m of the facility. Requires SQL 009.")
@@ -489,6 +524,7 @@ def create_app(
     ):
         response.headers["Cache-Control"] = "private, no-store"
         result = await request.app.state.report_workflow.list_reports(user.user_id, status=status, limit=limit, offset=offset)
+        result.items = await request.app.state.locations.labels(result.items)
         result.items = [await with_report_photo(request, record) for record in result.items]
         return result
 
@@ -502,6 +538,7 @@ def create_app(
     ):
         response.headers["Cache-Control"] = "private, no-store"
         result = await request.app.state.report_workflow.update(user.user_id, ticket_id, body)
+        result.report = (await request.app.state.locations.labels([result.report]))[0]
         result.report = await with_report_photo(request, result.report)
         return result
 
@@ -528,6 +565,23 @@ def create_app(
     async def navigation_areas(response: Response, user: AuthenticatedUser = Depends(active_resident)):
         response.headers["Cache-Control"] = "private, no-store"
         return service_areas()
+
+    @application.exception_handler(LocationsUnavailable)
+    async def locations_unavailable(request, error):
+        return JSONResponse(status_code=503,content={'detail':'Shared locations unavailable; confirm SQL 020 and 021 are installed'},headers={'Cache-Control':'no-store'})
+
+    @application.get('/api/v1/locations',response_model=LocationResult,tags=['Locations'])
+    async def shared_locations(request: Request,response: Response,user: AuthenticatedUser=Depends(current_user),
+        area_id: str=Query(max_length=64),q: str | None=Query(default=None,min_length=2,max_length=160),
+        latitude: float | None=Query(default=None,ge=-90,le=90,allow_inf_nan=False),
+        longitude: float | None=Query(default=None,ge=-180,le=180,allow_inf_nan=False),
+        limit: int=Query(default=20,ge=1,le=100),offset: int=Query(default=0,ge=0,le=100000)):
+        response.headers['Cache-Control']='private, no-store'
+        area=find_area(area_id)
+        if area is None: raise HTTPException(404,'Service area not found')
+        if q is None and (latitude is None or longitude is None): raise HTTPException(422,'Provide a place name or map coordinates')
+        return await request.app.state.locations.listing('search' if q is not None else 'nearby',user.user_id,area,
+            query=q,latitude=latitude,longitude=longitude,limit=limit,offset=offset)
 
     @application.get("/api/v1/navigation/areas/{area_id}/places", response_model=PlaceSearchResult, tags=["Navigation"],
                      responses={**errors, 404: {"description": "Service area not found"}},

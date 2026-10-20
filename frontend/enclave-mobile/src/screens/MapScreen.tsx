@@ -27,6 +27,7 @@ import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 import type { PlacePoint } from '../savedPlaces/store';
 import PlaceSearch from '../navigation/PlaceSearch';
+import NamedMapPoint from '../navigation/NamedMapPoint';
 
 export type MapEndpoints = { area?: NavigationArea; origin: { latitude: number; longitude: number } | null; destination: { latitude: number; longitude: number } | null };
 
@@ -314,6 +315,10 @@ export default function MapScreen({
         </View>
       </View>
 
+      {area && <View style={{ gap: 4 }}>
+        <NamedMapPoint coordinate={startPlace?.coordinate} areaId={area.id} label="Starting place" />
+        <NamedMapPoint coordinate={endPlace?.coordinate} areaId={area.id} label="Destination" />
+      </View>}
       {inputMode === 'search' && searching && area && <PlaceSearch areaId={area.id}
         query={selecting === 'origin' ? start : destination} field={selecting === 'origin' ? 'starting point' : 'destination'}
         onChoose={point => chooseLocation(point, selecting)} />}

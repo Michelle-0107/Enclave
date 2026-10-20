@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import type * as MapLibre from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-type Props = { latitude: number; longitude: number };
+type Props = { latitude: number; longitude: number; locationName?: string };
 
-export default function ReportLocationMap({ latitude, longitude }: Props) {
+export default function ReportLocationMap({ latitude, longitude, locationName }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
@@ -62,7 +62,8 @@ export default function ReportLocationMap({ latitude, longitude }: Props) {
         {!ready && !error && <p role="status" className="absolute inset-0 flex items-center justify-center bg-enclave-lavender text-sm text-muted-foreground">Loading location map…</p>}
         {error && <p role="status" className="absolute inset-0 flex items-center justify-center bg-enclave-lavender p-4 text-center text-sm text-muted-foreground">Map preview could not load. Use the navigation link to view this location.</p>}
       </div>
-      <p className="text-sm text-muted-foreground">{latitude.toFixed(6)}, {longitude.toFixed(6)}</p>
+      <p className="text-sm font-semibold text-primary">{locationName || 'Selected map point'}</p>
+      <details className="text-xs text-muted-foreground"><summary>Coordinates</summary>{latitude.toFixed(6)}, {longitude.toFixed(6)}</details>
       <a href={navigationUrl} target="_blank" rel="noreferrer" className="flex min-h-[44px] items-center justify-center rounded-2xl bg-enclave-lavender px-5 text-sm font-semibold text-primary hover:opacity-80">
         Open navigation map
       </a>

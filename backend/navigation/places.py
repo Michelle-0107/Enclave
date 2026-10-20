@@ -21,7 +21,7 @@ class MapPlace(BaseModel):
     longitude: float = Field(ge=-180, le=180, allow_inf_nan=False)
     latitude: float = Field(ge=-90, le=90, allow_inf_nan=False)
     position_basis: str = Field(max_length=250)
-    source: Literal['openstreetmap'] = 'openstreetmap'
+    source: Literal['openstreetmap','community'] = 'openstreetmap'
 
 
 class PlaceSearchResult(BaseModel):
