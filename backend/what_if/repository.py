@@ -6,7 +6,7 @@ from uuid import UUID
 import httpx
 from pydantic import BaseModel, Field, model_validator
 
-from ..reports.issues import CommunityIssue
+from .candidates import ReviewIssue
 
 
 class WhatIfUnavailable(RuntimeError):
@@ -20,7 +20,7 @@ class WhatIfRejected(Exception):
 
 class Snapshot(BaseModel):
     checked_at: datetime
-    issues: list[CommunityIssue] = Field(max_length=100)
+    issues: list[ReviewIssue] = Field(max_length=100)
 
     @model_validator(mode='after')
     def qualified_unique_issues(self):

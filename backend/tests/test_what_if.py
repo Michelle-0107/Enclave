@@ -38,7 +38,7 @@ def issue(**changes):
     return {'id': I1, 'facility_id': F1, 'facility_name': 'Synthetic walkway', 'facility_type': 'path_surface',
             'latitude': 3.2254, 'longitude': 101.7306, 'fault_kind': 'damage', 'status': 'open',
             'reporter_count': 2, 'affects_routes': True, 'created_at': '2026-10-16T00:00:00Z',
-            'resolved_at': None, **changes}
+            'resolved_at': None, 'review_ticket_id': 'SYNTHETIC-REVIEW', **changes}
 
 
 def body():
@@ -137,6 +137,32 @@ class WhatIfTests(unittest.TestCase):
         self.assertNotIn('PRIVATE', response.text)
         self.assertNotIn(RESIDENT, response.text)
         self.assertIn('no-store', response.headers['cache-control'])
+        self.assertEqual(self.engine_requests, [])
+
+    def test_already_approved_issue_is_not_a_candidate_and_stale_selection_conflicts(self):
+        self.issues[0]['review_ticket_id'] = None
+        client = self.client()
+        response = client.get('/api/v1/management/what-if/candidates', headers={'Authorization': 'Bearer manager-fixture'})
+        self.assertEqual(response.json()['issues'], [])
+        self.assertEqual(self.compare(client).status_code, 409)
+        self.assertEqual(self.engine_requests, [])
+
+    def test_approved_unrepaired_issue_remains_an_obstacle_even_at_selected_facility(self):
+        self.issues.append(issue(id=I2, fault_kind='obstruction', review_ticket_id=None))
+        client = self.client()
+        candidates = client.get('/api/v1/management/what-if/candidates', headers={'Authorization': 'Bearer manager-fixture'})
+        self.assertEqual([i['id'] for i in candidates.json()['issues']], [I1])
+        result = self.compare(client)
+        self.assertEqual(result.status_code, 200, result.text)
+        data = result.json()
+        self.assertEqual(data['baseline_road_obstacle_count'], 2)
+        self.assertEqual(data['plans'][0]['remaining_road_obstacle_count'], 1)
+        self.assertEqual(data['plans'][0]['repaired_issue_count'], 1)
+        self.assertEqual(data['plans'][0]['facility_impacts'][0]['repaired_issue_ids'], [I1])
+
+    def test_old_sql_snapshot_without_review_metadata_fails_closed(self):
+        self.issues[0].pop('review_ticket_id')
+        self.assertEqual(self.compare(self.client()).status_code, 503)
         self.assertEqual(self.engine_requests, [])
 
     def test_repair_shortens_real_validated_geometry_and_counts_one_designated_path(self):

@@ -33,7 +33,7 @@ class WhatIfService:
 
     async def candidates(self, actor_id):
         snapshot = await self.repository.snapshot(actor_id)
-        return RepairCandidates(snapshot_at=snapshot.checked_at, issues=snapshot.issues)
+        return RepairCandidates(snapshot_at=snapshot.checked_at, issues=[i for i in snapshot.issues if i.review_ticket_id is not None])
 
     async def compare(self, actor_id, body):
         # Authorize against the current database role before reading candidates or doing work.
@@ -50,10 +50,11 @@ class WhatIfService:
     async def _compare_snapshot(self, snapshot, body):
         by_facility = {}
         for issue in snapshot.issues:
-            by_facility.setdefault(issue.facility_id, []).append(issue)
+            if issue.review_ticket_id is not None:
+                by_facility.setdefault(issue.facility_id, []).append(issue)
         for plan in body.plans:
             if any(r.facility_id not in by_facility for r in plan.repairs):
-                raise WhatIfRejected(409, 'A selected facility has no current two-resident issue; refresh repair candidates')
+                raise WhatIfRejected(409, 'A selected facility has no current unapproved two-resident issue; refresh repair candidates')
 
         restrictions = [RoutingRestriction(**restriction_for(i)) for i in snapshot.issues if i.affects_routes]
         rings_by_issue = {r.issue_id: r.exclusion_rings for r in restrictions}
@@ -64,7 +65,7 @@ class WhatIfService:
             return CommunityObstacleSnapshot(checked_at=snapshot.checked_at, items=[
                 CommunityObstacle(issue_id=i.id, facility_id=i.facility_id, reporter_count=i.reporter_count,
                                   exclusion_ring=ring)
-                for i in snapshot.issues if i.affects_routes and i.facility_id not in repaired
+                for i in snapshot.issues if i.affects_routes and not (i.facility_id in repaired and i.review_ticket_id is not None)
                 for ring in rings_by_issue[i.id]])
 
         before_snapshot = obstacles()
@@ -212,7 +213,7 @@ class WhatIfService:
         results = []
         for plan in body.plans:
             facilities = {r.facility_id for r in plan.repairs}
-            selected_issues = [i for i in snapshot.issues if i.facility_id in facilities]
+            selected_issues = [i for i in snapshot.issues if i.facility_id in facilities and i.review_ticket_id is not None]
             facility_hits = {fid: set() for fid in facilities}
             impacts = []
             for path, mode, reference, before, after_by_plan in comparisons:

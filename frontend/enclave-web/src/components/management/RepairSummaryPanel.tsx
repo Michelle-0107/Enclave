@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getRepairSummary, type RepairSummary } from '@/lib/api';
+import { getRepairSummary, type RepairSummary, type WhatIfResult } from '@/lib/api';
+import CandidateReviewButton from './CandidateReviewButton';
 import { formatRouteSeconds } from '@/lib/repairRouteView';
 
-export default function RepairSummaryPanel({ simulationId, mode }: {
-  simulationId: string; mode: 'avoid_damage' | 'accessible';
+export default function RepairSummaryPanel({ simulationId, mode, plans }: {
+  simulationId: string; mode: 'avoid_damage' | 'accessible'; plans: WhatIfResult['plans'];
 }) {
   const [answer, setAnswer] = useState<{ key: string; value: RepairSummary } | null>(null);
   const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
@@ -40,6 +41,10 @@ export default function RepairSummaryPanel({ simulationId, mode }: {
           ? `Recommended: ${facts.plans.filter(plan => facts.recommended_plan_ids.includes(plan.id)).map(plan => plan.name).join(' / ')}`
           : 'No time-based recommendation can be made from the comparable results.'}
       </p>
+      <div className="mt-3 flex flex-wrap gap-3">
+        {plans.filter(plan => facts.recommended_plan_ids.includes(plan.id)).map(plan =>
+          <CandidateReviewButton key={plan.id} plan={plan} />)}
+      </div>
       <p className="mt-2 text-sm text-muted-foreground">{facts.comparable_path_count} common comparable routes · {facts.excluded_path_count} excluded · Budget: {facts.budget_myr === null ? 'Not entered' : `MYR ${facts.budget_myr}`}</p>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {facts.plans.map(plan => <div key={plan.id} className="rounded-2xl border border-border p-4 text-sm">

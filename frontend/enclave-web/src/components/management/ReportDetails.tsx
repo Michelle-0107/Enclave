@@ -20,11 +20,13 @@ import { reportStatusLabels } from '@/lib/mock-reports';
 import ReportLocationMap from '@/components/management/ReportLocationMap';
 import WorkflowGuide from '@/components/ui/WorkflowGuide';
 import MaintenanceTaskPanel from '@/components/management/MaintenanceTaskPanel';
+import CandidateReviewContinuation from './CandidateReviewContinuation';
 import type { BackendTask } from '@/lib/maintenance/api';
 
-type Props = { report: ManagementReport };
+type Props = { report: ManagementReport; reviewKey?: string };
 
-export default function ReportDetails({ report: initialReport }: Props) {
+export default function ReportDetails({ report: initialReport, reviewKey }: Props) {
+  const [approvalSaved, setApprovalSaved] = useState(false);
   const [report, setReport] = useState(initialReport);
   const [history, setHistory] = useState<StatusEvent[]>([]);
   const [note, setNote] = useState('');
@@ -91,6 +93,7 @@ export default function ReportDetails({ report: initialReport }: Props) {
       });
       setReport(result.report);
       setNote('');
+      if (status === 'approved') setApprovalSaved(true);
       // Ignore history requests started before this saved decision.
       historyRevision.current++;
       setHistoryLoading(false);
@@ -114,6 +117,7 @@ export default function ReportDetails({ report: initialReport }: Props) {
       <h1 className="text-[30px] font-semibold leading-[1.35] text-primary lg:text-[36px]">{report.title}</h1>
       <p className="text-sm leading-relaxed text-muted-foreground">#{report.id} · Submitted {report.submittedAt}</p>
       <ReportStatusBadge status={report.status} />
+      {reviewKey && <CandidateReviewContinuation key={reviewKey} reviewKey={reviewKey} reportId={report.id} approvalSaved={approvalSaved} />}
 
       {report.status === 'pending' && <WorkflowGuide steps={['Review', 'Assign', 'Repair', 'Verify', 'Resolved']} active={0} next="Next: review the evidence, then approve or reject the report." />}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">

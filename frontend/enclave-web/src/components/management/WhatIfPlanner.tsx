@@ -292,7 +292,7 @@ export default function WhatIfPlanner() {
               Current qualified candidates
             </h2>
             <p className="text-xs text-muted-foreground">
-              Open issues reported by at least two different residents;
+              Open issues reported by at least two different residents, with no approved report;
               selection is grouped by facility.
             </p>
           </div>
@@ -764,7 +764,7 @@ export default function WhatIfPlanner() {
           ))}
           </div>
           {(selectedRoute === 'all:avoid_damage' || selectedRoute === 'all:accessible') &&
-            <RepairSummaryPanel simulationId={result.simulation_id} mode={selectedRoute === 'all:accessible' ? 'accessible' : 'avoid_damage'} />}
+            <RepairSummaryPanel plans={result.plans} simulationId={result.simulation_id} mode={selectedRoute === 'all:accessible' ? 'accessible' : 'avoid_damage'} />}
           <button type="button" onClick={() => setStep(2)} className="min-h-12 rounded-2xl border bg-card px-6 text-sm font-semibold">Edit repair plans</button>
         </section>
       )}

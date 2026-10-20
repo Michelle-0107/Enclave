@@ -5980,7 +5980,7 @@
           },
           "issues": {
             "items": {
-              "$ref": "#/components/schemas/CommunityIssue"
+              "$ref": "#/components/schemas/ReviewIssue"
             },
             "type": "array",
             "title": "Issues"
@@ -6496,6 +6496,126 @@
           "note"
         ],
         "title": "Review"
+      },
+      "ReviewIssue": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "facility_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Facility Id"
+          },
+          "facility_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Facility Name"
+          },
+          "facility_type": {
+            "type": "string",
+            "enum": [
+              "path_surface",
+              "ramp",
+              "stairs",
+              "kerb",
+              "crossing",
+              "elevator",
+              "streetlight",
+              "drainage",
+              "bench",
+              "other"
+            ],
+            "title": "Facility Type"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 3.2349,
+            "minimum": 3.2171,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 101.7409,
+            "minimum": 101.7211,
+            "title": "Longitude"
+          },
+          "fault_kind": {
+            "type": "string",
+            "enum": [
+              "damage",
+              "obstruction"
+            ],
+            "title": "Fault Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "reporter_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Reporter Count"
+          },
+          "affects_routes": {
+            "type": "boolean",
+            "title": "Affects Routes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "review_ticket_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Ticket Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "facility_id",
+          "facility_name",
+          "facility_type",
+          "latitude",
+          "longitude",
+          "fault_kind",
+          "status",
+          "reporter_count",
+          "affects_routes",
+          "created_at",
+          "review_ticket_id"
+        ],
+        "title": "ReviewIssue"
       },
       "RouteGeometry": {
         "properties": {

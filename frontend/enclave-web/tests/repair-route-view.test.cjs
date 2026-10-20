@@ -348,9 +348,9 @@ test('summary panel explicitly labels calculated fallback and does not call it A
     return [state++ === 0 ? { key: 's:avoid_damage:0', value } : initial, () => {}];
   } };
   const Panel = load('src/components/management/RepairSummaryPanel.tsx', {
-    react: hooks, '@/lib/api': {}, '@/lib/repairRouteView': view,
+    react: hooks, '@/lib/api': {}, '@/lib/repairRouteView': view, './CandidateReviewButton': { default: () => null },
   }).default;
-  const html = renderToStaticMarkup(React.createElement(Panel, { simulationId: 's', mode: 'avoid_damage' }));
+  const html = renderToStaticMarkup(React.createElement(Panel, { simulationId: 's', mode: 'avoid_damage', plans: [] }));
   for (const label of ['Calculated summary','AI unavailable','Recommended: Repair plan 1','Unknown / incomplete','1 min 40 s','Ranking uses time only.']) assert.ok(html.includes(label), label);
   assert.ok(!html.includes('AI explanation'));
 });
@@ -360,7 +360,7 @@ test('summary ignores an earlier mode response after the user changes route mode
   const Panel = load('src/components/management/RepairSummaryPanel.tsx', {
     react: { ...React, useState: value => [value, next => updates.push(next)], useEffect: fn => effects.push(fn) },
     '@/lib/api': { getRepairSummary: (...args) => new Promise(resolve => pending.push({ args, resolve })) },
-    '@/lib/repairRouteView': view,
+    '@/lib/repairRouteView': view, './CandidateReviewButton': { default: () => null },
   }).default;
   Panel({ simulationId: 's', mode: 'avoid_damage' });
   const cleanup = effects[0]();

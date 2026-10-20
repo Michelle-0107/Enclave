@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from ..navigation.config import in_bounds
 from ..navigation.contracts import Location, RouteGeometry
 from ..navigation.service import distance_meters
-from ..reports.issues import CommunityIssue
+from .candidates import ReviewIssue
 
 
 Money = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
@@ -88,7 +88,7 @@ class CompareRequest(Input):
 
 class RepairCandidates(BaseModel):
     snapshot_at: datetime
-    issues: list[CommunityIssue]
+    issues: list[ReviewIssue]
     confirmation_threshold: Literal[2] = 2
     main_path_source: Literal['management_defined'] = 'management_defined'
     currency: Literal['MYR'] = 'MYR'
