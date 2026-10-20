@@ -40,19 +40,34 @@ async function main(){let count=0;async function test(name,fn){await fn();count+
   assert.throws(()=>network.calculateProfileRoutes('walking',kl.center,b,kajang));
   const url=new URL(driving.drivingDirectionsUrl(a,b,kajang));assert.equal(url.searchParams.get('origin'),`${a[1]},${a[0]}`);
  });
- await test('Demo screen passes the supplied graph to place search, endpoint selection and route calculation',()=>{
-  const hooks=runtime(false);const Screen=compile('src/demo/DemoMapScreen.tsx',{
+ await test('Demo screen uses the supplied area for search, endpoints and authenticated route requests',async()=>{
+  const calls=[],hooks=runtime(false);
+  const getRoutes=async(token,id,payload)=>{
+   calls.push({token,id,payload});
+   const from=[payload.origin.longitude,payload.origin.latitude],to=[payload.destination.longitude,payload.destination.latitude];
+   return {adjusted_start:false,options:network.calculateProfileRoutes(payload.profile,from,to,kajang).map(item=>({mode:item.mode,
+    route:item.route?{route_id:'synthetic-'+item.mode,geometry:{coordinates:item.route.coordinates},maneuvers:[],
+     distance_meters:item.route.distance,duration_seconds:item.route.seconds,origin_snap_distance_meters:0,destination_snap_distance_meters:0}:null}))};
+  };
+  const Screen=compile('src/demo/DemoMapScreen.tsx',{
    react:hooks.react,'react/jsx-runtime':jsx,'react-native':native,'../navigation/NativeMap':{NativeMap:'Map'},'@maplibre/maplibre-react-native':native,
    '@expo/vector-icons':{MaterialCommunityIcons:'Icon'},'expo-location':{},'../theme':{colors:{}},'./network':network,'./access':access,'./driving':driving,
+   '../lib/api':{demoAreasApi:{getRoutes}},'../lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'fixture-token'}}})}}},
+   './navigationProgress':compile('src/demo/navigationProgress.ts',{'./network':network}),
+   '../navigation/PlaceSearch':{__esModule:true,default:'PlaceSearch'},
    './JourneyGuidance':{__esModule:true,default:'JourneyGuidance'},'../savedPlaces/SavedPlacesControl':{__esModule:true,default:'SavedPlacesControl'},
   }).default;
-  const render=()=>{hooks.reset();return Screen({data:kajang,onShowLiveMap(){}});};
+  const render=()=>{hooks.reset();return Screen({areaId:'kajang-prima-saujana',data:kajang,onShowLiveMap(){}});};
   let tree=render();assert.equal(JSON.stringify(find(tree,n=>n.type==='Camera').props.initialViewState.bounds),JSON.stringify(kajang.bbox));
-  let input=find(tree,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='Starting point');input.props.onChangeText(kajang.landmarks[0].name);
-  tree=render();assert.ok(text(tree).includes(kajang.landmarks[0].name));
+  const input=find(tree,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='Starting point');input.props.onFocus();input.props.onChangeText(kajang.landmarks[0].name);
+  tree=render();const search=find(tree,n=>n.type==='PlaceSearch');
+  assert.equal(search.props.areaId,'kajang-prima-saujana');assert.ok(search.props.local.some(item=>item.label===kajang.landmarks[0].name));
   let pick=find(tree,n=>n.type==='SavedPlacesControl'&&n.props.field==='starting point');pick.props.onChoose({label:'Local start',coordinate:a});
   tree=render();pick=find(tree,n=>n.type==='SavedPlacesControl'&&n.props.field==='destination');pick.props.onChoose({label:'Local destination',coordinate:b});
-  tree=render();button(tree,'Choose route').props.onPress();tree=render();
+  tree=render();button(tree,'Choose route').props.onPress();await tick();tree=render();
+  assert.equal(calls.length,1);assert.equal(calls[0].id,'kajang-prima-saujana');assert.equal(calls[0].token,'fixture-token');
+  assert.equal(JSON.stringify(calls[0].payload.origin),JSON.stringify({longitude:a[0],latitude:a[1]}));
+  assert.equal(JSON.stringify(calls[0].payload.destination),JSON.stringify({longitude:b[0],latitude:b[1]}));
   assert.ok(nodes(tree).some(n=>n.props?.id==='demo-selected-route'));assert.ok(text(tree).includes(kajang.name));
  });
  await test('Generic area discovery loads server default and switching remounts the selected dataset',async()=>{

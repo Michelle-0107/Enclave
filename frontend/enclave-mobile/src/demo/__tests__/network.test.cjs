@@ -13,6 +13,34 @@ function fixture(){
  return n.validateDataset(d);
 }
 const d=fixture(),routes=n.calculateRoutes(points[1],points[2],d),byMode=Object.fromEntries(routes.map(r=>[r.mode,r.route]));
+check('Bundled buffer crossings validate without expanding journey endpoint coverage',()=>{
+ const buffer=raw.navigationFacilities.find(f=>!n.insidePilot(f.coordinate,raw));
+ assert.ok(buffer,'Fixture must reproduce the formerly crashing buffer facility');
+ assert.equal(n.validateDataset(raw),raw);
+ assert.equal(n.insidePilot(buffer.coordinate,raw),false);
+ assert.throws(()=>n.snapToRoad(buffer.coordinate,raw),/inside the current service area/);
+});
+check('Navigation markers and every geometry vertex stay inside the declared OSM extract',()=>{
+ const outside=structuredClone(raw);outside.navigationFacilities[0].coordinate=[0,0];
+ assert.throws(()=>n.validateDataset(outside),/Invalid navigation facility/);
+ const line=structuredClone(raw);line.navigationFacilities[0].geometry[1]=[0,0];
+ assert.throws(()=>n.validateDataset(line),/Invalid navigation facility/);
+ const invalid=structuredClone(raw);invalid.navigationFacilities[0].routingSource='unknown';
+ assert.throws(()=>n.validateDataset(invalid),/Invalid navigation facility/);
+ invalid.navigationFacilities[0].routingSource='simulation';invalid.navigationFacilities[0].fieldVerified=true;
+ assert.throws(()=>n.validateDataset(invalid),/Invalid navigation facility/);
+});
+check('Malformed or mismatched extract bounds fail closed and missing extract bounds keep service limits',()=>{
+ for(const bbox of ['0,0,1,1','101.719,,101.745,3.240','101.745,3.240,101.719,3.212','NaN,3.212,101.745,3.240','-181,-90,180,90']){
+  const invalid=structuredClone(raw);invalid.provenance.extractUrl='https://api.openstreetmap.org/api/0.6/map?bbox='+bbox;
+  assert.throws(()=>n.validateDataset(invalid),/Invalid navigation extract bounds/);
+ }
+ const legacy=structuredClone(raw);legacy.provenance.extractUrl='https://example.test/legacy-source';
+ legacy.navigationFacilities=legacy.navigationFacilities.filter(f=>n.insidePilot(f.coordinate,legacy)&&f.geometry.every(p=>n.insidePilot(p,legacy)));
+ assert.equal(n.validateDataset(legacy),legacy);
+ legacy.navigationFacilities.push(structuredClone(raw.navigationFacilities.find(f=>!n.insidePilot(f.coordinate,raw))));
+ assert.throws(()=>n.validateDataset(legacy),/Invalid navigation facility/);
+});
 check('Whole-area dataset has no preset journey and distributes facilities across all quadrants',()=>{
  assert.equal('originId' in raw,false);assert.equal('destinationId' in raw,false);assert.ok(raw.edges.length>=1500);assert.ok(raw.facilities.length>=100);
  assert.ok(new Set(raw.facilities.map(f=>f.gridCell.join(','))).size>=40);
