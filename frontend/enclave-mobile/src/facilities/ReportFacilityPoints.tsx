@@ -59,8 +59,8 @@ export function ReportFacilityMarkers({ facilities, onSelect }: {
   ))}</>;
 }
 
-export function ReportFacilityHint({ loading, error, count, onRetry }: {
-  loading: boolean; error: string; count: number; onRetry: () => void;
+export function ReportFacilityHint({ loading, error, count, onRetry, markersVisible = true }: {
+  loading: boolean; error: string; count: number; onRetry: () => void; markersVisible?: boolean;
 }) {
   if (loading) return <Text style={styles.hint}>Loading registered facilities…</Text>;
   if (error) return <View>
@@ -70,7 +70,7 @@ export function ReportFacilityHint({ loading, error, count, onRetry }: {
     </Pressable>
   </View>;
   return <Text style={styles.hint}>
-    {count} registered facilities. Tap a teal F marker to choose its location, then select the facility on the next step. [DEMO] points are fictional facilities on mapped roads, not surveyed accessibility.
+    {count} registered facilities. {markersVisible ? 'Tap a teal F marker to choose its location, then select the facility below.' : 'Facility markers are hidden. Tap the actual issue location and choose a nearby facility below, or show the markers.'} [DEMO] points are fictional facilities on mapped roads, not surveyed accessibility.
   </Text>;
 }
 
