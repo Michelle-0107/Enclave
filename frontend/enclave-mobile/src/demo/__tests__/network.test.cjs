@@ -37,9 +37,17 @@ check('Malformed or mismatched extract bounds fail closed and missing extract bo
  }
  const legacy=structuredClone(raw);legacy.provenance.extractUrl='https://example.test/legacy-source';
  legacy.navigationFacilities=legacy.navigationFacilities.filter(f=>n.insidePilot(f.coordinate,legacy)&&f.geometry.every(p=>n.insidePilot(p,legacy)));
+ legacy.accessibilityFacilities=legacy.accessibilityFacilities.filter(f=>n.insidePilot(f.coordinate,legacy)&&f.geometry.every(p=>n.insidePilot(p,legacy)));
  assert.equal(n.validateDataset(legacy),legacy);
  legacy.navigationFacilities.push(structuredClone(raw.navigationFacilities.find(f=>!n.insidePilot(f.coordinate,raw))));
  assert.throws(()=>n.validateDataset(legacy),/Invalid navigation facility/);
+});
+check('Simulated accessibility facilities require explicit unverified step-free provenance',()=>{
+ assert.ok(raw.accessibilityFacilities.some(f=>f.kind==='accessible_entrance'));
+ for(const mutate of [f=>f.fieldVerified=true,f=>f.stepFree=false,f=>f.routingSource='openstreetmap',f=>f.geometry[1]=[0,0],f=>f.accessFeatures=[]]){
+  const bad=structuredClone(raw);mutate(bad.accessibilityFacilities[0]);assert.throws(()=>n.validateDataset(bad),/Invalid simulated step-free facility/);
+ }
+ const bad=structuredClone(raw);bad.demoAccessibility.outdoorApproachMeters=100;assert.throws(()=>n.validateDataset(bad),/Invalid demo accessibility policy/);
 });
 check('Whole-area dataset has no preset journey and distributes facilities across all quadrants',()=>{
  assert.equal('originId' in raw,false);assert.equal('destinationId' in raw,false);assert.ok(raw.edges.length>=1500);assert.ok(raw.facilities.length>=100);

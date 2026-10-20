@@ -82,7 +82,11 @@ def _options(area_id, dataset, graph, origin, destination, profile, *, modes=Non
             route_mode=mode,
         )
         try:
-            route = graph.route(body, boxes=boxes, area_id=area_id,
+            selected_graph=graph
+            if mode=='accessible' and dataset.get('accessibilityFacilities'):
+                from .demo_accessibility import demo_step_free_graph
+                selected_graph=demo_step_free_graph(area_id)
+            route = selected_graph.route(body, boxes=boxes, area_id=area_id,
                                 community_supported=False, demo_mode=True,
                                 excluded_way_ids=excluded)
         except NavigationRejected as failure:

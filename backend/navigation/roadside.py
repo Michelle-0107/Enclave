@@ -516,6 +516,17 @@ class RoadsideGraph:
 
     def snap_candidates(self,point):
         buildings=self.land_access.buildings_at(point)
+        if buildings and hasattr(self,'demo_building_entrances'):
+            candidates=[]
+            for building in sorted(buildings):
+                index=self.demo_building_entrances.get(building)
+                if index is None:continue
+                entrance=self.edges[index].points[0]
+                if self.access_clear(point,entrance,own_buildings=buildings,allow_road_endpoint=True):
+                    candidates.append((distance(point,entrance),index,0.0,entrance))
+            if not candidates:
+                raise NavigationRejected(422,'No simulated step-free entrance is registered for this building.')
+            return sorted(candidates)[:1]
         if not buildings:
             candidates=self._snap_candidates_within(point,buildings,ENDPOINT_ACCESS_METERS)
         else:
@@ -541,7 +552,7 @@ class RoadsideGraph:
         best={}
         for index in self.edge_index.candidates((point[0]-dx,point[1]-delta),(point[0]+dx,point[1]+delta)):
             edge=self.edges[index]
-            if edge.kind in {'connection','unmarked_crossing','open_access','demo_crossing'}: continue
+            if edge.kind in {'connection','unmarked_crossing','open_access','demo_crossing','demo_accessible_entrance'}: continue
             if distance(*edge.points)<.01: continue
             projected=self.project(point,edge)
             # Selecting a point on a genuine crossing must retain that crossing,
@@ -637,12 +648,18 @@ class RoadsideGraph:
         origin_building=bool(self.land_access.buildings_at(origin))
         target_building=bool(self.land_access.buildings_at(target))
         buildings=origin_building or target_building
-        if body.route_mode=='accessible' and (buildings or max(start[0],end[0])>5):
+        demo_step_free=demo_mode and getattr(self,'demo_step_free_policy',None)=='demo-step-free-v1'
+        access_limit=ENDPOINT_ACCESS_METERS+1e-6 if demo_step_free else 5
+        if body.route_mode=='accessible' and ((buildings and not demo_step_free) or (not origin_building and start[0]>access_limit) or (not target_building and end[0]>access_limit)):
             raise NavigationRejected(422,'The building exit or open-land approach is assumed, not verified step-free access.')
         adjacency=defaultdict(list)
         zone_index=BoundsIndex(boxes)
         def link(a,b,edge,pa,pb):
-            if edge.way_id in excluded_way_ids or (body.route_mode == 'accessible' and edge.kind in {'steps','unmarked_crossing','open_access','demo_crossing','demo_footbridge'}): return
+            if edge.way_id in excluded_way_ids:return
+            if body.route_mode=='accessible':
+                if edge.kind in {'steps','unmarked_crossing','open_access'}:return
+                if edge.kind in {'demo_crossing','demo_footbridge','demo_step_free_link','demo_accessible_entrance'} and not (
+                    demo_step_free and edge.way_id in self.step_free_facility_way_ids):return
             length=distance(pa,pb)
             if zone_index.intersects(pa,pb): return
             if edge.direction != -1: adjacency[a].append((b,length,edge,pa,pb))
@@ -664,7 +681,7 @@ class RoadsideGraph:
             if cost != best[node]: continue
             if node=='@end': break
             for to,length,edge,pa,pb in adjacency[node]:
-                candidate=(cost[0]+(length if edge.kind=='open_access' else 0.0),cost[1]+length)
+                candidate=(cost[0]+(length if edge.kind in {'open_access','demo_step_free_link'} else 0.0),cost[1]+length)
                 if candidate < best.get(to,(float('inf'),float('inf'))):
                     best[to]=candidate; previous[to]=(node,edge,pa,pb,length)
                     heapq.heappush(queue,(candidate,to))
@@ -700,8 +717,12 @@ class RoadsideGraph:
                   f'Walk along the road side of {edge.name}{travel}; a sidewalk is not recorded.' if edge.kind=='road_fallback' else
                   f'Use the mapped footbridge at {edge.name}{travel}.' if edge.kind=='footbridge' else
                   f'Use the mapped underpass at {edge.name}{travel}.' if edge.kind=='underpass' else
+                  f'Use the simulated dropped-kerb crossing{travel}. This facility exists only in the demo.' if demo_step_free and edge.kind=='demo_crossing' else
                   f'Use the simulated zebra crossing{travel}. This facility exists only in the demo.' if edge.kind=='demo_crossing' else
+                  f'Use the simulated lift-access footbridge{travel}. This facility exists only in the demo.' if demo_step_free and edge.kind=='demo_footbridge' else
                   f'Take the simulated footbridge{travel}. This facility exists only in the demo.' if edge.kind=='demo_footbridge' else
+                  f'Use the simulated building entrance ramp{travel}. Indoor access to this entrance is assumed for the demo.' if edge.kind=='demo_accessible_entrance' else
+                  f'Use the simulated step-free ramp connector{travel}. This facility exists only in the demo.' if edge.kind=='demo_step_free_link' else
                   f'Walk across the open area{travel}; this connection is inferred.' if edge.kind=='open_access' else
                   'Continue along the path.' if edge.kind=='connection' else
                   f'Continue along {edge.name}{travel}.')
@@ -749,6 +770,7 @@ class RoadsideGraph:
                 *(['Includes private residential ways under the app resident-access policy for verified residents of supported service areas.']
                   if any(edge.way_id in self.private_way_ids for edge,_,_,_ in selected) else []),
                 *(['Demo-only route: facility damage and step-free annotations are simulated and not field verified.'] if demo_mode else []),
+                *(['Hypothetical dropped kerbs, lift-access bridges, paved ramp connectors and permitted outdoor approaches up to 20m; registered building entrance ramps assume indoor step-free access for this demo. No surveyed accessibility is implied.'] if demo_step_free else []),
                 *(['Simulated bridges/crossings are fictional and must not be used as directions for a real road crossing.'] if simulated_ids else []),
                 *(['Community damage coverage is not enabled in this temporary area.'] if not community_supported else [] )])
 

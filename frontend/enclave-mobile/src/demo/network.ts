@@ -11,6 +11,7 @@ export type Facility = {
 export type NavigationFacility = {
   id: string; name: string; kind: string; coordinate: Coordinate; geometry: Coordinate[];
   routingSource: 'openstreetmap' | 'simulation'; routingWayId: string; fieldVerified: false;
+  stepFree?: true; accessFeatures?: string[];
 };
 export type Landmark = { id: string; name: string; coordinate: Coordinate; osmType: 'node' | 'way'; osmId: string; positionBasis: string };
 export type Edge = {
@@ -23,6 +24,8 @@ export type Dataset = {
   bbox: [number, number, number, number]; center: Coordinate; styleUrl: string;
   nodes: { id: string; coordinate: Coordinate }[]; edges: Edge[]; facilities: Facility[]; landmarks: Landmark[];
   navigationFacilities?: NavigationFacility[];
+  accessibilityFacilities?: NavigationFacility[];
+  demoAccessibility?: { version: 'demo-step-free-v1'; source: 'simulation'; fieldVerified: false; outdoorApproachMeters: 20; buildingApproach: 'simulated_registered_entrances' };
   provenance: { geometrySource: 'OpenStreetMap'; sourceXmlSha256: string; license: 'ODbL-1.0';
     downloadedAt: string; attribution: string; extractUrl: string; networkScope: string; routingAccess: string };
 };
@@ -45,7 +48,7 @@ export type Route = {
 export type ModeResult = { mode: Mode; route: Route | null; unavailableReason?: string };
 export const modes: Mode[] = ['shortest', 'avoid_damage', 'accessible'];
 export const labels: Record<Mode, string> = {
-  shortest: 'Shortest route', avoid_damage: 'Avoid damaged facilities', accessible: 'Verified step-free route',
+  shortest: 'Shortest route', avoid_damage: 'Avoid damaged facilities', accessible: 'Demo step-free route',
 };
 
 export function meters(a: Coordinate, b: Coordinate): number {
@@ -80,7 +83,9 @@ function project(point: Coordinate, a: Coordinate, b: Coordinate) {
   const coordinate: Coordinate = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
   return { coordinate, t, distance: meters(point, coordinate) };
 }
-export function validateDataset(data: Dataset): Dataset {
+export function validateDataset(value: unknown): Dataset {
+  if (!value || typeof value !== 'object') throw new Error('Invalid pilot dataset.');
+  const data = value as Dataset;
   if (data.version !== 3 || data.source !== 'osm_roads_with_fictional_facilities' || data.fieldVerified !== false ||
       data.provenance.geometrySource !== 'OpenStreetMap' || data.provenance.license !== 'ODbL-1.0' || !/^[a-f0-9]{64}$/.test(data.provenance.sourceXmlSha256) ||
       !Array.isArray(data.bbox) || data.bbox.length !== 4 || !data.bbox.every(Number.isFinite) ||
@@ -110,9 +115,19 @@ export function validateDataset(data: Dataset): Dataset {
     if (!insideBounds(f.coordinate, facilityBounds) || f.geometry.length < 2 || f.geometry.some(p => !insideBounds(p, facilityBounds)) ||
         !['openstreetmap', 'simulation'].includes(f.routingSource) || f.fieldVerified !== false || !f.routingWayId) throw new Error('Invalid navigation facility.');
   }
+  if (data.accessibilityFacilities?.length) {
+    const policy = data.demoAccessibility;
+    if (!policy || policy.version !== 'demo-step-free-v1' || policy.source !== 'simulation' || policy.fieldVerified !== false || policy.outdoorApproachMeters !== 20 || policy.buildingApproach !== 'simulated_registered_entrances') throw new Error('Invalid demo accessibility policy.');
+    if (new Set(data.accessibilityFacilities.map(f => f.id)).size !== data.accessibilityFacilities.length) throw new Error('Duplicate demo accessibility facility.');
+    for (const f of data.accessibilityFacilities) {
+      if (f.routingSource !== 'simulation' || f.fieldVerified !== false || f.stepFree !== true || !f.name || !f.routingWayId ||
+          !insideBounds(f.coordinate, facilityBounds) || f.geometry.length < 2 || f.geometry.some(p => !insideBounds(p, facilityBounds)) ||
+          !['crossing', 'footbridge', 'step_free_path', 'accessible_entrance'].includes(f.kind) || !f.accessFeatures?.length) throw new Error('Invalid simulated step-free facility.');
+    }
+  }
   return data;
 }
-export const dataset = validateDataset(raw as Dataset);
+export const dataset = validateDataset(raw);
 export function initialScenario(data = dataset): Scenario {
   return { repairedIds: [], reporterCounts: Object.fromEntries(data.facilities.map(f => [f.id, f.reporters])) };
 }

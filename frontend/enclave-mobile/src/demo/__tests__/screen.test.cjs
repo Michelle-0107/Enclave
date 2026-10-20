@@ -95,8 +95,8 @@ test('Invalid point is rejected instead of drawing a cross-area connector',()=>{
  let t=tree();mapTap(t,[0,0]);t=tree();assert.ok(text(t).includes('inside the current service area'));assert.equal(all(t).filter(n=>n.type==='Marker').length,0);
 });
 test('Selecting a different mode updates route state without changing endpoint choices',async()=>{
- let t=await chooseJourney();find(t,n=>n.props?.accessibilityRole==='radio'&&text(n).includes('Verified step-free route')).props.onPress();t=tree();
- assert.ok(find(t,n=>n.props?.accessibilityRole==='radio'&&text(n).includes('Verified step-free route')).props.accessibilityState.checked);
+ let t=await chooseJourney();find(t,n=>n.props?.accessibilityRole==='radio'&&text(n).includes('Demo step-free route')).props.onPress();t=tree();
+ assert.ok(find(t,n=>n.props?.accessibilityRole==='radio'&&text(n).includes('Demo step-free route')).props.accessibilityState.checked);
  assert.equal(all(t).filter(n=>n.type==='Marker').length,2);
 });
 test('Report and live-map buttons use existing app callbacks without writing demo records',()=>{
@@ -110,9 +110,21 @@ test('Wheelchair sends an accessible profile to the backend and offers only its 
  let t=await chooseJourney();button(t,'Wheelchair').props.onPress();t=tree();
  assert.equal(all(t).filter(n=>n.type==='Marker').length,2);assert.ok(!all(t).some(n=>n.props?.id==='demo-selected-route'));
  await button(t,'Choose route').props.onPress();t=tree();const options=all(t).filter(n=>n.props?.accessibilityRole==='radio');
- assert.equal(options.length,1);assert.ok(text(options[0]).includes('Verified step-free route'));assert.ok(text(t).includes('not field verified'));
+ assert.equal(options.length,1);assert.ok(text(options[0]).includes('Demo step-free route'));assert.ok(text(t).includes('not field verified'));
  assert.equal(serverCalls.length,2);assert.equal(serverCalls[1].payload.profile,'wheelchair');
 });
+test('Step-free route displays its simulated facilities while unrelated facilities remain hidden',async()=>{
+ let t=tree();button(t,'Wheelchair').props.onPress();
+ const facility=raw.accessibilityFacilities.find(f=>f.kind==='footbridge');
+ responder=payload=>{const result=serverResponse(payload);for(const option of result.options)option.route.demo_facility_ids.push(facility.id);return result;};
+ t=await chooseJourney();const source=find(t,n=>n.props?.id==='demo-navigation-facilities');
+ assert.equal(source.props.data.features.length,1);assert.equal(source.props.data.features[0].properties.symbol,'SF');
+ assert.equal(source.props.data.features[0].properties.id,facility.id);assert.ok(text(t).includes('SF: simulated'));
+ assert.ok(!all(t).some(n=>n.props?.id==='demo-places'));assert.ok(text(t).includes(facility.name));
+ button(t,'Start Enclave guidance').props.onPress();t=tree();
+ assert.ok(find(t,n=>n.type==='JourneyGuidance').props.route.navigationFacilities.some(f=>f.id===facility.id&&f.stepFree));
+});
+
 test('Car does not relabel or display old walking routes and only opens driving directions after pressing its button',async()=>{
  let t=await chooseJourney();button(t,'Car').props.onPress();t=tree();assert.equal(openedUrls.length,0);assert.ok(!all(t).some(n=>n.props?.id==='demo-selected-route'));
  assert.equal(all(t).filter(n=>n.props?.accessibilityRole==='radio').length,0);assert.equal(all(t).filter(n=>n.type==='Marker').length,2);
