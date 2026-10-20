@@ -51,8 +51,8 @@ Open http://127.0.0.1:8001/docs. The port 8002 sandbox is a separate fake app; u
 }
 ```
 
-5. Copy `resident_id` and execute `POST /api/v1/management/residents/{resident_id}/invitations`. Management receives the invitation token once and delivers it to that resident through the agreed private channel. Only its digest is stored.
-6. The resident submits approved email and invitation to `POST /api/v1/registration/request-otp`; copy the returned `challenge_id`. A generic 202 alone does not prove eligibility/delivery. Read the real email for the OTP.
+5. Add the resident through the management frontend. It creates the resident record and then creates the server-side invitation record; no plaintext invitation token is returned or shared.
+6. The resident submits their approved email only to `POST /api/v1/registration/request-otp`; copy the returned `challenge_id`. A generic 202 alone does not prove eligibility/delivery. Read the real email for the OTP.
 7. Generate a random `Idempotency-Key` privately, submit the challenge ID, six-digit OTP string, and password to `POST /api/v1/registration/verify-and-signup`. Reuse the same key/password on retries. Success returns the resident binding and real Supabase access/refresh session.
 8. Authorize with the resident's access token and call `GET /api/v1/me/residency`; confirm the expected resident/unit. The frontend installs the returned session with its Supabase SDK. Existing confirmed accounts use their own password; signup does not reset their credentials.
 

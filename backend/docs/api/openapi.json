@@ -4831,10 +4831,6 @@
             "format": "uuid",
             "title": "Resident Id"
           },
-          "invitation_token": {
-            "type": "string",
-            "title": "Invitation Token"
-          },
           "expires_at": {
             "type": "string",
             "format": "date-time",
@@ -4845,7 +4841,6 @@
         "required": [
           "invitation_id",
           "resident_id",
-          "invitation_token",
           "expires_at"
         ],
         "title": "InvitationResult"

@@ -16,6 +16,7 @@ const Screen=compile('DemoMapScreen.tsx',name=>{
  if(name==='react/jsx-runtime')return{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
  if(name==='react-native')return{Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',Keyboard:{dismiss:()=>{}},Linking:{openURL:async url=>openedUrls.push(url)},StyleSheet:{create:x=>x}};
  if(name==='../navigation/NativeMap')return{NativeMap:'Map'};
+ if(name==='../navigation/NamedMapPoint')return{__esModule:true,default:'NamedMapPoint'};
  if(name==='@maplibre/maplibre-react-native')return{Camera:'Camera',GeoJSONSource:'GeoJSONSource',Layer:'Layer',Map:'Map',Marker:'Marker'};
  if(name==='@expo/vector-icons')return{MaterialCommunityIcons:'MaterialCommunityIcons'};
  if(name==='./access')return access;if(name==='./JourneyGuidance')return{__esModule:true,default:'JourneyGuidance'};
@@ -42,7 +43,7 @@ test('Default map shows reported damage only; optional overlays keep every facil
  let t=tree();const visible=find(t,n=>n.props?.id==='demo-facilities').props.data.features;
  assert.equal(visible.length,35);assert.ok(visible.every(f=>f.properties.blocked));
  assert.ok(!all(t).some(n=>n.props?.id==='demo-places'||n.props?.id==='demo-navigation-facilities'||n.props?.id==='demo-navigation-lines'));
- assert.ok(text(t).includes('Landmarks are shown by the basemap'));
+ assert.ok(text(t).includes('Map legend'));assert.ok(text(t).includes('Stairs'));assert.ok(text(t).includes('Show facility markers'));
  button(t,'Show facility markers').props.onPress();t=tree();const f=find(t,n=>n.props?.id==='demo-facilities');const p=find(t,n=>n.props?.id==='demo-places');
  assert.equal(f.props.data.features.length,138);assert.equal(p.props.data.features.length,249);assert.ok(text(t).includes('138'));assert.ok(text(t).includes('35'));
  assert.equal(find(t,n=>n.props?.id==='demo-facility-labels').props.layout['text-font'].join(','),'Noto Sans Regular');

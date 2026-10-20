@@ -7,6 +7,7 @@ import { getManagementReports, type ManagementReport } from '@/lib/api';
 import { reportStatusLabels } from '@/lib/mock-reports';
 import { reportStatuses, reportTones, tones } from '@/lib/report-presentation';
 import { ReportStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
+import ReportThumbnail from '@/components/management/ReportThumbnail';
 
 export default function ManagementDashboard() {
   const [reports, setReports] = useState<ManagementReport[]>([]);
@@ -32,18 +33,23 @@ export default function ManagementDashboard() {
   function reportRows(items: ManagementReport[], empty: string) {
     return <div className="report-list">
       {loading ? <p role="status" className="py-6 text-sm text-muted-foreground">Loading reports…</p> : !items.length ? <p className="py-6 text-sm text-muted-foreground">{empty}</p> : items.map(item => <Link key={item.id} href={`/management/reports/${encodeURIComponent(item.id)}`} className="report-list-row">
-        <span className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="line-clamp-2 text-sm font-semibold">{item.title}</span>
-          <span className="line-clamp-1 text-xs text-muted-foreground">{item.location}</span>
-          <span className="text-xs font-semibold">{nextStep(item)} →</span>
-        </span><span className="report-row-badges"><ReportStatusBadge status={item.status} /><PriorityBadge priority={item.priority} /></span><ArrowUpRight size={18} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+        <ReportThumbnail imageUrl={item.imageUrl} title={item.title} />
+        <span className="report-row-main">
+          <span className="report-row-status"><ReportStatusBadge status={item.status} variant="text" /></span>
+          <span className="report-row-copy">
+            <span className="line-clamp-2 text-sm font-semibold">{item.title}</span>
+            <span className="line-clamp-1 text-xs text-muted-foreground">{item.location}</span>
+            <span className="text-xs font-semibold">{nextStep(item)} →</span>
+          </span>
+        </span>
+        <span className="report-row-trailing"><PriorityBadge priority={item.priority} prominent /><ArrowUpRight size={18} className="report-row-arrow shrink-0 text-muted-foreground" aria-hidden="true" /></span>
       </Link>)}
     </div>;
   }
   return <div className="flex flex-col gap-7">
     <div><h1 className="font-semibold">Your community.</h1><p className="mt-3 text-sm text-muted-foreground">KL East · Reports and repairs at a glance.</p></div>
     {error && <div role="alert" className="rounded-2xl bg-status-red-bg p-4 text-sm text-status-red"><p>{error}</p><button type="button" onClick={() => void load()} className="mt-3 min-h-11 font-semibold underline">Try again</button></div>}
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">{reportStatuses.map(status => <Link key={status} href={`/management/reports?status=${status}`} style={tones[reportTones[status]]} className="min-h-[124px] rounded-3xl p-5 focus-visible:outline-2 focus-visible:outline-ring"><p className="text-[28px] font-semibold">{loading || error ? '—' : reports.filter(report => report.status === status).length}</p><p className="mt-3 text-sm font-semibold">{reportStatusLabels[status]}</p></Link>)}</div>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">{reportStatuses.map(status => <Link key={status} href={`/management/reports?status=${status}`} style={tones[reportTones[status]]} className="dashboard-status-card min-h-[124px] rounded-3xl p-5 focus-visible:outline-2 focus-visible:outline-ring"><p className="relative z-10 text-[28px] font-semibold">{loading || error ? '—' : reports.filter(report => report.status === status).length}</p><p className="relative z-10 mt-3 text-sm font-semibold">{reportStatusLabels[status]}</p></Link>)}</div>
     <section aria-labelledby="quick-heading"><h2 id="quick-heading" className="mb-4 text-lg font-semibold">Quick access</h2><div className="quick-access">
       <Link href="/management/reports"><ClipboardList size={23} aria-hidden="true" /><span className="font-semibold">View reports</span><span className="hidden text-xs text-muted-foreground sm:block">Review incoming issues</span></Link>
       <Link href="/management/what-if"><Route size={23} aria-hidden="true" /><span className="font-semibold">Repair what-if</span><span className="hidden text-xs text-muted-foreground sm:block">Compare repair plans</span></Link>

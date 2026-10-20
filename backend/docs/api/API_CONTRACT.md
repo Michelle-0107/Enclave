@@ -93,11 +93,11 @@ See [REGISTRATION_TESTING.md](../registration/REGISTRATION_TESTING.md) for the l
 
 | Method/path                                          | Authentication                         | Contract                                                                                                                          |
 | ---------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| POST `/api/v1/registration/request-otp`              | Public, invitation-bound, rate limited | `email`, `invitation_token`; 202 generic message + `challenge_id`, no OTP/provider response.                                      |
+| POST `/api/v1/registration/request-otp`              | Public, invitation-bound, rate limited | `email`; 202 generic message + `challenge_id`, no OTP/provider response. The active invitation is looked up by registered email; no invitation token is entered by the resident. |
 | POST `/api/v1/registration/verify-and-signup`        | OTP + same-request proof + password    | `challenge_id`, six-digit OTP string, password; `Idempotency-Key` header; session/resident/user IDs only after committed binding. |
 | GET `/api/v1/me/residency`                           | Supabase JWT                           | Own resident ID, unit, active/inactive state, verification timestamp; 404 if unbound.                                             |
 | POST `/api/v1/management/residents`                  | JWT + trusted profile role management  | Approved roster fields; 201 resident ID.                                                                                          |
-| POST `/api/v1/management/residents/{id}/invitations` | JWT + trusted profile role management  | 201 invitation token (once), ID, resident ID, expiry.                                                                             |
+| POST `/api/v1/management/residents/{id}/invitations` | JWT + trusted profile role management  | 201 server-side invitation record ID, resident ID, and expiry; no plaintext token is returned.                                    |
 
 POST `/api/send-verification-email` is a deprecated alias of request-OTP with the same invitation requirement. It never returns generated_code. Registration responses/errors containing proof/session data use Cache-Control no-store, and validation errors do not echo secret inputs. Registration is 503 when configuration/SQL is unavailable; invalid proof is 400, rate exhaustion 429, account/provisioning conflict 409, unauthorized management 403. The API never accepts a caller-selected role, user ID, approval flag, or email-confirmation flag.
 

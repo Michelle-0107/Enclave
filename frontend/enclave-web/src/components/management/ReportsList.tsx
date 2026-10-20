@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { Input } from '@/components/ui/input';
 import { ReportStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
+import ReportThumbnail from '@/components/management/ReportThumbnail';
 import { Label } from '@/components/ui/label';
 import { getManagementReports, type ManagementReport } from '@/lib/api';
 
@@ -199,11 +200,15 @@ export default function ReportsList({
               href={`/management/reports/${encodeURIComponent(report.id)}`}
               className="report-list-row"
             >
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <h2 className="text-lg font-semibold">{report.title}</h2>
-                <p className="text-xs text-muted-foreground">#{report.id} · {report.location} · {report.category}</p>
+              <ReportThumbnail imageUrl={report.imageUrl} title={report.title} />
+              <div className="report-row-main">
+                <div className="report-row-status"><ReportStatusBadge status={report.status} variant="text" /></div>
+                <div className="report-row-copy">
+                  <h2 className="text-lg font-semibold">{report.title}</h2>
+                  <p className="text-xs text-muted-foreground">#{report.id} · {report.location} · {report.category}</p>
+                </div>
               </div>
-              <div className="report-row-badges"><ReportStatusBadge status={report.status} /><PriorityBadge priority={report.priority} /></div>
+              <div className="report-row-trailing"><PriorityBadge priority={report.priority} prominent /></div>
             </Link>
           ))
         )}

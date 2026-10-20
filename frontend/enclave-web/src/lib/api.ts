@@ -109,7 +109,6 @@ export type UpdateResidentInput = CreateResidentInput & {
 export type InvitationResult = {
   invitation_id: string;
   resident_id: string;
-  invitation_token: string;
   expires_at: string;
 };
 
@@ -480,6 +479,18 @@ export function createNotification(input: CreateNotificationInput) {
 
 export function getRepairCandidates() {
   return apiRequest<RepairCandidates>('/api/v1/management/what-if/candidates');
+}
+
+export type MapLocationName = { matched: boolean; name: string | null };
+
+export function resolveMapLocationName(point: { latitude: number; longitude: number }) {
+  const query = new URLSearchParams({
+    latitude: String(point.latitude),
+    longitude: String(point.longitude),
+  });
+  return apiRequest<MapLocationName>(
+    `/api/v1/management/what-if/location-name?${query.toString()}`,
+  );
 }
 
 export function compareRepairPlans(input: {

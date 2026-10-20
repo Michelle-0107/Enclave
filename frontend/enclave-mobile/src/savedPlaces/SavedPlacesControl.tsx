@@ -6,10 +6,17 @@ import { colors } from '../theme';
 import { createSavedPlacesStore, type PlacePoint, type SavedPlace } from './store';
 
 const store = createSavedPlacesStore(supabase);
-type Props = { field: string; current: PlacePoint | null; onChoose: (point: SavedPlace) => void; disabled?: boolean };
+type Props = {
+  field: string;
+  current: PlacePoint | null;
+  onChoose: (point: SavedPlace) => void;
+  onPickMapPoint?: (onPicked: (coordinate: PlacePoint['coordinate']) => void) => void;
+  showHelp?: boolean;
+  disabled?: boolean;
+};
 type Draft = PlacePoint & { id?: string };
 
-export default function SavedPlacesControl({ field, current, onChoose, disabled = false }: Props) {
+export default function SavedPlacesControl({ field, current, onChoose, onPickMapPoint, showHelp = true, disabled = false }: Props) {
   const [visible, setVisible] = useState(false);
   const [items, setItems] = useState<SavedPlace[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -90,31 +97,45 @@ export default function SavedPlacesControl({ field, current, onChoose, disabled 
     ]);
   }
 
+  function adjustPositionOnMap() {
+    if (!draft || !onPickMapPoint) return;
+    const editing = { ...draft, coordinate: [...draft.coordinate] as PlacePoint['coordinate'] };
+    setVisible(false);
+    onPickMapPoint(coordinate => {
+      setDraft({ ...editing, coordinate: [...coordinate] });
+      setNotice('Map position updated. Save your changes to keep it.');
+      setVisible(true);
+    });
+  }
+
   return <View style={styles.controls}>
     <View style={styles.actions}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Saved places for ${field}`} disabled={disabled} onPress={() => open(false)} style={[styles.button, disabled && styles.disabled]}>
-        <Text style={styles.link}>Saved places</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Choose a saved place for ${field}`} disabled={disabled} onPress={() => open(false)} style={[styles.button, disabled && styles.disabled]}>
+        <Text style={styles.link}>Use saved place</Text>
       </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={`Save selected ${field}`} disabled={disabled || !current} onPress={() => open(true)} style={[styles.button, (disabled || !current) && styles.disabled]}>
-        <Text style={styles.link}>Save this place</Text>
+        <Text style={styles.link}>Save selected point</Text>
       </Pressable>
     </View>
+    {showHelp && <Text style={styles.hint}>Save places like Home or Work once, then reuse them for either point. You can rename or adjust a saved place later.</Text>}
     {notice ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{notice}</Text> : null}
     <Modal visible={visible} animationType="slide" onRequestClose={close}>
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView style={styles.safe} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.header}>
-            <Text accessibilityRole="header" style={styles.title}>{draft ? (draft.id ? 'Edit saved place' : 'Save this place') : 'Your saved places'}</Text>
+            <Text accessibilityRole="header" style={styles.title}>{draft ? (draft.id ? 'Edit saved place' : 'Save selected point') : 'Your saved places'}</Text>
             <Pressable accessibilityRole="button" disabled={busy} onPress={close} style={styles.button}><Text style={styles.link}>Close</Text></Pressable>
           </View>
-          <Text style={styles.hint}>Private to your account. Choose a place for {field}.</Text>
+          <Text style={styles.hint}>Saved places are private to your account. Choose one to set your {field}.</Text>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
             {draft ? <View style={styles.form}>
               <Text style={styles.name}>Place name</Text>
               <TextInput accessibilityLabel="Saved place name" value={draft.label} onChangeText={label => setDraft({ ...draft, label })} placeholder="e.g. Home, Office, Gym" maxLength={60} autoFocus editable={!busy} style={styles.input} />
-              <Text style={styles.hint}>{draft.coordinate[1].toFixed(6)}, {draft.coordinate[0].toFixed(6)}</Text>
-              {draft.id && current && <Pressable accessibilityRole="button" disabled={busy} onPress={() => setDraft({ ...draft, coordinate: [...current.coordinate] })} style={styles.button}><Text style={styles.link}>Use currently selected map point</Text></Pressable>}
-              <Pressable accessibilityRole="button" disabled={busy || !draft.label.trim()} onPress={() => void save()} style={[styles.primary, (busy || !draft.label.trim()) && styles.disabled]}><Text style={styles.primaryText}>Save place</Text></Pressable>
+              <Text style={styles.hint}>{draft.id ? 'Rename it here, or adjust its location on the map.' : 'This saves the currently selected map point.'}</Text>
+              <Text style={styles.hint}>Location: {draft.coordinate[1].toFixed(6)}, {draft.coordinate[0].toFixed(6)}</Text>
+              {draft.id && onPickMapPoint && <Pressable accessibilityRole="button" disabled={busy} onPress={adjustPositionOnMap} style={styles.button}><Text style={styles.link}>Adjust position on map</Text></Pressable>}
+              {draft.id && current && <Pressable accessibilityRole="button" disabled={busy} onPress={() => setDraft({ ...draft, coordinate: [...current.coordinate] })} style={styles.button}><Text style={styles.link}>Use current point</Text></Pressable>}
+              <Pressable accessibilityRole="button" disabled={busy || !draft.label.trim()} onPress={() => void save()} style={[styles.primary, (busy || !draft.label.trim()) && styles.disabled]}><Text style={styles.primaryText}>{draft.id ? 'Save changes' : 'Save place'}</Text></Pressable>
             </View> : <>
               {items.map(item => <View key={item.id} style={styles.item}>
                 <Pressable accessibilityRole="button" accessibilityLabel={`Use ${item.label} as ${field}`} disabled={busy} style={styles.choice} onPress={() => { onChoose(item); close(); }}>
@@ -125,7 +146,7 @@ export default function SavedPlacesControl({ field, current, onChoose, disabled 
                   <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${item.label}`} disabled={busy} onPress={() => confirmDelete(item)} style={styles.button}><Text style={styles.danger}>Delete</Text></Pressable>
                 </View>
               </View>)}
-              {!busy && !error && !items.length && <Text style={styles.hint}>No saved places yet. Select a point on the map, then tap Save this place.</Text>}
+              {!busy && !error && !items.length && <Text style={styles.hint}>No saved places yet. Choose a point, tap Save selected point, and give it a name such as Home or Work. You can reuse or edit it later.</Text>}
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => void refresh()} style={styles.button}><Text style={styles.link}>Refresh</Text></Pressable>
             </>}
             {busy && <ActivityIndicator accessibilityLabel="Syncing saved places" color={colors.navy} />}

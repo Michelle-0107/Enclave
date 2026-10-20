@@ -95,5 +95,4 @@ class Residency(BaseModel):
 class InvitationResult(BaseModel):
     invitation_id: UUID
     resident_id: UUID
-    invitation_token: str = Field(repr=False)
     expires_at: datetime

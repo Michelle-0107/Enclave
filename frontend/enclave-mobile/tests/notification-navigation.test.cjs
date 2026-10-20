@@ -9,6 +9,7 @@ const ts = createRequire(path.join(mobile, 'package.json'))('typescript');
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
 const native = Object.fromEntries(['ActivityIndicator','Image','Modal','Pressable','ScrollView','Text','View'].map(name => [name,name]));
 native.StyleSheet = { create: value => value };
+native.Platform = { OS: 'android' };
 function hooks() {
   let cursor = 0; const state = [], pending = [], effects = new Set();
   return { begin() { cursor = 0; }, flush() { for (const fn of pending.splice(0)) fn(); }, react: {

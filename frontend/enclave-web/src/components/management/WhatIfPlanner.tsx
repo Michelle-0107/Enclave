@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiError,
   compareRepairPlans,
   getRepairCandidates,
+  resolveMapLocationName,
   type FacilityIssue,
+  type MapLocationName,
   type WhatIfPath,
   type WhatIfPlan,
   type WhatIfResult,
@@ -32,6 +34,7 @@ type PlanForm = {
   facilities: string[];
   costs: Record<string, string>;
 };
+type LocationLookup = MapLocationName & { status: "loading" | "ready" | "unavailable" };
 
 const blankJourney = (): JourneyForm => ({
   name: "",
@@ -74,6 +77,10 @@ function comparisonNotes(warnings: string[]) {
 const MAX_PATHS = 10;
 const MAX_PLANS = 5;
 
+function locationLookupKey(index: number, latitude: string, longitude: string) {
+  return `${index}:${latitude.trim()}:${longitude.trim()}`;
+}
+
 export default function WhatIfPlanner() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [pickTargets, setPickTargets] = useState<Record<number, PickTarget>>(
@@ -81,6 +88,9 @@ export default function WhatIfPlanner() {
   );
   const [issues, setIssues] = useState<FacilityIssue[]>([]);
   const [journeys, setJourneys] = useState<JourneyForm[]>([blankJourney()]);
+  const [locationLookups, setLocationLookups] = useState<Record<string, LocationLookup>>({});
+  const [coordinateEditors, setCoordinateEditors] = useState<Record<string, boolean>>({});
+  const completedLocationLookups = useRef(new Set<string>());
   const [plans, setPlans] = useState<PlanForm[]>([blankPlan(1)]);
   const [modes, setModes] = useState<Array<"avoid_damage" | "accessible">>([
     "avoid_damage",
@@ -132,6 +142,39 @@ export default function WhatIfPlanner() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const timers: number[] = [];
+    for (const [index, path] of journeys.entries()) {
+      for (const [latitude, longitude] of [[path.fromLat, path.fromLng], [path.toLat, path.toLng]]) {
+        const point = parseMapPoint(latitude, longitude);
+        if (!point) continue;
+        const key = locationLookupKey(index, latitude, longitude);
+        if (completedLocationLookups.current.has(key)) continue;
+        timers.push(window.setTimeout(() => {
+          setLocationLookups((items) => ({ ...items, [key]: { matched: false, name: null, status: "loading" } }));
+          resolveMapLocationName(point)
+            .then((result) => {
+              if (active) {
+                completedLocationLookups.current.add(key);
+                setLocationLookups((items) => ({ ...items, [key]: { ...result, status: "ready" } }));
+              }
+            })
+            .catch(() => {
+              if (active) {
+                completedLocationLookups.current.add(key);
+                setLocationLookups((items) => ({ ...items, [key]: { matched: false, name: null, status: "unavailable" } }));
+              }
+            });
+        }, 350));
+      }
+    }
+    return () => {
+      active = false;
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [journeys]);
 
   const facilities = useMemo(() => {
     const byId = new Map<string, FacilityIssue[]>();
@@ -286,6 +329,64 @@ export default function WhatIfPlanner() {
           className="min-h-11 rounded-xl border border-border bg-white px-3 font-normal"
         />
       </label>
+    );
+  }
+
+  function endpointCoordinates(
+    index: number,
+    name: "Start" | "Destination",
+    latitude: string,
+    longitude: string,
+    onLatitudeChange: (value: string) => void,
+    onLongitudeChange: (value: string) => void,
+  ) {
+    const key = locationLookupKey(index, latitude, longitude);
+    const lookup = locationLookups[key];
+    const editing = coordinateEditors[key] ?? false;
+    const showCoordinates = lookup?.status !== "ready" || !lookup.matched || editing;
+
+    return (
+      <div className="grid gap-2 sm:col-span-2">
+        {showCoordinates ? (
+          <div className="grid grid-cols-2 gap-3">
+            {numericInput(`${name} latitude`, latitude, onLatitudeChange)}
+            {numericInput(`${name} longitude`, longitude, onLongitudeChange)}
+          </div>
+        ) : (
+          <div className="flex min-h-14 items-center justify-between gap-3 rounded-xl border border-border bg-white px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-muted-foreground">{name} location</p>
+              <p className="truncate text-sm font-semibold text-primary">{lookup.name}</p>
+            </div>
+            <button
+              type="button"
+              aria-label={`Edit ${name.toLowerCase()} coordinates`}
+              onClick={() => setCoordinateEditors((items) => ({ ...items, [key]: true }))}
+              className="min-h-10 shrink-0 px-2 text-xs font-semibold text-primary underline"
+            >
+              Edit coordinates
+            </button>
+          </div>
+        )}
+        {lookup?.status === "loading" && (
+          <p className="text-xs text-muted-foreground">Checking for a street name…</p>
+        )}
+        {lookup?.status === "unavailable" && (
+          <p className="text-xs text-muted-foreground">Street name lookup unavailable; coordinates are shown.</p>
+        )}
+        {lookup?.status === "ready" && lookup.matched && editing && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Matched street: {lookup.name}</span>
+            <button
+              type="button"
+              onClick={() => setCoordinateEditors((items) => ({ ...items, [key]: false }))}
+              className="min-h-10 px-2 font-semibold text-primary underline"
+            >
+              Hide coordinates
+            </button>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -475,18 +576,27 @@ export default function WhatIfPlanner() {
                   }}
                 />
               </div>
-              {numericInput("Start latitude", path.fromLat, (value) =>
-                patchJourney(index, { fromLat: value }),
+              <details className="sm:col-span-2">
+                <summary className="cursor-pointer text-xs text-muted-foreground">Edit coordinates</summary>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {endpointCoordinates(
+                index,
+                "Start",
+                path.fromLat,
+                path.fromLng,
+                (value) => patchJourney(index, { fromLat: value }),
+                (value) => patchJourney(index, { fromLng: value }),
               )}
-              {numericInput("Start longitude", path.fromLng, (value) =>
-                patchJourney(index, { fromLng: value }),
+              {endpointCoordinates(
+                index,
+                "Destination",
+                path.toLat,
+                path.toLng,
+                (value) => patchJourney(index, { toLat: value }),
+                (value) => patchJourney(index, { toLng: value }),
               )}
-              {numericInput("Destination latitude", path.toLat, (value) =>
-                patchJourney(index, { toLat: value }),
-              )}
-              {numericInput("Destination longitude", path.toLng, (value) =>
-                patchJourney(index, { toLng: value }),
-              )}
+                </div>
+              </details>
               {journeys.length > 1 && (
                 <button
                   type="button"

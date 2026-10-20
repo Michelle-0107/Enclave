@@ -32,6 +32,7 @@ from .navigation.demo_routes import DemoRouteRequest, DemoRouteResponse, calcula
 from .navigation.roadside import walking_graph
 from .navigation.places import PlacesRepository, PlacesUnavailable, PlaceSearchResult
 from .navigation.locations import LocationsRepository, LocationsUnavailable, LocationsNotInstalled, LocationResult
+from .navigation.location_names import LocationName, LocationNamesUnavailable, MapLocationNamesRepository
 from .navigation.service import NavigationService
 from .reports.issues import (CommunityIssues,FacilityCreate,Facility,FacilityList,OpenIssue,JoinIssue,
                              IssueLinked,IssueList,IssueMapResponse,CommunityObstacleSnapshot,IssueUnavailable,IssueRejected)
@@ -105,6 +106,7 @@ def create_app(
     what_if_transport: httpx.AsyncBaseTransport | None = None,
     registration_service: RegistrationService | None = None,
     places_transport: httpx.AsyncBaseTransport | None = None,
+    map_location_names_transport: httpx.AsyncBaseTransport | None = None,
     maintenance_transport: httpx.AsyncBaseTransport | None = None,
     locations_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
@@ -127,6 +129,7 @@ def create_app(
         application.state.places = PlacesRepository(configured, transport=places_transport)
         application.state.locations = LocationsRepository(configured, transport=locations_transport)
         application.state.community_issues.locations = application.state.locations
+        application.state.map_location_names = MapLocationNamesRepository(configured, transport=map_location_names_transport)
         application.state.report_workflow = ReportWorkflow(configured, transport=workflow_transport)
         application.state.maintenance = MaintenanceRepository(configured, transport=maintenance_transport)
         routing_provider = ValhallaProvider(navigation_settings or NavigationSettings(), transport=navigation_transport)
@@ -154,6 +157,7 @@ def create_app(
             await notifications.close()
             await application.state.places.close()
             await application.state.locations.close()
+            await application.state.map_location_names.close()
             await application.state.report_workflow.close()
             await application.state.maintenance.close()
             await routing_provider.close()
@@ -681,6 +685,31 @@ def create_app(
     async def what_if_candidates(request: Request, response: Response, user: AuthenticatedUser = Depends(current_user)):
         response.headers["Cache-Control"] = "private, no-store"
         return await request.app.state.what_if.candidates(user.user_id)
+
+    @application.get("/api/v1/management/what-if/location-name", response_model=LocationName,
+                     tags=["Management What-if"], responses={**errors, 403: {"description": "Management role required"},
+                         404: {"description": "Service area not found"},
+                         503: {"description": "Map location catalog unavailable"}},
+                     description="Read-only lookup of a selected map point against named road sections in the shared OSM location catalog.")
+    async def what_if_location_name(request: Request, response: Response,
+            area_id: str = Query('kl-east-pilot', pattern=r'^[a-z][a-z0-9-]{1,63}$'),
+            latitude: float = Query(ge=-90, le=90), longitude: float = Query(ge=-180, le=180),
+            user: AuthenticatedUser = Depends(current_user)):
+        response.headers["Cache-Control"] = "private, no-store"
+        area = find_area(area_id)
+        if area is None:
+            raise HTTPException(404, "Service area not found")
+        try:
+            # Reuse the database-authoritative management check before the
+            # service-role read of the public road-name catalog.
+            await request.app.state.what_if_repository.snapshot(user.user_id)
+            return await request.app.state.map_location_names.resolve(area, latitude, longitude)
+        except WhatIfRejected as error:
+            raise HTTPException(error.status, error.message) from None
+        except WhatIfUnavailable:
+            raise HTTPException(503, "Management access or map location catalog unavailable") from None
+        except LocationNamesUnavailable:
+            raise HTTPException(503, "Map location catalog unavailable") from None
 
     @application.post("/api/v1/management/what-if/compare", response_model=CompareResponse,
                       tags=["Management What-if"], responses={401: {"description": "Invalid credentials."},
