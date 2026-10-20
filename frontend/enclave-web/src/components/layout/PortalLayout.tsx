@@ -5,6 +5,7 @@ import EnclaveLogo from '@/components/ui/EnclaveLogo';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  History,
   Mail,
   ClipboardList,
   ChevronLeft,
@@ -45,6 +46,7 @@ const navigation = [
     href: '/management/residents',
     icon: UsersRound,
   },
+  { label: 'Activity logs', href: '/management/activity-logs', icon: History },
   {
     label: 'Account',
     href: '/management/account',
@@ -191,7 +193,7 @@ export default function PortalLayout({ children }: Props) {
         className="fixed inset-x-0 bottom-0 z-50 border-t bg-card px-3 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden"
       >
         <div className="mx-auto grid max-w-2xl grid-cols-6 gap-2">
-          {navigation.map((item) => {
+          {navigation.filter(item => item.href !== '/management/activity-logs').map((item) => {
             const selected = isSelected(item.href);
             const Icon = item.icon;
 

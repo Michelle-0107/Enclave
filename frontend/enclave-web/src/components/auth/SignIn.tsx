@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import PasswordInput from '@/components/ui/PasswordInput';
 import EnclaveLogo from '@/components/ui/EnclaveLogo';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -135,10 +136,9 @@ export default function SignIn() {
                 Password
               </Label>
 
-              <Input
+              <PasswordInput
                 id="staff-password"
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 required
                 disabled={loading}

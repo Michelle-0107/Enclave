@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  Image,
   Alert,
   ActivityIndicator,
   Pressable,
@@ -7,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import AccountSettings from '../components/AccountSettings';
 import { Ionicons } from '@expo/vector-icons';
 
 import { residencyApi, type ApiError, type ResidencyRecord } from '../lib/api';
@@ -28,6 +30,7 @@ export default function AccountScreen({
   onHelpPress,
   onLogOut,
 }: Props) {
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [email, setEmail] = useState<string | null>(null);
   const [residency, setResidency] = useState<ResidencyRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,9 +127,9 @@ export default function AccountScreen({
         ) : residency ? (
           <>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
+              {avatarUrl ? <Image source={{ uri: avatarUrl }} accessibilityLabel="Your profile photo" style={{ width: 60, height: 60, borderRadius: 30 }} /> : <Text style={styles.avatarText}>
                 {(residency.full_name?.trim().charAt(0) || 'R').toUpperCase()}
-              </Text>
+              </Text>}
             </View>
 
             <View style={styles.profileInfo}>
@@ -143,6 +146,8 @@ export default function AccountScreen({
           <Text style={styles.errorText}>{error || 'No resident record found.'}</Text>
         )}
       </View>
+
+      <AccountSettings onAvatarChange={setAvatarUrl} />
 
       {!isLoading && residency ? (
         <View style={styles.detailsCard}>
