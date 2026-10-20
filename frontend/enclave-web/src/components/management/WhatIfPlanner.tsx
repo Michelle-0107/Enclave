@@ -50,6 +50,27 @@ const routeModes = [
   { id: "accessible" as const, label: "Accessible route" },
 ];
 
+const comparisonNoteLabels: Array<[string, string]> = [
+  ["Simulation only:", "Simulation only; do not use these routes for live navigation."],
+  ["Major paths are", "Paths are management-defined journeys, counted once across route modes."],
+  ["Affected counts", "Affected paths cross selected damage zones on the damage-free reference route."],
+  ["Before and after routes use", "Before and after routes share fixed endpoints."],
+  ["Mapped demo facilities", "Facility zones are approximate unless linked to mapped road segments."],
+  ["Each comparison rechecks", "Each plan keeps the shortest valid route around remaining damage."],
+  ["Accessible fallback routes", "Unverified walking references and unassessed links do not count as accessible."],
+  ["Route modes are summarized", "Paths are management-defined journeys, counted once across route modes."],
+  ["Costs are management-entered", "MYR costs are estimates; missing prices remain unknown."],
+  ["Unknown, unassessed, or inaccessible", "Unverified walking references and unassessed links do not count as accessible."],
+  ["Road geometry and damage zones", "Repair benefits are measured per plan within the KL East pilot."],
+];
+
+// Keep existing comparisons readable while the API update is rolling out.
+function comparisonNotes(warnings: string[]) {
+  return [...new Set(warnings.map(warning =>
+    comparisonNoteLabels.find(([prefix]) => warning.startsWith(prefix))?.[1] ?? warning,
+  ))];
+}
+
 const MAX_PATHS = 10;
 const MAX_PLANS = 5;
 
@@ -702,14 +723,13 @@ export default function WhatIfPlanner() {
               simulation only
             </p>
           </div>
-          {result.warnings.map((warning, index) => (
-            <p
-              key={index}
-              className="rounded-xl bg-card p-3 text-xs leading-relaxed text-muted-foreground"
-            >
-              {warning}
-            </p>
-          ))}
+          {result.warnings.length > 0 && (
+            <ul aria-label="Comparison notes" className="list-disc space-y-1 rounded-2xl bg-card py-3 pr-4 pl-8 text-xs leading-relaxed text-muted-foreground">
+              {comparisonNotes(result.warnings).map(note => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          )}
           <div className="grid min-w-0 items-start gap-5 xl:grid-cols-2">
           {result.plans.map((plan) => (
             <article
