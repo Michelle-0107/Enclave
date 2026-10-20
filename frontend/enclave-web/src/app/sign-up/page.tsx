@@ -34,7 +34,7 @@ export default function SignUpPage() {
 
         <Link
           href="/sign-in"
-          className="mt-8 flex min-h-14 items-center justify-center rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          className="mt-8 flex min-h-14 items-center justify-center rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
         >
           Go to sign in
         </Link>

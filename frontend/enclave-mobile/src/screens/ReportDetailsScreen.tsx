@@ -16,10 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { reportsApi, type ApiError, type ReportHistoryEvent, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { colors } from '../theme';
+import { colors, reportStatusTone } from '../theme';
 import type {
   ResidentReport,
-  ReportStatus,
 } from './MyReportsScreen';
 
 export type ReportProgressItem = {
@@ -43,33 +42,12 @@ const tones = {
   green: '#2D7050',
 };
 
-function getStatusStyle(status: ReportStatus) {
-  if (status === 'Repair verified / resolved') {
-    return {
-      text: '#2D7050',
-      background: '#E5F3EA',
-    };
-  }
-
-  if (status === 'Rejected') {
-    return {
-      text: '#A63E37',
-      background: '#FBE9E7',
-    };
-  }
-
-  return {
-    text: '#966114',
-    background: '#FFF0D9',
-  };
-}
-
 export default function ReportDetailsScreen({
   report,
   onMapTouchChange,
 }: Props) {
   const [currentReport, setCurrentReport] = useState(report);
-  const statusStyle = getStatusStyle(currentReport.status);
+  const statusStyle = reportStatusTone(currentReport.status);
   const [progressItems, setProgressItems] = useState<ReportProgressItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -187,7 +165,7 @@ export default function ReportDetailsScreen({
                 </Marker>
               </Map>
             </View>
-            <View style={styles.coordinateRow}><Ionicons name="navigate-outline" size={16} color={colors.muted} /><Text style={styles.location}>{currentReport.location}</Text></View>
+            <View style={styles.coordinateRow}><Ionicons name="navigate-outline" size={16} color={colors.muted} /><Text style={styles.location}>{currentReport.latitude!.toFixed(5)}, {currentReport.longitude!.toFixed(5)}</Text></View>
             <Pressable
               accessibilityRole="button"
               onPress={() => {
@@ -284,7 +262,7 @@ function mapReportRecord(record: ReportRecord): ResidentReport {
   return {
     id: record.ticket_id,
     title: record.category || 'Community report',
-    location: record.location_name?.trim() || 'Selected map point',
+    location: `${record.latitude.toFixed(5)}, ${record.longitude.toFixed(5)}`,
     date: record.created_at
       ? new Date(record.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
       : 'Date unavailable',
@@ -431,7 +409,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
   },
 
   navigationButtonText: {

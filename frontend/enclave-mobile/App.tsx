@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectedTab: {
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
   },
   pressed: {
     opacity: 0.8,

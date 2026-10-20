@@ -43,7 +43,7 @@ export default function Notifications() {
     {!loading && !error && !items.length && <p>No notifications yet.</p>}
     <div className="divide-y">{items.map(notice => <button type="button" key={notice.id} disabled={opening !== null}
       onClick={() => void open(notice)} className="flex w-full flex-col gap-2 py-6 text-left hover:opacity-75">
-      <h2 className="font-semibold">{!notice.is_read && <span className="mr-2 inline-block size-2 rounded-full bg-primary" aria-label="Unread" />}{notice.title}</h2>
+      <h2 className="font-semibold">{!notice.is_read && <span className="mr-2 inline-block size-2 rounded-full bg-brand" aria-label="Unread" />}{notice.title}</h2>
       <p className="text-sm text-muted-foreground">{notice.message}</p>
       <time className="text-xs text-muted-foreground" dateTime={notice.created_at}>{new Date(notice.created_at).toLocaleString()}</time>
     </button>)}</div>

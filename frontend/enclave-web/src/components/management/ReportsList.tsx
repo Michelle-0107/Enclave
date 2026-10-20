@@ -171,7 +171,7 @@ export default function ReportsList({
         </div>
       </div>
 
-      <div>
+      <div className="report-list">
         {error ? (
           <div role="alert" className="border-b py-8 text-sm text-status-red">
             <p>{error}</p>
@@ -197,19 +197,13 @@ export default function ReportsList({
             <Link
               key={report.id}
               href={`/management/reports/${encodeURIComponent(report.id)}`}
-              className="flex flex-col gap-2 border-b py-7 first:pt-0 transition-colors hover:bg-secondary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="report-list-row"
             >
-              <div className="flex min-w-0 items-center justify-between gap-4">
-                <h2 className="min-w-0 flex-1 text-lg font-semibold">
-                  {report.title}
-                </h2>
-
-                <div className="report-row-badges"><ReportStatusBadge status={report.status} /><PriorityBadge priority={report.priority} /></div>
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <h2 className="text-lg font-semibold">{report.title}</h2>
+                <p className="text-xs text-muted-foreground">#{report.id} · {report.location} · {report.category}</p>
               </div>
-
-              <p className="text-xs text-muted-foreground">
-                #{report.id} · {report.location} · {report.category}
-              </p>
+              <div className="report-row-badges"><ReportStatusBadge status={report.status} /><PriorityBadge priority={report.priority} /></div>
             </Link>
           ))
         )}

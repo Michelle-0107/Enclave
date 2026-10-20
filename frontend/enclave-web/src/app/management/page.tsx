@@ -30,8 +30,8 @@ export default function ManagementDashboard() {
     return item.status === 'pending' ? 'Review report' : item.status === 'approved' ? 'Check task assignment' : item.status === 'in_progress' ? 'Check repair progress' : 'View report';
   }
   function reportRows(items: ManagementReport[], empty: string) {
-    return <div className="divide-y rounded-3xl border border-border bg-card px-5">
-      {loading ? <p role="status" className="py-6 text-sm text-muted-foreground">Loading reports…</p> : !items.length ? <p className="py-6 text-sm text-muted-foreground">{empty}</p> : items.map(item => <Link key={item.id} href={`/management/reports/${encodeURIComponent(item.id)}`} className="flex min-w-0 items-center gap-4 py-5 focus-visible:outline-2 focus-visible:outline-ring">
+    return <div className="report-list">
+      {loading ? <p role="status" className="py-6 text-sm text-muted-foreground">Loading reports…</p> : !items.length ? <p className="py-6 text-sm text-muted-foreground">{empty}</p> : items.map(item => <Link key={item.id} href={`/management/reports/${encodeURIComponent(item.id)}`} className="report-list-row">
         <span className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="line-clamp-2 text-sm font-semibold">{item.title}</span>
           <span className="line-clamp-1 text-xs text-muted-foreground">{item.location}</span>

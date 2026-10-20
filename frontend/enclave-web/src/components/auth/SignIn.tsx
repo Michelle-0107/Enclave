@@ -168,7 +168,7 @@ export default function SignIn() {
             <Button
               type="submit"
               disabled={loading}
-              className="min-h-[52px] w-full rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground"
+              className="min-h-[52px] w-full rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground"
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
@@ -182,12 +182,7 @@ export default function SignIn() {
             </Link>
           </p>
 
-          <p className="text-xs text-muted-foreground">
-            Maintenance staff?{' '}
-            <Link href="/maintenance" className="font-semibold text-primary underline-offset-4 hover:underline">
-              Open maintenance portal
-            </Link>
-          </p>
+
         </div>
       </main>
     </div>

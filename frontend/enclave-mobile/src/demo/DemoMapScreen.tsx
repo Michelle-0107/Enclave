@@ -9,7 +9,6 @@ import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 import PlaceSearch from '../navigation/PlaceSearch';
-import NamedMapPoint from '../navigation/NamedMapPoint';
 import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, nearbyAccessPoints, searchPlaces, selectLocation,
   type Coordinate, type Dataset, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
 import { drivingDirectionsUrl } from './driving';
@@ -350,10 +349,6 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         {transport !== 'driving' && destination?.snap && <Text style={styles.hint}>Road access {Math.round(destination.snap.distance)} m from selection</Text>}
       </View>
     </View>
-    {!navigating && <View style={{ gap: 4 }}>
-      <NamedMapPoint coordinate={origin?.coordinate} areaId={areaId} label="Starting place" />
-      <NamedMapPoint coordinate={destination?.coordinate} areaId={areaId} label="Destination" />
-    </View>}
     {inputMode === 'search' && searching && <PlaceSearch areaId={areaId} query={field === 'origin' ? startText : endText}
       field={field === 'origin' ? 'starting point' : 'destination'}
       local={suggestions.map(p => ({ id: p.id, label: p.name, coordinate: p.coordinate, address: '', basis: p.positionBasis }))}
@@ -519,7 +514,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 12, lineHeight: 18, color: colors.muted }, cardTitle: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.navy },
   selectedPanel: { backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 6 },
   textButton: { minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' }, link: { fontSize: 13, lineHeight: 19, fontWeight: '600', color: colors.navy },
-  chooseButton: { minHeight: 50, padding: 14, borderRadius: 16, backgroundColor: colors.navy, alignItems: 'center', justifyContent: 'center' },
+  chooseButton: { minHeight: 50, padding: 14, borderRadius: 16, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
   chooseButtonText: { fontSize: 15, lineHeight: 20, fontWeight: '600', color: colors.white },
   routeCard: { backgroundColor: colors.white, padding: 14, gap: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border }, selectedCard: { borderColor: colors.navy, backgroundColor: '#E8F1F4' },
   modalOverlay: { flex: 1, justifyContent: 'center', padding: 22, backgroundColor: '#15203788' },

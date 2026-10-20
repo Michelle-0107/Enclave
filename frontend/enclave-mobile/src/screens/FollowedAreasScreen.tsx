@@ -279,13 +279,13 @@ const styles = StyleSheet.create({
   },
 
   checkboxSelected: {
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
     borderColor: colors.navy,
   },
 
   saveButton: {
     minHeight: 50,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 15,

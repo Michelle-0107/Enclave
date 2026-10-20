@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { type TaskStatus } from "@/lib/maintenance/types";
 export const primaryLink =
-  "flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 py-3 text-center text-sm font-semibold text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2";
+  "flex min-h-[52px] items-center justify-center rounded-2xl bg-brand px-6 py-3 text-center text-sm font-semibold text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2";
 export const secondaryLink =
   "flex min-h-[52px] items-center justify-center rounded-2xl bg-secondary px-6 py-3 text-center text-sm font-semibold hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2";
 export const control =

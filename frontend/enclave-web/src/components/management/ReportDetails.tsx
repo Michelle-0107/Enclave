@@ -125,7 +125,7 @@ export default function ReportDetails({ report: initialReport, reviewKey }: Prop
           {report.imageUrl ? (
             <div className="relative min-h-[240px] flex-1 overflow-hidden rounded-3xl border border-border bg-card p-3">
               <Image src={report.imageUrl} alt={`Resident evidence for ${report.title}`} fill unoptimized sizes="(max-width: 1024px) 100vw, 50vw" className="object-contain p-3" />
-              <button type="button" onClick={() => setPhotoExpanded(true)} className="absolute right-4 bottom-4 z-10 min-h-10 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow" aria-label="Expand report photo">Expand photo</button>
+              <button type="button" onClick={() => setPhotoExpanded(true)} className="absolute right-4 bottom-4 z-10 min-h-10 rounded-xl bg-brand px-4 text-xs font-semibold text-primary-foreground shadow" aria-label="Expand report photo">Expand photo</button>
             </div>
           ) : (
             <div className="flex min-h-[180px] items-center justify-center rounded-3xl border border-border bg-card p-5 text-sm text-muted-foreground">
@@ -176,7 +176,7 @@ export default function ReportDetails({ report: initialReport, reviewKey }: Prop
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         <section aria-label="Issue location" className="flex min-w-0 flex-col gap-5 rounded-3xl border border-border bg-white p-5">
           <h2 className="text-lg font-semibold text-primary">Issue Location</h2>
-          <ReportLocationMap latitude={report.latitude} longitude={report.longitude} locationName={report.location} />
+          <ReportLocationMap latitude={report.latitude} longitude={report.longitude} />
         </section>
 
         {report.status === 'pending' && (
@@ -197,7 +197,7 @@ export default function ReportDetails({ report: initialReport, reviewKey }: Prop
           <div className="flex flex-col gap-3 sm:flex-row">
             {report.status === 'pending' && (
               <>
-                <Button type="button" disabled={saving} onClick={() => void transition('approved')} className="min-h-[50px] rounded-2xl bg-primary px-5 text-primary-foreground">{saving ? 'Saving…' : 'Approve report'}</Button>
+                <Button type="button" disabled={saving} onClick={() => void transition('approved')} className="min-h-[50px] rounded-2xl bg-brand px-5 text-primary-foreground">{saving ? 'Saving…' : 'Approve report'}</Button>
                 <Button type="button" disabled={saving} onClick={() => void transition('rejected')} className="min-h-[50px] rounded-2xl bg-status-red-bg px-5 text-status-red hover:bg-status-red-bg">Reject report</Button>
               </>
             )}

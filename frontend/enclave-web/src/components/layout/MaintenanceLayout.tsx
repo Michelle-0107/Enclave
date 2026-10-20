@@ -40,7 +40,7 @@ export default function MaintenanceLayout({ children }: Props) {
         <button
           type="button"
           onClick={() => router.replace("/sign-in")}
-          className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground"
+          className="min-h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-primary-foreground"
         >
           Return to sign in
         </button>
@@ -112,7 +112,7 @@ export default function MaintenanceLayout({ children }: Props) {
                   "focus-visible:outline-2 focus-visible:outline-offset-2",
                   "focus-visible:outline-ring",
                   selected
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-brand text-primary-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                 ].join(" ")}
               >
@@ -175,7 +175,7 @@ export default function MaintenanceLayout({ children }: Props) {
                   "focus-visible:outline-2 focus-visible:outline-offset-2",
                   "focus-visible:outline-ring",
                   selected
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-brand text-primary-foreground"
                     : "text-muted-foreground hover:bg-secondary",
                 ].join(" ")}
               >

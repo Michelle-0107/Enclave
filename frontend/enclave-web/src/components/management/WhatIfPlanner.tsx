@@ -11,7 +11,6 @@ import {
   type WhatIfResult,
 } from "@/lib/api";
 
-import SharedLocationPicker from './SharedLocationPicker';
 import RepairPlanRoutes from "./RepairPlanRoutes";
 import RepairSummaryPanel from "./RepairSummaryPanel";
 
@@ -304,7 +303,7 @@ export default function WhatIfPlanner() {
       </div>
 
       <nav aria-label="Repair comparison steps" className="grid grid-cols-3 gap-2 rounded-2xl border bg-card p-2">
-        {([{ n: 1, label: 'Paths' }, { n: 2, label: 'Repair plans' }, { n: 3, label: 'Results' }] as const).map(item => <button key={item.n} type="button" aria-current={step === item.n ? 'step' : undefined} disabled={item.n === 3 && !result} onClick={() => { if (item.n === 2) continueToPlans(); else { setStep(item.n); setError(''); } }} className={`min-h-12 rounded-xl px-2 text-sm font-semibold disabled:opacity-40 ${step === item.n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{item.n}. {item.label}</button>)}
+        {([{ n: 1, label: 'Paths' }, { n: 2, label: 'Repair plans' }, { n: 3, label: 'Results' }] as const).map(item => <button key={item.n} type="button" aria-current={step === item.n ? 'step' : undefined} disabled={item.n === 3 && !result} onClick={() => { if (item.n === 2) continueToPlans(); else { setStep(item.n); setError(''); } }} className={`min-h-12 rounded-xl px-2 text-sm font-semibold disabled:opacity-40 ${step === item.n ? 'bg-brand text-primary-foreground' : 'text-muted-foreground'}`}>{item.n}. {item.label}</button>)}
       </nav>
       <p role="status" className="text-sm text-muted-foreground">{step === 1 ? 'Step 1 · Name your paths and choose a start and destination for each.' : step === 2 ? 'Step 2 · Choose repairs, enter estimates, then compare plans.' : 'Step 3 · Review each plan on its own Before / After map.'}</p>
       <section hidden={step !== 2} className={step !== 2 ? 'hidden' : 'flex flex-col gap-3 rounded-3xl border bg-card p-5'}>
@@ -421,7 +420,7 @@ export default function WhatIfPlanner() {
                           [index]: target,
                         }))
                       }
-                      className={`min-h-11 rounded-xl border border-border px-4 text-xs font-semibold ${(pickTargets[index] ?? "origin") === target ? "bg-primary text-primary-foreground" : "bg-white text-primary"}`}
+                      className={`min-h-11 rounded-xl border border-border px-4 text-xs font-semibold ${(pickTargets[index] ?? "origin") === target ? "bg-brand text-primary-foreground" : "bg-white text-primary"}`}
                     >
                       {target === "origin"
                         ? "A · Set starting point"
@@ -446,12 +445,6 @@ export default function WhatIfPlanner() {
                   >
                     Clear points
                   </button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <SharedLocationPicker label="A · Starting place" point={parseMapPoint(path.fromLat, path.fromLng)}
-                    onChoose={point => patchJourney(index, { fromLat: String(point.latitude), fromLng: String(point.longitude) })} />
-                  <SharedLocationPicker label="B · Destination" point={parseMapPoint(path.toLat, path.toLng)}
-                    onChoose={point => patchJourney(index, { toLat: String(point.latitude), toLng: String(point.longitude) })} />
                 </div>
                 <WhatIfPathMap
                   origin={parseMapPoint(path.fromLat, path.fromLng)}
@@ -482,7 +475,6 @@ export default function WhatIfPlanner() {
                   }}
                 />
               </div>
-              <details className="sm:col-span-2"><summary className="text-xs text-muted-foreground">Edit coordinates</summary><div className="grid gap-3 sm:grid-cols-2">
               {numericInput("Start latitude", path.fromLat, (value) =>
                 patchJourney(index, { fromLat: value }),
               )}
@@ -495,7 +487,6 @@ export default function WhatIfPlanner() {
               {numericInput("Destination longitude", path.toLng, (value) =>
                 patchJourney(index, { toLng: value }),
               )}
-              </div></details>
               {journeys.length > 1 && (
                 <button
                   type="button"
@@ -511,7 +502,7 @@ export default function WhatIfPlanner() {
               )}
             </fieldset>
           ))}
-          <button type="button" onClick={continueToPlans} className="min-h-12 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground">Continue to repair plans →</button>
+          <button type="button" onClick={continueToPlans} className="min-h-12 rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground">Continue to repair plans →</button>
         </section>
 
         <section className={step !== 2 ? "hidden" : "flex flex-col gap-4"}>
@@ -683,7 +674,7 @@ export default function WhatIfPlanner() {
           <button
             type="submit"
             disabled={comparing || loadingCandidates || facilities.length === 0}
-            className="min-h-12 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+            className="min-h-12 rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
           >
             {comparing ? "Comparing routes…" : "Compare repair plans"}
           </button>

@@ -50,7 +50,7 @@ export default function ResolvedReport({
 
       <Link
         href="/management/reports"
-        className="flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 text-center text-sm font-semibold text-primary-foreground hover:opacity-90"
+        className="flex min-h-[52px] items-center justify-center rounded-2xl bg-brand px-6 text-center text-sm font-semibold text-primary-foreground hover:opacity-90"
       >
         Back to reports
       </Link>
