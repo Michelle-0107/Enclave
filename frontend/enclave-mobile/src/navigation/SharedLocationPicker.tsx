@@ -47,9 +47,9 @@ export default function SharedLocationPicker({ point, onChoose, areaId = 'kl-eas
     finally { if (request === version.current) setBusy(false); }
   }
   return <View style={{ gap: 8 }}>
-    <TextInput accessibilityLabel="Search report location" placeholder="Search a place, road or section" value={query} maxLength={160}
+    <TextInput accessibilityLabel="Search report location" placeholder="Search a place, road or section" placeholderTextColor={colors.muted} selectionColor={colors.navy} value={query} maxLength={160}
       onChangeText={value => { version.current += 1; setBusy(false); setQuery(value); }} onSubmitEditing={() => { void search(); }}
-      style={{ minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, color: colors.navy }} />
+      style={{ minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, backgroundColor: colors.white, color: colors.navy }} />
     <Pressable accessibilityRole="button" disabled={busy || query.trim().length < 2} onPress={search} style={{ minHeight: 44, justifyContent: 'center' }}>
       <Text style={{ color: colors.navy }}>{busy ? 'Searching…' : 'Search locations'}</Text>
     </Pressable>

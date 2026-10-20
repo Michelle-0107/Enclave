@@ -38,3 +38,29 @@ class SharedLocationRepositoryTests(unittest.IsolatedAsyncioTestCase):
             try:
                 with self.assertRaises(LocationsUnavailable):await repo.listing('search',UUID(int=1),find_area('kl-east-pilot'),query='Mall')
             finally:await repo.close()
+
+
+class ExistingPlaceLinkTests(unittest.IsolatedAsyncioTestCase):
+    async def test_server_uses_canonical_place_id_and_requires_the_sql022_version(self):
+        from types import SimpleNamespace
+        from backend.reports.issues import CommunityIssues,OpenIssue,IssueRejected
+        place=UUID('90000000-0000-4000-8000-000000000099');calls=[]
+        async def canonical(action,**args):
+            self.assertEqual(action,'point');self.assertEqual(args['id'],str(place))
+            return [dict(id=str(place),area_id='kl-east-pilot',name='Taman Melati Station',latitude=3.22649,longitude=101.730755,kind='place',source='openstreetmap',position_basis='mapped')]
+        for installed in [True,False]:
+            def rpc(request):
+                calls.append(json.loads(request.content))
+                response={'state':'ok','deduplicated':False,'issue':dict(id=str(UUID(int=21)),facility_id=str(place),facility_name='Taman Melati Station',facility_type='other',latitude=3.22649,longitude=101.730755,fault_kind='damage',status='open',reporter_count=1,affects_routes=False,created_at='2026-10-21T00:00:00Z',resolved_at=None)}
+                if installed:response['place_reporting_version']=1
+                return httpx.Response(200,json=response)
+            service=CommunityIssues(Settings('https://fixture.supabase.co','sb_secret_fixture'),transport=httpx.MockTransport(rpc));service.locations=SimpleNamespace(call=canonical)
+            try:
+                body=OpenIssue(facility_id=place,report_ticket_id='OWNED')
+                if installed:
+                    result=await service.link(UUID(int=1),body);self.assertFalse(result.community_visible)
+                else:
+                    with self.assertRaises(IssueRejected) as error:await service.link(UUID(int=1),body)
+                    self.assertEqual(error.exception.status,503)
+            finally:await service.close()
+        self.assertTrue(all(c['p_action']=='open_place_issue' for c in calls));self.assertNotIn('road_point',calls[0]['p_args'])

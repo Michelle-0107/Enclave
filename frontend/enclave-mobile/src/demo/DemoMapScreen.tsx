@@ -4,7 +4,7 @@ import { Keyboard, Linking, Modal, Pressable, StyleSheet, Text, TextInput, View 
 import { Camera, GeoJSONSource, Layer, Marker, type CameraRef } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { demoAreasApi, type DemoRouteResponse } from '../lib/api';
+import { demoAreasApi, reportsApi, type MapIssueFeature, type DemoRouteResponse } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
@@ -37,6 +37,38 @@ const formatDistance = (m: number) => m < 1000 ? `${Math.round(m)} m` : `${(m / 
 
 export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = builtInSnapshot, onShowLiveMap, onReportPress, onMapTouchChange }: Props) {
   const dataset = data;
+  const [residentReports, setResidentReports] = useState<MapIssueFeature[]>([]);
+  const [reportMapError, setReportMapError] = useState('');
+  const [reportRefresh, setReportRefresh] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setResidentReports([]); setReportMapError('');
+    // Community reports currently cover the KL East service area only.
+    if (areaId !== 'kl-east-pilot' && areaId !== 'built-in-snapshot') return;
+    void (async () => {
+      try {
+        const { data: session, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session.session?.access_token) throw new Error('Sign in to load reported issues.');
+        const points = new globalThis.Map<string, MapIssueFeature>();
+        let offset = 0;
+        for (let pageNumber = 0; pageNumber < 100; pageNumber++) {
+          const page = await reportsApi.getCommunityIssues(session.session.access_token, 100, offset, dataset.bbox);
+          if (!active) return;
+          for (const item of page.features) {
+            const [lon, lat] = item.geometry.coordinates;
+            if (item.properties.status === 'open' && item.properties.reporter_count >= 2 &&
+                Number.isFinite(lon) && Number.isFinite(lat) && insidePilot([lon, lat], dataset)) points.set(item.id, item);
+          }
+          if (!page.pagination.has_more) { setResidentReports([...points.values()]); return; }
+          const next = page.pagination.offset + page.pagination.returned;
+          if (next <= offset) throw new Error('Unable to load all reported issues.');
+          offset = next;
+        }
+        throw new Error('Unable to load all reported issues.');
+      } catch (failure) { if (active) setReportMapError(failure instanceof Error ? failure.message : 'Unable to load reported issues.'); }
+    })();
+    return () => { active = false; };
+  }, [areaId, dataset, reportRefresh]);
   const state = useMemo(() => initialScenario(data), [data]);
   const [origin, setOrigin] = useState<Choice | null>(null);
   const [destination, setDestination] = useState<Choice | null>(null);
@@ -49,7 +81,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const [savedPlacePicker, setSavedPlacePicker] = useState<((point: Coordinate) => void) | null>(null);
   const [results, setResults] = useState<ModeResult[]>([]);
   const [mode, setMode] = useState<Mode>('shortest');
-  const [selected, setSelected] = useState<{ type: 'facility' | 'place' | 'navigation'; id: string } | null>(null);
+  const [selected, setSelected] = useState<{ type: 'facility' | 'place' | 'navigation' | 'report'; id: string } | null>(null);
   const [error, setError] = useState('');
   const [calculating, setCalculating] = useState(false);
   const [mapError, setMapError] = useState(false);
@@ -79,7 +111,9 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const facility = selected?.type === 'facility' ? dataset.facilities.find(f => f.id === selected.id) : undefined;
   const place = selected?.type === 'place' ? dataset.landmarks.find(p => p.id === selected.id) : undefined;
   const navigationFacility = selected?.type === 'navigation' ? [...(dataset.navigationFacilities ?? []), ...(dataset.accessibilityFacilities ?? [])].find(f => f.id === selected.id) : undefined;
-  const feature = facility || place || navigationFacility;
+  const residentReport = selected?.type === 'report' ? residentReports.find(item => item.id === selected.id) : undefined;
+  const reportedFeature = residentReport ? { id: residentReport.id, name: residentReport.properties.facility_name.replace(/^\[DEMO\]\s*/i, ''), coordinate: residentReport.geometry.coordinates } : undefined;
+  const feature = facility || place || navigationFacility || reportedFeature;
   const usingStepFree = transport === 'wheelchair' || (mode === 'accessible' && Boolean(route));
   const visibleNavigationFacilities = useMemo(() => {
     const facilities = usingStepFree ? (dataset.accessibilityFacilities ?? []) : (dataset.navigationFacilities ?? []);
@@ -97,9 +131,12 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       properties: { stepFree: f.stepFree === true, simulated: f.routingSource === 'simulation' },
       geometry: { type: 'LineString' as const, coordinates: f.geometry } })) }), [visibleNavigationFacilities]);
   const facilityData = useMemo(() => ({ type: 'FeatureCollection' as const,
-    features: dataset.facilities.filter(f => showFacilityMarkers || isBlocked(f, state)).map(f => ({ type: 'Feature' as const, id: f.id,
-      properties: { id: f.id, blocked: isBlocked(f, state), symbol: symbols[f.kind] },
-      geometry: { type: 'Point' as const, coordinates: f.coordinate } })) }), [dataset, state, showFacilityMarkers]);
+    features: [...dataset.facilities.filter(f => showFacilityMarkers || isBlocked(f, state)).map(f => ({ type: 'Feature' as const, id: f.id,
+      properties: { id: f.id, entryType: 'facility', blocked: isBlocked(f, state), symbol: symbols[f.kind] ?? 'P' },
+      geometry: { type: 'Point' as const, coordinates: f.coordinate } })),
+    ...residentReports.map(item => ({ type: 'Feature' as const, id: item.id,
+      properties: { id: item.id, entryType: 'report', blocked: true, symbol: symbols[item.properties.facility_type] ?? 'P' },
+      geometry: item.geometry }))] }), [dataset, state, showFacilityMarkers, residentReports]);
   const placeData = useMemo(() => ({ type: 'FeatureCollection' as const,
     features: dataset.landmarks.map(p => ({ type: 'Feature' as const, id: p.id, properties: { id: p.id, name: p.name },
       geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), [dataset]);
@@ -421,7 +458,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
           <Layer id="demo-place-points" type="circle" minzoom={15} paint={{ 'circle-radius': 4, 'circle-color': '#175CD3', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 1 }} />
         </GeoJSONSource>}
         <GeoJSONSource id="demo-facilities" data={facilityData} hitbox={{ top: 10, right: 10, bottom: 10, left: 10 }}
-          onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'facility', id }); setSearching(false); Keyboard.dismiss(); } }}>
+          onPress={event => { event.stopPropagation(); const properties = event.nativeEvent.features[0]?.properties; const id = properties?.id; if (typeof id === 'string') { setSelected({ type: properties?.entryType === 'report' ? 'report' : 'facility', id }); setSearching(false); Keyboard.dismiss(); } }}>
           <Layer id="demo-facility-points" type="circle" paint={{ 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 4, 16, 10],
             'circle-color': ['case', ['get', 'blocked'], '#A63E37', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
           <Layer id="demo-facility-labels" type="symbol" minzoom={15.5} layout={{ 'text-field': ['get', 'symbol'], 'text-font': ['Noto Sans Regular'], 'text-size': 9, 'text-allow-overlap': true }} paint={{ 'text-color': '#FFFFFF' }} />
@@ -458,18 +495,20 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         <Pressable accessibilityRole="button" onPress={() => { setMapError(false); setMapKey(n => n + 1); }} style={styles.textButton}><Text style={styles.link}>Retry map</Text></Pressable>
       </View>}
     </View>
-    <View style={styles.row}><Text style={styles.count}>{showFacilityMarkers ? `${dataset.facilities.length} facilities · ` : ''}{dataset.facilities.filter(f => isBlocked(f, state)).length} reported issues in the pilot area</Text>
+    <View style={styles.row}><Text style={styles.count}>{showFacilityMarkers ? `${dataset.facilities.length} facilities · ` : ''}{dataset.facilities.filter(f => isBlocked(f, state)).length + residentReports.length} reported issues in the pilot area</Text>
       <Pressable accessibilityRole="button" onPress={() => camera.current?.fitBounds(bounds, { padding: { top: 15, right: 15, bottom: 15, left: 15 }, duration: 400 })} style={styles.textButton}><Text style={styles.link}>Show area</Text></Pressable></View>
     <Pressable accessibilityRole="switch" accessibilityLabel="Show facility markers" accessibilityState={{ checked: showFacilityMarkers }}
       onPress={() => { setShowFacilityMarkers(value => !value); setSelected(null); }} style={styles.textButton}>
       <Text style={styles.link}>{showFacilityMarkers ? 'Hide facility markers' : 'Show facility markers'}</Text>
     </Pressable>
+    {!!reportMapError && <View><Text accessibilityRole="alert" style={styles.error}>{reportMapError}</Text>
+      <Pressable accessibilityRole="button" onPress={() => setReportRefresh(value => value + 1)} style={styles.textButton}><Text style={styles.link}>Retry reported issues</Text></Pressable></View>}
     <View style={styles.legendCard} accessibilityLabel="Map legend">
       <Text style={styles.cardTitle}>Map legend</Text>
       <View style={styles.legendStatusRow}>
-        <View style={styles.legendStatus}><View style={[styles.legendDot, { backgroundColor: '#A63E37' }]} /><Text style={styles.legendStatusText}>Reported damage</Text></View>
+        <View style={styles.legendStatus}><View style={[styles.legendDot, { backgroundColor: '#A63E37' }]} /><Text style={styles.legendStatusText}>Reported issues</Text></View>
         <View style={styles.legendStatus}><View style={[styles.legendDot, { backgroundColor: '#247A80' }]} /><Text style={styles.legendStatusText}>Facility</Text></View>
-        <View style={styles.legendStatus}><View style={[styles.legendDot, { backgroundColor: '#175CD3' }]} /><Text style={styles.legendStatusText}>Real place</Text></View>
+        <View style={styles.legendStatus}><View style={[styles.legendDot, { backgroundColor: '#175CD3' }]} /><Text style={styles.legendStatusText}>Place</Text></View>
       </View>
       <View style={styles.legendDivider} />
       {facilityLabels.map(item => <View key={item.code} style={styles.legendItem}>
@@ -479,15 +518,15 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <View style={styles.legendDivider} />
       <View style={styles.legendItem}><View style={styles.legendCode}><Text style={styles.legendCodeText}>S / D</Text></View>
         <View style={styles.legendCopy}><Text style={styles.legendName}>Start / end point</Text><Text style={styles.legendDescription}>Your selected route endpoints.</Text></View></View>
-      <Text style={styles.legendFootnote}>A gold frame highlights a selected place. Facility types and reported conditions in this demo are simulated.</Text>
+      <Text style={styles.legendFootnote}>A gold frame highlights your selection. Reported issues are grouped by facility and issue type.</Text>
     </View>
-    <Text style={styles.hint}>{inputMode === 'map' ? `Tap the map to choose ${field === 'origin' ? 'your starting point' : 'your end point'}.` : 'Choose a search result above, or tap the map to choose a point.'} A gold frame marks your selection.</Text>
+    <Text style={styles.hint}>{!showFacilityMarkers && 'Landmarks are shown by the basemap. Red markers show reported issues. '}{inputMode === 'map' ? `Tap the map to choose ${field === 'origin' ? 'your starting point' : 'your end point'}.` : 'Choose a search result above, or tap the map to choose a point.'} A gold frame marks your selection.</Text>
     {usingStepFree && <Text style={styles.hint}>SF: simulated dropped-kerb crossings, lift-access footbridges, ramp connectors and building entrances. Only facilities used by the chosen route appear by default; these are demo assumptions.</Text>}
     {showFacilityMarkers && !usingStepFree && Boolean(dataset.navigationFacilities?.length) && <Text style={styles.hint}>Purple SZX/SFB: simulated crossings/footbridges, demo only. Teal ZX/FB: mapped facilities. {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'simulation').length} simulated · {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'openstreetmap').length} mapped.</Text>}
     {feature && <View style={styles.selectedPanel}>
       <Text style={styles.cardTitle}>{feature.name}</Text>
-      <Text style={styles.body}>{facility ? `${facility.kind.replaceAll('_', ' ')} · ${isBlocked(facility, state) ? `${facility.reporters} residents reported` : 'No confirmed damage'}` : navigationFacility ? navigationFacility.routingSource === 'simulation' ? 'Simulated infrastructure · demo only' : 'Mapped pedestrian infrastructure' : 'Real mapped landmark'}</Text>
-      <Text style={styles.hint}>{facility ? 'Facility type follows mapped OSM tags; damage and reports are simulated.' : navigationFacility ? navigationFacility.stepFree ? 'Simulated step-free access connected to the demo route. Building entrances assume indoor step-free access; conditions are not surveyed.' : navigationFacility.routingSource === 'simulation' ? 'Fictional crossing connected to the demo route network. Do not use it to cross a real road.' : 'OSM geometry is connected to the walking network; conditions are not field verified.' : place?.positionBasis}</Text>
+      <Text style={styles.body}>{facility ? `${facility.kind.replaceAll('_', ' ')} · ${isBlocked(facility, state) ? `${facility.reporters} residents reported` : 'No confirmed damage'}` : residentReport ? `${residentReport.properties.reporter_count} residents reported` : navigationFacility ? navigationFacility.routingSource === 'simulation' ? 'Simulated infrastructure · demo only' : 'Mapped pedestrian infrastructure' : 'Real mapped landmark'}</Text>
+      <Text style={styles.hint}>{facility ? 'Reported issues are grouped by facility and issue type.' : residentReport ? 'Reported issues are grouped by facility and issue type.' : navigationFacility ? navigationFacility.stepFree ? 'Simulated step-free access connected to the demo route. Building entrances assume indoor step-free access; conditions are not surveyed.' : navigationFacility.routingSource === 'simulation' ? 'Fictional crossing connected to the demo route network. Do not use it to cross a real road.' : 'OSM geometry is connected to the walking network; conditions are not field verified.' : place?.positionBasis}</Text>
       <View style={styles.row}>{(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="button"
         onPress={() => choose(feature.coordinate, feature.name, which)} style={styles.textButton}><Text style={styles.link}>{which === 'origin' ? 'Use as start' : 'Use as end'}</Text></Pressable>)}
         <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={styles.textButton}><Text style={styles.link}>Close</Text></Pressable></View>
@@ -518,7 +557,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       {route && <View style={styles.selectedPanel}>
         <Text style={styles.cardTitle}>Facilities on this route</Text>
         {route.facilities.length ? route.facilities.map(f => <Text key={f.id} style={isBlocked(f, state) ? styles.error : styles.body}>
-          {f.name} · {isBlocked(f, state) ? 'Reported damage' : f.kind === 'stairs' ? 'Stairs' : 'No confirmed damage'}</Text>) : <Text style={styles.body}>No demo facilities intersect this path.</Text>}
+          {f.name} · {isBlocked(f, state) ? 'Reported issue' : f.kind === 'stairs' ? 'Stairs' : 'No confirmed damage'}</Text>) : <Text style={styles.body}>No reported facilities intersect this path.</Text>}
         {route.navigationFacilities?.map(f => <Text key={f.id} style={styles.body}>{f.name} · {f.routingSource === 'simulation' ? 'Simulated, demo only' : 'Mapped facility'}</Text>)}
         <Text style={styles.hint}>The end point stays fixed. If you accepted a nearby connected start, O marks your original point and S marks the updated point. Mapped access points are shown separately; unrecorded connections are not drawn as roads. Routes can be identical when no relevant restrictions affect this journey.</Text>
       </View>}

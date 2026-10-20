@@ -165,7 +165,7 @@ export default function ReportDetailsScreen({
                 </Marker>
               </Map>
             </View>
-            <View style={styles.coordinateRow}><Ionicons name="navigate-outline" size={16} color={colors.muted} /><Text style={styles.location}>{currentReport.latitude!.toFixed(5)}, {currentReport.longitude!.toFixed(5)}</Text></View>
+            <View style={styles.coordinateRow}><Ionicons name="navigate-outline" size={16} color={colors.muted} /><Text style={styles.location}>{currentReport.location}</Text></View>
             <Pressable
               accessibilityRole="button"
               onPress={() => {
@@ -262,7 +262,7 @@ function mapReportRecord(record: ReportRecord): ResidentReport {
   return {
     id: record.ticket_id,
     title: record.category || 'Community report',
-    location: `${record.latitude.toFixed(5)}, ${record.longitude.toFixed(5)}`,
+    location: record.location_name?.trim() || 'Selected map point',
     date: record.created_at
       ? new Date(record.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
       : 'Date unavailable',

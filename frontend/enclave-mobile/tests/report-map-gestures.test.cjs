@@ -6,11 +6,11 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
-function compile(file, deps) {
+function compile(file, deps, globals = {}, exportName) {
   const mod = { exports: {} };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
-  } }).outputText, { module: mod, exports: mod.exports, require: name => { if (name in deps) return deps[name]; throw Error('Unexpected import ' + name); }, console });
+  } }).outputText + (exportName ? `\nmodule.exports.default = ${exportName};` : ''), { module: mod, exports: mod.exports, require: name => { if (name in deps) return deps[name]; throw Error('Unexpected import ' + name); }, console, ...globals });
   return mod.exports.default;
 }
 function all(t) { return !t || typeof t !== 'object' ? [] : Array.isArray(t) ? t.flatMap(all) : [t, ...all(t.props?.children)]; }
@@ -84,4 +84,57 @@ test('Report photo-to-location flow forwards the page scroll lock callback to th
   photo.props.onContinue({ uri: 'file:///synthetic.jpg', width: 100, height: 100 });
   const location = all(render()).find(n => n.type === 'Location');
   assert.ok(location); assert.equal(location.props.onMapTouchChange, lock);
+});
+
+test('report upload keeps the selected location ID, actual pin and returned name through issue linking', async () => {
+  const hooks = runtime(), uploads = [], links = [], reports = [], alerts = [];
+  class FixtureFormData {
+    constructor() { this.parts = []; }
+    append(key, value) { this.parts.push([key, value]); }
+  }
+  const coordinates = { latitude: 3.225, longitude: 101.731 };
+  const record = { ticket_id: 'SYNTHETIC-REPORT', ...coordinates, location_name: 'Taman Melati Station', description: 'Broken station entrance' };
+  const Screen = compile('src/screens/ReportScreen.tsx', {
+    react: hooks.react, 'react/jsx-runtime': jsx,
+    'react-native': { View: 'View', Text: 'Text', Pressable: 'Pressable', Image: 'Image', StyleSheet: { create: value => value }, Alert: { alert: (...args) => alerts.push(args) } },
+    './ReportPhotoScreen': { __esModule: true, default: 'Photo' },
+    './ReportLocationScreen': { __esModule: true, default: 'Location' },
+    './ReportSuccessScreen': { __esModule: true, default: 'Success' },
+    '../lib/api': {
+      reportsApi: { submit: async (token, form) => { uploads.push({ token, form }); return { ticket_id: record.ticket_id, data: [record] }; } },
+      communityIssuesApi: { createOrLink: async (token, input) => { links.push({ token, input }); return { community_visible: false, issue: { reporter_count: 1 } }; } },
+    },
+    '../lib/supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { access_token: 'fixture-token' } } }) } } },
+    '../lib/road-report-sections': {}, '../theme': { colors: {} },
+  }, { FormData: FixtureFormData });
+  function render() { hooks.reset(); const tree = Screen({ onGoHome() {}, onViewReports() {}, onReportCreated: report => reports.push(report) }); hooks.flush(); return tree; }
+  all(render()).find(n => n.type === 'Photo').props.onContinue({ uri: 'file:///station.jpg', fileName: 'station.jpg', mimeType: 'image/jpeg' });
+  all(render()).find(n => n.type === 'Location').props.onDetailsChange({ coordinates, description: record.description });
+  const selection = all(render()).find(n => n.type === 'Location').props.children;
+  selection.props.onSubmit({ facility: { id: 'station-location-id', ...coordinates }, faultKind: 'damage' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(uploads.length, 1); assert.equal(uploads[0].token, 'fixture-token');
+  const parts = Object.fromEntries(uploads[0].form.parts);
+  assert.equal(parts.location_id, 'station-location-id'); assert.equal(parts.latitude, String(coordinates.latitude)); assert.equal(parts.longitude, String(coordinates.longitude));
+  assert.equal(parts.file.uri, 'file:///station.jpg'); assert.equal(parts.description, record.description);
+  assert.equal(links.length, 1); assert.equal(links[0].input.facility_id, parts.location_id); assert.equal(links[0].input.report_ticket_id, record.ticket_id);
+  assert.equal(reports[0].location, record.location_name); assert.equal(alerts.length, 0);
+  assert.ok(all(render()).some(n => n.type === 'Success'));
+});
+
+test('report list and details retain the shared location name as well as numeric navigation coordinates', () => {
+  const deps = {
+    react: {}, 'react/jsx-runtime': jsx,
+    'react-native': { StyleSheet: { create: value => value } },
+    '../navigation/NativeMap': {}, '@maplibre/maplibre-react-native': {}, '@expo/vector-icons': {},
+    '../lib/api': {}, '../lib/supabase': {}, '../theme': { colors: {} },
+  };
+  const record = { ticket_id: 'SYNTHETIC-REPORT', location_name: 'Taman Melati Station', latitude: 3.225, longitude: 101.731, status: 'approved' };
+  for (const file of ['MyReportsScreen.tsx', 'ReportDetailsScreen.tsx']) {
+    const map = compile('src/screens/' + file, deps, {}, 'mapReportRecord');
+    const report = map(record);
+    assert.equal(report.location, record.location_name); assert.equal(report.latitude, record.latitude); assert.equal(report.longitude, record.longitude);
+    assert.equal(report.status, 'Approved for maintenance');
+    assert.equal(map({ ...record, location_name: null }).location, 'Selected map point');
+  }
 });

@@ -257,7 +257,7 @@ function mapReportRecord(record: ReportRecord): ResidentReport {
   return {
     id: record.ticket_id,
     title: record.category || 'Community report',
-    location: `${record.latitude.toFixed(5)}, ${record.longitude.toFixed(5)}`,
+    location: record.location_name?.trim() || 'Selected map point',
     date,
     status,
     description: record.description,

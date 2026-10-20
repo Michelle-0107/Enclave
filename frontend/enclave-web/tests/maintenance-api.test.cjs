@@ -152,3 +152,11 @@ test('expired staff sessions and API denial never report a successful write', as
   const denied = sharedApi('fixture', async () => new Response('{"detail":"Task not assigned"}', { status: 404 }));
   await assert.rejects(denied.api.apiRequest('/api/v1/maintenance/tasks/id/start', { method: 'POST', body: { expected_version: 1 } }), { status: 404 });
 });
+
+test('related reports find the same shared task rather than offering a duplicate assignment', async () => {
+  const shared = { ...task(), related_ticket_ids: ['TICK-2026', 'RELATED-TICKET'] };
+  const api = gateway(async () => page([shared]));
+  assert.equal((await api.getReportTask('RELATED-TICKET')).id, shared.id);
+  assert.equal(await api.getReportTask('UNRELATED'), null);
+  assert.throws(() => api.validateTask({ ...shared, related_ticket_ids: 'RELATED-TICKET' }), { status: 503 });
+});
