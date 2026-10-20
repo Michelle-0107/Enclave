@@ -4,7 +4,7 @@ import { ReportStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +30,8 @@ export default function ReportDetails({ report: initialReport }: Props) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
+  const historyRevision = useRef(0);
   const [error, setError] = useState('');
   const [photoExpanded, setPhotoExpanded] = useState(false);
 
@@ -43,14 +45,16 @@ export default function ReportDetails({ report: initialReport }: Props) {
   }, [photoExpanded]);
 
   const loadHistory = useCallback(async () => {
+    const revision = ++historyRevision.current;
     setHistoryLoading(true);
+    setHistoryError('');
     try {
       const response = await getReportHistory(report.id);
-      setHistory(response.items);
+      if (revision === historyRevision.current) setHistory(response.items);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to load report history.');
+      if (revision === historyRevision.current) setHistoryError(reason instanceof Error ? reason.message : 'Unable to load report history.');
     } finally {
-      setHistoryLoading(false);
+      if (revision === historyRevision.current) setHistoryLoading(false);
     }
   }, [report.id]);
 
@@ -61,10 +65,11 @@ export default function ReportDetails({ report: initialReport }: Props) {
 
   useEffect(() => {
     let active = true;
+    const revision = ++historyRevision.current;
     getReportHistory(report.id)
-      .then((response) => { if (active) setHistory(response.items); })
-      .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load report history.'); })
-      .finally(() => { if (active) setHistoryLoading(false); });
+      .then((response) => { if (active && revision === historyRevision.current) setHistory(response.items); })
+      .catch((reason: unknown) => { if (active && revision === historyRevision.current) setHistoryError(reason instanceof Error ? reason.message : 'Unable to load report history.'); })
+      .finally(() => { if (active && revision === historyRevision.current) setHistoryLoading(false); });
     return () => { active = false; };
   }, [report.id]);
 
@@ -86,6 +91,10 @@ export default function ReportDetails({ report: initialReport }: Props) {
       });
       setReport(result.report);
       setNote('');
+      // Ignore history requests started before this saved decision.
+      historyRevision.current++;
+      setHistoryLoading(false);
+      setHistoryError('');
       setHistory((items) => [...items, result.event]);
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 409) {
@@ -97,6 +106,8 @@ export default function ReportDetails({ report: initialReport }: Props) {
       setSaving(false);
     }
   }
+
+  const reviews = history.filter(event => event.actor_role === 'management' && event.from_status === 'pending' && ['approved', 'rejected'].includes(event.to_status));
 
   return (
     <div className="flex flex-col gap-5">
@@ -131,6 +142,27 @@ export default function ReportDetails({ report: initialReport }: Props) {
               </dd>
             </div>
           </dl>
+          {report.status !== 'pending' && (
+            <section aria-labelledby="saved-review-heading" className="min-w-0 border-t border-border pt-4">
+              <h3 id="saved-review-heading" className="text-sm font-semibold text-primary">Management review</h3>
+              {historyLoading ? (
+                <p role="status" className="mt-2 text-sm text-muted-foreground">Loading saved review…</p>
+              ) : historyError ? (
+                <div className="mt-2 text-sm text-status-red">
+                  <p role="alert">Unable to load the saved review. {historyError}</p>
+                  <button type="button" onClick={() => void loadHistory()} className="mt-2 min-h-11 font-semibold underline">Retry review</button>
+                </div>
+              ) : reviews.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">No approval or rejection review is recorded for this report.</p>
+              ) : reviews.map(review => (
+                <article key={review.id} className="mt-3 rounded-2xl bg-secondary/50 p-4">
+                  <p className="text-sm font-semibold text-primary">{reportStatusLabels[review.to_status]}</p>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">{review.note}</p>
+                  <time className="mt-2 block text-xs text-muted-foreground" dateTime={review.created_at}>{new Date(review.created_at).toLocaleString()}</time>
+                </article>
+              ))}
+            </section>
+          )}
           <p className="text-xs leading-relaxed text-muted-foreground">
             Review the issue details and location, then follow the next step below.
           </p>
@@ -186,6 +218,8 @@ export default function ReportDetails({ report: initialReport }: Props) {
         <h2 id="history-heading" className="text-lg font-semibold text-primary">Status history</h2>
         {historyLoading ? (
           <p className="text-sm text-muted-foreground">Loading status history…</p>
+        ) : historyError ? (
+          <p role="alert" className="text-sm text-status-red">{historyError}</p>
         ) : history.length === 0 ? (
           <p className="text-sm text-muted-foreground">No status history is recorded for this report yet.</p>
         ) : history.map((event) => (
@@ -195,7 +229,7 @@ export default function ReportDetails({ report: initialReport }: Props) {
             <time className="mt-2 block text-xs text-muted-foreground" dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time>
           </article>
         ))}
-        {!historyLoading && error && <button type="button" onClick={() => void loadHistory()} className="w-fit text-xs font-semibold text-primary underline">Refresh history</button>}
+        {!historyLoading && historyError && <button type="button" onClick={() => void loadHistory()} className="w-fit text-xs font-semibold text-primary underline">Refresh history</button>}
       </section>
 
       {photoExpanded && report.imageUrl && (
