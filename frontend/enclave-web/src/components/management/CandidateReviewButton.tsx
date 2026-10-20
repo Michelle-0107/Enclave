@@ -32,7 +32,7 @@ export default function CandidateReviewButton({ plan }: { plan: WhatIfResult['pl
   }
   return <div>
     <button type="button" disabled={busy} onClick={() => void openFirst()}
-      className="min-h-11 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
+      className="min-h-11 rounded-2xl bg-brand px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
       {busy ? 'Checking candidates…' : `Review candidates · ${plan.name}`}
     </button>
     {error && <p role="alert" className="mt-2 text-sm text-status-red">{error}</p>}

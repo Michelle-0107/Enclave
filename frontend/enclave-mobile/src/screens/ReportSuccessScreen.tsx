@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     minHeight: 54,
     borderRadius: 16,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,

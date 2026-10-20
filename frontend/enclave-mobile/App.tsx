@@ -113,7 +113,7 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 const tabs: { name: Tab; icon: IconName }[] = [
   { name: 'Home', icon: 'home-outline' },
   { name: 'Map', icon: 'map-outline' },
-  { name: 'Report', icon: 'add-circle-outline' },
+  { name: 'Report', icon: 'document-text-outline' },
   { name: 'Notifications', icon: 'notifications-outline' },
   { name: 'My Account', icon: 'person-outline' },
 ];
@@ -488,7 +488,7 @@ function ResidentApp({
             <Pressable
               key={tab.name}
               accessibilityRole="tab"
-              accessibilityLabel={tab.name}
+              accessibilityLabel={tab.name === 'Report' ? 'Create a report' : tab.name}
               accessibilityState={{ selected }}
               onPress={() => {
                 if (tab.name === 'My Account') {
@@ -503,13 +503,30 @@ function ResidentApp({
                 pressed && styles.pressed,
               ]}
             >
-              <Ionicons
-                name={tab.icon}
-                size={23}
-                color={
-                  selected ? colors.white : colors.muted
-                }
-              />
+              {tab.name === 'Report' ? (
+                <View style={styles.reportTabIcon}>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={23}
+                    color={selected ? colors.white : colors.muted}
+                  />
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={13}
+                    color={selected ? colors.white : colors.muted}
+                    style={[
+                      styles.reportTabAdd,
+                      { backgroundColor: selected ? colors.navy : colors.white },
+                    ]}
+                  />
+                </View>
+              ) : (
+                <Ionicons
+                  name={tab.icon}
+                  size={23}
+                  color={selected ? colors.white : colors.muted}
+                />
+              )}
             </Pressable>
           );
         })}
@@ -653,7 +670,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectedTab: {
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
+  },
+  reportTabIcon: {
+    width: 25,
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportTabAdd: {
+    position: 'absolute',
+    right: -3,
+    bottom: -1,
+    borderRadius: 8,
   },
   pressed: {
     opacity: 0.8,

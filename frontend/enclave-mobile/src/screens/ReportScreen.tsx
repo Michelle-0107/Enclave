@@ -769,6 +769,7 @@ function IssueSelection({
       </Text>
 
       {roadPointNotice ? <Text style={styles.body}>{roadPointNotice}</Text> : null}
+
       {loading ? (
         <ActivityIndicator color={colors.navy} />
       ) : error ? (
@@ -834,7 +835,7 @@ function IssueSelection({
         <View style={styles.summary}>
           <Text style={styles.label}>Report preview</Text>
           <Image source={{ uri: photoUri }} style={styles.confirmPhoto} resizeMode="contain" />
-          <Text style={styles.body}>Location: {selected.name}</Text>
+          <Text style={styles.body}>Location: {coordinates ? selected.name : 'Not selected'}</Text>
           {coordinates && <Text style={styles.body}>{coordinates.latitude.toFixed(5)}, {coordinates.longitude.toFixed(5)} - actual issue pin</Text>}
           <Text style={styles.body}>Facility: {selected.name}</Text>
           {selected.road_section && <Text style={styles.body}>Reports are grouped within this road section only; adjacent sections are counted separately.</Text>}
@@ -974,7 +975,7 @@ const styles = StyleSheet.create({
   button: {
     minHeight: 52,
     borderRadius: 16,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,

@@ -1,5 +1,7 @@
 'use client';
 
+import AccountSettings from '@/components/account/AccountSettings';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useRouter } from 'next/navigation';
@@ -40,6 +42,7 @@ export default function Account() {
         </p>
       </section>
 
+      <AccountSettings />
       <dl className="flex flex-col gap-7 border-b border-border pb-7">
         <dt className="text-sm font-semibold text-primary">
           Work email
@@ -50,6 +53,7 @@ export default function Account() {
         </dd>
       </dl>
 
+      <Link href="/management/activity-logs" className="flex min-h-12 items-center justify-between rounded-2xl border bg-white px-5 font-semibold">Activity logs <span aria-hidden="true">→</span></Link>
       <section className="flex flex-col gap-7">
         <h2 className="text-base font-semibold text-primary">
           Help &amp; support

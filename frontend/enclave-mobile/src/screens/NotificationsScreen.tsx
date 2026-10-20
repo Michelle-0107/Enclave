@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   detailMessage: { fontSize: 16, lineHeight: 25, color: colors.navy },
   closeButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', backgroundColor: colors.background },
   actionText: { color: colors.navy, fontSize: 28, lineHeight: 32, textAlign: 'center' },
-  reportButton: { minHeight: 48, borderRadius: 16, backgroundColor: colors.navy, padding: 14, alignItems: 'center', justifyContent: 'center' },
+  reportButton: { minHeight: 48, borderRadius: 16, backgroundColor: colors.brand, padding: 14, alignItems: 'center', justifyContent: 'center' },
   reportButtonText: { color: colors.white, fontWeight: '700' },
   container: {
     gap: 20,

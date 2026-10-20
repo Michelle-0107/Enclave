@@ -73,7 +73,7 @@ export default function VerifyRepair({ report }: Props) {
       <div className="flex flex-col gap-3.5 sm:flex-row">
         <Link
           href={`/management/reports/${report.id}/resolved`}
-          className="flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 text-center text-sm font-semibold text-primary-foreground hover:opacity-90 sm:w-[280px]"
+          className="flex min-h-[52px] items-center justify-center rounded-2xl bg-brand px-6 text-center text-sm font-semibold text-primary-foreground hover:opacity-90 sm:w-[280px]"
         >
           Mark resolved &amp; notify
         </Link>

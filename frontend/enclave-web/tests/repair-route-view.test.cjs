@@ -107,8 +107,9 @@ test('selected accessible fallback shows wheelchair warning', () => {
 test('same-origin worker assets match the installed MapLibre version', () => {
   assert.equal(fromWeb('maplibre-gl/package.json').version, '6.14.0');
   for (const file of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
-    assert.deepEqual(fs.readFileSync(path.join(web, 'public/vendor/maplibre-6.14.0', file)),
-      fs.readFileSync(path.join(web, 'node_modules/maplibre-gl/dist', file)));
+    const normalizeLineEndings = value => value.replace(/\r\n/g, '\n');
+    assert.equal(normalizeLineEndings(fs.readFileSync(path.join(web, 'public/vendor/maplibre-6.14.0', file), 'utf8')),
+      normalizeLineEndings(fs.readFileSync(path.join(web, 'node_modules/maplibre-gl/dist', file), 'utf8')));
   }
   for (const component of ['RepairPlanRoutes.tsx', 'WhatIfPathMap.tsx']) {
     assert.ok(fs.readFileSync(path.join(web, 'src/components/management', component), 'utf8')
@@ -283,7 +284,7 @@ test('planner passes the same route selection and change handler to every repair
       const index = stateIndex++;
       if (index === 0) return [3, () => {}];
       if (value === null) return [result, () => {}];
-      if (index === 8) return ['two:avoid_damage', select];
+      if (index === 10) return ['two:avoid_damage', select];
       return [value, () => {}];
     },
   };

@@ -247,7 +247,7 @@ function MessageCentreSession({ userId }: { userId: string }) {
             setSendError('');
             setCompose(true);
           }}
-          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-2xl bg-brand px-4 text-sm font-semibold text-primary-foreground"
         >
           <Plus size={17} aria-hidden="true" />
           <span className="hidden sm:inline">
@@ -286,7 +286,7 @@ function MessageCentreSession({ userId }: { userId: string }) {
               onClick={() => setTab(folder)}
               className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${
                 tab === folder
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-brand text-primary-foreground'
                   : 'text-muted-foreground hover:bg-secondary'
               }`}
             >
@@ -461,21 +461,21 @@ function MessageCentreSession({ userId }: { userId: string }) {
           showCloseButton={!sending}
           style={{
             position: 'fixed',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 'auto',
+            top: '50%',
+            right: 'auto',
+            bottom: 'auto',
+            left: '50%',
             margin: 0,
-            transform: 'none',
+            transform: 'translate(-50%, -50%)',
             translate: 'none',
             animation: 'none',
-            width: 'min(520px, 100vw)',
-            maxWidth: '100vw',
-            height: '100dvh',
-            maxHeight: '100dvh',
+            width: 'min(560px, calc(100vw - 32px))',
+            maxWidth: 'calc(100vw - 32px)',
+            height: 'auto',
+            maxHeight: 'calc(100dvh - 32px)',
             overflowY: 'auto',
             overscrollBehavior: 'contain',
-            borderRadius: 0,
+            borderRadius: 24,
             alignContent: 'start',
             boxSizing: 'border-box',
             padding: 24,
@@ -551,7 +551,7 @@ function MessageCentreSession({ userId }: { userId: string }) {
             <button
               type="submit"
               disabled={sending}
-              className="min-h-12 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              className="min-h-12 rounded-2xl bg-brand px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
               {sending
                 ? 'Sending…'

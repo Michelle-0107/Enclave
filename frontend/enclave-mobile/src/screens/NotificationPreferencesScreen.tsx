@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   },
 
   switchTrackOn: {
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
   },
 
   switchThumb: {

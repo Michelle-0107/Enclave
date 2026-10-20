@@ -65,21 +65,24 @@ export default function Residents() {
   }, []);
 
   useEffect(() => {
-    void loadResidents();
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) void loadResidents(); });
+    return () => { cancelled = true; };
   }, [loadResidents]);
 
-  useEffect(() => {
-    if (!selected) return;
+  function openResident(resident: ManagementResident) {
+    setNotice('');
+    setSelected(resident);
     setForm({
-      resident_reference: selected.resident_reference,
-      full_name: selected.full_name,
-      unit_number: selected.unit_number,
-      registered_email: selected.registered_email,
-      status: selected.status,
+      resident_reference: resident.resident_reference,
+      full_name: resident.full_name,
+      unit_number: resident.unit_number,
+      registered_email: resident.registered_email,
+      status: resident.status,
     });
     setFormError('');
     setConfirmDelete(false);
-  }, [selected]);
+  }
 
   const filteredResidents = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -145,11 +148,11 @@ export default function Residents() {
       <p className="text-sm leading-relaxed text-muted-foreground">
         Manage approved resident records and their account-link status.
       </p>
-      <button type="button" onClick={() => setCreateOpen(true)} className="flex min-h-[52px] items-center justify-center rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground hover:opacity-90 sm:w-[240px]">
+      <button type="button" onClick={() => setCreateOpen(true)} className="flex min-h-[52px] items-center justify-center rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground hover:opacity-90 sm:w-[240px]">
         Add resident
       </button>
 
-      <section aria-labelledby="resident-directory-title" className="flex flex-col gap-4 rounded-3xl bg-enclave-lavender p-5 sm:p-7">
+      <section aria-labelledby="resident-directory-title" className="flex flex-col min-w-0 gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 id="resident-directory-title" className="text-lg font-semibold text-primary">Resident directory</h2>
@@ -167,14 +170,30 @@ export default function Residents() {
         ) : loadError ? (
           <div className="flex flex-col gap-3 rounded-2xl bg-white p-5">
             <p role="alert" className="text-sm text-status-red">{loadError}</p>
-            <button type="button" onClick={() => void loadResidents()} className="min-h-10 w-fit rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Retry</button>
+            <button type="button" onClick={() => void loadResidents()} className="min-h-10 w-fit rounded-xl bg-brand px-4 text-sm font-semibold text-primary-foreground">Retry</button>
           </div>
         ) : residents.length === 0 ? (
           <p className="rounded-2xl bg-white p-5 text-sm leading-relaxed text-muted-foreground">No resident records have been added yet. Use “Add resident” to create the first approved record.</p>
         ) : filteredResidents.length === 0 ? (
           <p className="rounded-2xl bg-white p-5 text-sm text-muted-foreground">No residents match that search.</p>
         ) : (
-          <div className="relative overflow-x-auto rounded-2xl bg-white">
+          <>
+          <div className="grid min-w-0 gap-4 lg:hidden" aria-label="Resident records">
+            {filteredResidents.map(resident => <article key={resident.resident_id} className="resident-card">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-lg font-semibold text-primary">{resident.full_name}</h3>
+                <button type="button" aria-label={`Edit ${resident.full_name}`} onClick={() => openResident(resident)} className="min-h-11 shrink-0 rounded-xl border border-border px-3 text-sm font-semibold text-primary">Edit</button>
+              </div>
+              <span className="resident-status mt-2" data-status={resident.status}>{resident.status === 'active' ? 'Active' : 'Inactive'}</span>
+              <dl className="mt-4 grid min-w-0 gap-3 text-sm">
+                <div><dt className="text-xs text-muted-foreground">Reference</dt><dd className="mt-1">{resident.resident_reference}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Unit</dt><dd className="mt-1">{resident.unit_number}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Registered email</dt><dd className="mt-1">{resident.registered_email}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Account</dt><dd className="mt-1">{resident.account_linked ? 'Account linked' : 'Not registered'}</dd></div>
+              </dl>
+            </article>)}
+          </div>
+          <div className="hidden overflow-x-auto rounded-2xl border border-[#D4DBE3] bg-white lg:block">
             <table className="w-full min-w-[900px] border-collapse text-left text-sm">
               <thead className="border-b border-border text-xs text-muted-foreground">
                 <tr>
@@ -195,19 +214,20 @@ export default function Residents() {
                     <td className="px-4 py-4 text-muted-foreground">{resident.unit_number}</td>
                     <td className="px-4 py-4 text-muted-foreground">{resident.registered_email}</td>
                     <td className="px-4 py-4">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${resident.status === 'active' ? 'bg-status-green-bg text-status-green' : 'bg-status-red-bg text-status-red'}`}>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${resident.status === 'active' ? 'text-[#216E71] bg-[#DFF3F2]' : 'text-[#A13832] bg-[#F9E7E5]'}`}>
                         {resident.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-muted-foreground">{resident.account_linked ? `Linked · ${resident.verified_at ? new Date(resident.verified_at).toLocaleDateString() : 'verified'}` : 'Not registered'}</td>
                     <td className="px-4 py-4 text-right">
-                      <button type="button" onClick={() => { setNotice(''); setSelected(resident); }} className="min-h-10 rounded-xl border border-border px-3 text-sm font-semibold text-primary hover:bg-secondary">Edit</button>
+                      <button type="button" onClick={() => openResident(resident)} className="min-h-10 rounded-xl border border-border px-3 text-sm font-semibold text-primary hover:bg-secondary">Edit</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
 
@@ -238,9 +258,9 @@ export default function Residents() {
                 <input required type="email" maxLength={254} disabled={selected.account_linked} value={form.registered_email} onChange={(event) => setForm({ ...form, registered_email: event.target.value })} className="min-h-11 rounded-xl border border-border bg-white px-3 font-normal disabled:bg-secondary disabled:text-muted-foreground" />
               </label>
               <label className="flex flex-col gap-1.5 text-sm font-semibold text-primary">Resident status
-                <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as UpdateResidentInput['status'] })} className="min-h-11 rounded-xl border border-border bg-white px-3 font-normal">
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as UpdateResidentInput['status'] })} style={{ color: form.status === 'active' ? '#216E71' : '#A13832' }} className="min-h-11 rounded-xl border border-border bg-white px-3 font-normal">
+                  <option value="active" style={{ color: '#216E71' }}>Active</option>
+                  <option value="inactive" style={{ color: '#A13832' }}>Inactive</option>
                 </select>
               </label>
               {formError && <p role="alert" className="rounded-xl bg-status-red-bg p-3 text-sm text-status-red">{formError}</p>}
@@ -258,7 +278,7 @@ export default function Residents() {
               <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button type="button" disabled={saving || deleting} onClick={() => setSelected(null)} className="min-h-11 rounded-xl border border-border px-5 text-sm font-semibold text-primary disabled:opacity-60">Cancel</button>
                 <button type="button" disabled={saving || deleting} onClick={() => setConfirmDelete(true)} className="min-h-11 rounded-xl bg-status-red-bg px-5 text-sm font-semibold text-status-red disabled:opacity-60">Delete resident</button>
-                <button type="submit" disabled={saving || deleting} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? 'Saving…' : 'Save changes'}</button>
+                <button type="submit" disabled={saving || deleting} className="min-h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? 'Saving…' : 'Save changes'}</button>
               </div>
             </form>
           </section>

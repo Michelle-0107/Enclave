@@ -18,8 +18,7 @@ Open http://127.0.0.1:8002/docs. This separate app uses memory, fake email deliv
 
 ```json
 {
-  "email": "resident@example.com",
-  "invitation_token": "local-demo-invitation-token-000000000000000001"
+  "email": "resident@example.com"
 }
 ```
 
@@ -55,8 +54,8 @@ Rerun [sql/inspect_registration_schema.sql](../../sql/inspect_registration_schem
 Management must first have a trusted existing Supabase App account and profile with role exactly `management`. Project administration creates/approves that profile; ordinary signup cannot assign this role. Existing accounts are not automatically added to the resident register.
 
 - `POST /api/v1/management/residents` requires a verified manager JWT and `resident_reference`, `full_name`, `unit_number`, `registered_email`. Create one row per person, with an approved individual email. The unit can be shared; references/emails must be unique.
-- `POST /api/v1/management/residents/{resident_id}/invitations` returns a high-entropy invitation token once to the authorized manager. Only its digest is stored. Management delivers it through the agreed channel; this endpoint does not send an email. Replacement revokes the old unused invitation and unverified challenges. A verified/provisioning attempt blocks replacement pending reconciliation.
-- Residents use that invitation plus the matching email in request-OTP. The optional legacy URL `/api/send-verification-email` now requires this same body and returns only generic acceptance/challenge ID. Email-only clients must update their contract.
+- The management frontend automatically calls `POST /api/v1/management/residents/{resident_id}/invitations` after creating a resident. This creates the server-side eligibility record, returns its ID, resident ID, and expiry, and never returns a plaintext token or sends email. Replacement revokes the old unused invitation and unverified challenges. A verified/provisioning attempt blocks replacement pending reconciliation.
+- Residents submit only their registered email to request-OTP. The backend checks for an active invitation record and sends the OTP when eligible. The optional legacy URL `/api/send-verification-email` follows the same email-only contract and returns generic acceptance/challenge ID.
 
 The verification endpoint accepts a six-character OTP string, password, challenge ID, and a random per-submit `Idempotency-Key` (at least 32 random bytes encoded base64url). Reuse the key and original password on transport retries. It confirms OTP, reserves a two-minute processing lease, authenticates or creates an Auth account, signs in, and atomically creates a missing profile with fixed `resident` role, binds the resident, consumes the invitation, and completes the challenge. It returns the Supabase session only after binding commits.
 

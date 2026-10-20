@@ -5,6 +5,7 @@ import EnclaveLogo from '@/components/ui/EnclaveLogo';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  History,
   Mail,
   ClipboardList,
   ChevronLeft,
@@ -45,6 +46,7 @@ const navigation = [
     href: '/management/residents',
     icon: UsersRound,
   },
+  { label: 'Activity logs', href: '/management/activity-logs', icon: History },
   {
     label: 'Account',
     href: '/management/account',
@@ -82,7 +84,7 @@ export default function PortalLayout({ children }: Props) {
         <button
           type="button"
           onClick={() => router.replace('/sign-in')}
-          className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground"
+          className="min-h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-primary-foreground"
         >
           Return to sign in
         </button>
@@ -147,7 +149,7 @@ export default function PortalLayout({ children }: Props) {
                   'focus-visible:outline-2 focus-visible:outline-offset-2',
                   'focus-visible:outline-ring',
                   selected
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-brand text-primary-foreground'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                 ].join(' ')}
               >
@@ -191,7 +193,7 @@ export default function PortalLayout({ children }: Props) {
         className="fixed inset-x-0 bottom-0 z-50 border-t bg-card px-3 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden"
       >
         <div className="mx-auto grid max-w-2xl grid-cols-6 gap-2">
-          {navigation.map((item) => {
+          {navigation.filter(item => item.href !== '/management/activity-logs').map((item) => {
             const selected = isSelected(item.href);
             const Icon = item.icon;
 
@@ -208,7 +210,7 @@ export default function PortalLayout({ children }: Props) {
                   'focus-visible:outline-2 focus-visible:outline-offset-2',
                   'focus-visible:outline-ring',
                   selected
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-brand text-primary-foreground'
                     : 'text-muted-foreground hover:bg-secondary',
                 ].join(' ')}
               >

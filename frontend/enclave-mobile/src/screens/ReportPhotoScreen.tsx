@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },

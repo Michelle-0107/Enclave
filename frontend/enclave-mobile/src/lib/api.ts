@@ -426,9 +426,9 @@ async function request<T>(
     if (controller.signal.aborted) {
       traceRoute('request_timed_out');
       throw new ApiError(
-        isFormData
+        options.timeoutMessage ?? (isFormData
           ? 'The request timed out. Check My Reports before submitting again.'
-          : options.timeoutMessage ?? 'The request timed out. Please check your connection and try again.',
+          : 'The request timed out. Please check your connection and try again.'),
         0,
       );
     }
@@ -885,5 +885,18 @@ export const locationsApi = {
     const query = new URLSearchParams({ area_id: areaId });
     for (const [key, value] of Object.entries(options)) if (value !== undefined) query.set(key, String(value));
     return request(`/api/v1/locations?${query.toString()}`, { accessToken, timeoutMs: 12000 });
+  },
+};
+
+// Proposed account-photo contract; the backend must implement both endpoints.
+export const accountPhotoApi = {
+  get(accessToken: string) {
+    return request<{ avatar_url: string | null }>('/api/v1/account/profile', { accessToken });
+  },
+  upload(accessToken: string, body: FormData) {
+    return request<{ avatar_url: string }>('/api/v1/account/avatar', {
+      method: 'POST', accessToken, body,
+      timeoutMessage: 'The photo upload timed out. Please try again.',
+    });
   },
 };

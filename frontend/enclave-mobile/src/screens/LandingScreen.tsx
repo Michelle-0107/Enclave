@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
 
   button: {
     position: 'absolute',
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },

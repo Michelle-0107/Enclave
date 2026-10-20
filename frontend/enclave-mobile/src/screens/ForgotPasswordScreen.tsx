@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   button: {
     minHeight: 54,
     borderRadius: 16,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
     paddingHorizontal: 20,
     paddingVertical: 16,
     alignItems: 'center',

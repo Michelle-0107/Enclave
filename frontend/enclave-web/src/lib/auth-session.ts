@@ -166,3 +166,19 @@ export async function getValidAccessToken() {
   const refreshed = await refreshInFlight;
   return refreshed?.access_token ?? null;
 }
+
+/** Uses the existing Supabase session; no service-role key is used. */
+export async function changeAccountPassword(email: string, current: string, next: string) {
+  if (next.length < 8) throw new Error('Use at least 8 characters.');
+  if (current === next) throw new Error('Choose a different password.');
+  // Reauthenticate with the current password before attempting any update.
+  const session = await signInWithPassword(email, current);
+  const { url, key } = getSupabaseConfig();
+  const response = await fetch(`${url}/auth/v1/user`, {
+    method: 'PUT',
+    headers: { apikey: key, Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: next, current_password: current }),
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error(await responseError(response));
+}

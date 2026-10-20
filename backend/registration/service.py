@@ -151,12 +151,11 @@ class RegistrationService:
         return {"resident_id": UUID(result["resident_id"])}
 
     def issue_invitation(self, user_id, resident_id):
-        token = secrets.token_urlsafe(32)
         result = self.store.call("issue_invitation", actor_id=str(user_id), resident_id=str(resident_id),
-                                 id=str(uuid4()), token_digest=hashlib.sha256(token.encode()).hexdigest())
+                                 id=str(uuid4()), token_digest=hashlib.sha256(secrets.token_bytes(32)).hexdigest())
         self._management_result(result)
         return InvitationResult(invitation_id=result["invitation_id"], resident_id=resident_id,
-                                invitation_token=token, expires_at=result["expires_at"])
+                                expires_at=result["expires_at"])
 
     def management_residents(self, user_id):
         result = self.store.management_call("list", actor_id=str(user_id))

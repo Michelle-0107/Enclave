@@ -63,7 +63,7 @@ async function main(){let count=0;async function test(name,fn){await fn();count+
   tree=render();const search=find(tree,n=>n.type==='PlaceSearch');
   assert.equal(search.props.areaId,'kajang-prima-saujana');assert.ok(search.props.local.some(item=>item.label===kajang.landmarks[0].name));
   let pick=find(tree,n=>n.type==='SavedPlacesControl'&&n.props.field==='starting point');pick.props.onChoose({label:'Local start',coordinate:a});
-  tree=render();pick=find(tree,n=>n.type==='SavedPlacesControl'&&n.props.field==='destination');pick.props.onChoose({label:'Local destination',coordinate:b});
+  tree=render();pick=find(tree,n=>n.type==='SavedPlacesControl'&&n.props.field==='end point');pick.props.onChoose({label:'Local destination',coordinate:b});
   tree=render();button(tree,'Choose route').props.onPress();await tick();tree=render();
   assert.equal(calls.length,1);assert.equal(calls[0].id,'kajang-prima-saujana');assert.equal(calls[0].token,'fixture-token');
   assert.equal(JSON.stringify(calls[0].payload.origin),JSON.stringify({longitude:a[0],latitude:a[1]}));

@@ -9,7 +9,7 @@ import {
 
 import { reportsApi, type ApiError, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { colors } from '../theme';
+import { colors, reportStatusTone } from '../theme';
 
 export type ReportStatus =
   | 'Pending management review'
@@ -41,19 +41,6 @@ type Props = {
 };
 
 const filters: Filter[] = ['All', 'Open', 'Resolved'];
-
-function getStatusColor(status: ReportStatus) {
-  switch (status) {
-    case 'Rejected':
-      return '#A63E37';
-
-    case 'Repair verified / resolved':
-      return '#2D7050';
-
-    default:
-      return '#966114';
-  }
-}
 
 export default function MyReportsScreen({
   onBack,
@@ -236,7 +223,9 @@ export default function MyReportsScreen({
                 style={[
                   styles.reportStatus,
                   {
-                    color: getStatusColor(report.status),
+                    color: reportStatusTone(report.status).text,
+                    backgroundColor: reportStatusTone(report.status).background,
+                    alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
                   },
                 ]}
               >
@@ -349,7 +338,7 @@ const styles = StyleSheet.create({
   },
 
   selectedFilter: {
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
   },
 
   filterText: {

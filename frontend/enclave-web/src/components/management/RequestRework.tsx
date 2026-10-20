@@ -117,7 +117,7 @@ export default function RequestRework({ report }: Props) {
 
         <Button
           type="submit"
-          className="min-h-[52px] w-full rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground"
+          className="min-h-[52px] w-full rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground"
         >
           Send request &amp; notify
         </Button>

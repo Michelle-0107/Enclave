@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { reportsApi, residencyApi, type ApiError, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { colors } from '../theme';
+import { colors, reportStatusTone } from '../theme';
 
 type Props = {
   onReportPress: () => void;
@@ -125,7 +125,7 @@ export default function HomeScreen({
         <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
       ) : latestReport ? (
         <Pressable accessibilityRole="button" accessibilityLabel="View your report updates" onPress={onMyReportsPress} style={({ pressed }) => [styles.updateCard, pressed && styles.pressed]}>
-          <Text style={[styles.eyebrow, { color: latestReport.status === 'resolved' ? '#2D7050' : latestReport.status === 'rejected' ? '#A63E37' : '#966114' }]}>{latestReport.status.replace(/_/g, ' ').toUpperCase()}</Text>
+          <Text style={[styles.eyebrow, { color: reportStatusTone(latestReport.status).text, backgroundColor: reportStatusTone(latestReport.status).background, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }]}>{latestReport.status.replace(/_/g, ' ').toUpperCase()}</Text>
           <Text numberOfLines={1} style={styles.updateTitle}>
             {latestReport.category || 'Community report'}
           </Text>
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   button: {
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
     borderRadius: 16,
     minHeight: 52,
     alignItems: 'center',

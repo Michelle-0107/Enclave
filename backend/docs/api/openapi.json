@@ -3727,6 +3727,90 @@
         ]
       }
     },
+    "/api/v1/management/what-if/location-name": {
+      "get": {
+        "tags": [
+          "Management What-if"
+        ],
+        "summary": "What If Location Name",
+        "description": "Read-only lookup of a selected map point against named road sections in the shared OSM location catalog.",
+        "operationId": "what_if_location_name_api_v1_management_what_if_location_name_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "area_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{1,63}$",
+              "default": "kl-east-pilot",
+              "title": "Area Id"
+            }
+          },
+          {
+            "name": "latitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Latitude"
+            }
+          },
+          {
+            "name": "longitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Longitude"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationName"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials."
+          },
+          "403": {
+            "description": "Management role required"
+          },
+          "503": {
+            "description": "Map location catalog unavailable"
+          },
+          "404": {
+            "description": "Service area not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/management/what-if/compare": {
       "post": {
         "tags": [
@@ -4831,10 +4915,6 @@
             "format": "uuid",
             "title": "Resident Id"
           },
-          "invitation_token": {
-            "type": "string",
-            "title": "Invitation Token"
-          },
           "expires_at": {
             "type": "string",
             "format": "date-time",
@@ -4845,7 +4925,6 @@
         "required": [
           "invitation_id",
           "resident_id",
-          "invitation_token",
           "expires_at"
         ],
         "title": "InvitationResult"
@@ -5085,6 +5164,33 @@
           "longitude"
         ],
         "title": "Location"
+      },
+      "LocationName": {
+        "properties": {
+          "matched": {
+            "type": "boolean",
+            "title": "Matched"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 250,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "matched"
+        ],
+        "title": "LocationName"
       },
       "LocationResult": {
         "properties": {

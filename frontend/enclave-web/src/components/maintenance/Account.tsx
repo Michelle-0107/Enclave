@@ -1,4 +1,5 @@
 "use client";
+import AccountSettings from '@/components/account/AccountSettings';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ export default function Account() {
         <h2 className="text-[22px] font-semibold">{displayName}</h2>
         <p className="text-sm text-muted-foreground">Maintenance staff account</p>
       </div>
+      <AccountSettings />
       <h2 className="text-sm font-semibold">Work email</h2>
       <p className="text-sm text-muted-foreground">
         {user?.email ?? "Email unavailable"}

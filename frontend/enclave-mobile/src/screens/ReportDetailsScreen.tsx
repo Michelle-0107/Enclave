@@ -16,10 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { reportsApi, type ApiError, type ReportHistoryEvent, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { colors } from '../theme';
+import { colors, reportStatusTone } from '../theme';
 import type {
   ResidentReport,
-  ReportStatus,
 } from './MyReportsScreen';
 
 export type ReportProgressItem = {
@@ -43,33 +42,12 @@ const tones = {
   green: '#2D7050',
 };
 
-function getStatusStyle(status: ReportStatus) {
-  if (status === 'Repair verified / resolved') {
-    return {
-      text: '#2D7050',
-      background: '#E5F3EA',
-    };
-  }
-
-  if (status === 'Rejected') {
-    return {
-      text: '#A63E37',
-      background: '#FBE9E7',
-    };
-  }
-
-  return {
-    text: '#966114',
-    background: '#FFF0D9',
-  };
-}
-
 export default function ReportDetailsScreen({
   report,
   onMapTouchChange,
 }: Props) {
   const [currentReport, setCurrentReport] = useState(report);
-  const statusStyle = getStatusStyle(currentReport.status);
+  const statusStyle = reportStatusTone(currentReport.status);
   const [progressItems, setProgressItems] = useState<ReportProgressItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -431,7 +409,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.navy,
+    backgroundColor: colors.brand,
   },
 
   navigationButtonText: {

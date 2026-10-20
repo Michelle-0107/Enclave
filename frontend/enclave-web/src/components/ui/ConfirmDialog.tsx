@@ -38,7 +38,7 @@ export default function ConfirmDialog({
           <button type="button" disabled={busy} onClick={onCancel} className="min-h-11 rounded-xl border border-border px-5 text-sm font-semibold text-primary disabled:opacity-60">
             Cancel
           </button>
-          <button type="button" disabled={busy} onClick={onConfirm} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
+          <button type="button" disabled={busy} onClick={onConfirm} className="min-h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
             {busy ? "Signing out…" : confirmLabel}
           </button>
         </div>
