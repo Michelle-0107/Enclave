@@ -1,13 +1,16 @@
 import { NativeMap as Map } from '../navigation/NativeMap';
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import {
   Camera,
@@ -31,6 +34,7 @@ type Props = {
   initialDetails?: ReportLocationDetails;
   children?: ReactNode;
   onDescriptionFocus?: () => void;
+  onMapTouchChange?: (active: boolean) => void;
   onBack: () => void;
   onDetailsChange: (details: ReportLocationDetails) => void;
 };
@@ -70,6 +74,7 @@ export default function ReportLocationScreen({
   initialDetails,
   children,
   onDescriptionFocus,
+  onMapTouchChange,
   onBack,
   onDetailsChange,
 }: Props) {
@@ -90,16 +95,24 @@ export default function ReportLocationScreen({
   const [error, setError] = useState('');
   const [mapError, setMapError] = useState(false);
   const [mapKey, setMapKey] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const [showFacilities, setShowFacilities] = useState(false);
+  const mapViewState = useRef<{ center: [number, number]; zoom: number }>({
+    center: initialDetails?.coordinates && isInsidePilot(initialDetails.coordinates)
+      ? [initialDetails.coordinates.longitude, initialDetails.coordinates.latitude] : PILOT_CENTER,
+    zoom: initialDetails?.coordinates ? 17 : 15,
+  });
+  useEffect(() => () => { onMapTouchChange?.(false); }, [onMapTouchChange]);
 
-  const initialCoordinates = initialDetails?.coordinates;
-
-  const initialCenter: [number, number] =
-    initialCoordinates && isInsidePilot(initialCoordinates)
-      ? [
-          initialCoordinates.longitude,
-          initialCoordinates.latitude,
-        ]
-      : PILOT_CENTER;
+  function closeMap() {
+    onMapTouchChange?.(false);
+    setExpanded(false);
+  }
+  function changeZoom(amount: number) {
+    const zoom = Math.max(12, Math.min(20, mapViewState.current.zoom + amount));
+    mapViewState.current = { ...mapViewState.current, zoom };
+    cameraRef.current?.easeTo({ center: mapViewState.current.center, zoom, duration: 200 });
+  }
 
   function selectMapLocation(
     longitude: number,
@@ -198,6 +211,91 @@ export default function ReportLocationScreen({
     }
   }
 
+  const mapView = (
+      <View style={[styles.mapContainer, expanded && styles.expandedMap]}
+        onTouchStart={() => { Keyboard.dismiss(); onMapTouchChange?.(true); }}
+        onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
+        onTouchCancel={() => onMapTouchChange?.(false)}>
+        <Map
+          key={mapKey}
+          style={styles.map}
+          mapStyle={MAP_STYLE}
+          androidView="texture"
+          compass
+          attribution
+          dragPan
+          touchZoom
+          doubleTapZoom
+          onRegionDidChange={event => { mapViewState.current = { center: event.nativeEvent.center, zoom: event.nativeEvent.zoom }; }}
+          onPress={(event) => {
+            const [longitude, latitude] =
+              event.nativeEvent.lngLat;
+
+            Keyboard.dismiss();
+            selectMapLocation(longitude, latitude);
+          }}
+          onDidFinishLoadingMap={() => setMapError(false)}
+          onDidFailLoadingMap={() => setMapError(true)}
+        >
+          <Camera
+            ref={cameraRef}
+            initialViewState={mapViewState.current}
+          />
+
+          {showFacilities && <ReportFacilityMarkers facilities={facilityPoints.facilities} onSelect={facility => {
+            if (locationLock.current) return;
+            selectMapLocation(facility.longitude, facility.latitude);
+          }} />}
+
+          {coordinates && isInsidePilot(coordinates) && (
+            <Marker
+              id="report-location"
+              lngLat={[
+                coordinates.longitude,
+                coordinates.latitude,
+              ]}
+            >
+              <View
+                collapsable={false}
+                style={styles.pin}
+                accessible
+                accessibilityLabel="Selected issue location"
+              >
+                <Text style={styles.pinText}>!</Text>
+              </View>
+            </Marker>
+          )}
+        </Map>
+
+        <View style={styles.zoomControls}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Zoom in report map" onPress={() => changeZoom(1)} style={styles.zoomButton}><Text style={styles.zoomText}>+</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Zoom out report map" onPress={() => changeZoom(-1)} style={styles.zoomButton}><Text style={styles.zoomText}>−</Text></Pressable>
+        </View>
+        {mapError && (
+          <View style={styles.mapErrorCard}>
+            <Text style={styles.label}>
+              Unable to load map
+            </Text>
+
+            <Text style={styles.helper}>
+              Check your internet connection.
+            </Text>
+
+            <Pressable
+              accessibilityRole="button"
+              style={styles.backButton}
+              onPress={() => {
+                setMapError(false);
+                setMapKey((value) => value + 1);
+              }}
+            >
+              <Text style={styles.backText}>Retry map</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.navigation}>
@@ -252,82 +350,25 @@ export default function ReportLocationScreen({
         </Text>
       </Pressable>
 
-      <View style={styles.mapContainer}>
-        <Map
-          key={mapKey}
-          style={styles.map}
-          mapStyle={MAP_STYLE}
-          androidView="texture"
-          compass
-          attribution
-          onPress={(event) => {
-            const [longitude, latitude] =
-              event.nativeEvent.lngLat;
-
-            selectMapLocation(longitude, latitude);
-          }}
-          onDidFinishLoadingMap={() => setMapError(false)}
-          onDidFailLoadingMap={() => setMapError(true)}
-        >
-          <Camera
-            ref={cameraRef}
-            initialViewState={{
-              center: initialCenter,
-              zoom: 15,
-            }}
-          />
-
-          <ReportFacilityMarkers facilities={facilityPoints.facilities} onSelect={facility => {
-            if (locationLock.current) return;
-            selectMapLocation(facility.longitude, facility.latitude);
-          }} />
-
-          {coordinates && isInsidePilot(coordinates) && (
-            <Marker
-              id="report-location"
-              lngLat={[
-                coordinates.longitude,
-                coordinates.latitude,
-              ]}
-            >
-              <View
-                collapsable={false}
-                style={styles.pin}
-                accessible
-                accessibilityLabel="Selected issue location"
-              >
-                <Text style={styles.pinText}>!</Text>
-              </View>
-            </Marker>
-          )}
-        </Map>
-
-        {mapError && (
-          <View style={styles.mapErrorCard}>
-            <Text style={styles.label}>
-              Unable to load map
-            </Text>
-
-            <Text style={styles.helper}>
-              Check your internet connection.
-            </Text>
-
-            <Pressable
-              accessibilityRole="button"
-              style={styles.backButton}
-              onPress={() => {
-                setMapError(false);
-                setMapKey((value) => value + 1);
-              }}
-            >
-              <Text style={styles.backText}>Retry map</Text>
-            </Pressable>
-          </View>
-        )}
+      <View style={styles.mapToolbar}>
+        <Pressable accessibilityRole="switch" accessibilityLabel="Show report facility markers" accessibilityState={{ checked: showFacilities }}
+          onPress={() => setShowFacilities(value => !value)} style={styles.backButton}><Text style={styles.backText}>{showFacilities ? 'Hide facility markers' : 'Show facility markers'}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Expand report map" onPress={() => { Keyboard.dismiss(); onMapTouchChange?.(false); setExpanded(true); }} style={styles.backButton}><Text style={styles.backText}>Expand map ↗</Text></Pressable>
       </View>
+      {expanded ? <Modal visible presentationStyle="fullScreen" animationType="slide" hardwareAccelerated onRequestClose={closeMap}>
+        <SafeAreaView style={styles.fullScreen} edges={['top', 'bottom']}>
+          <View style={styles.mapToolbar}><Text style={styles.label}>Choose issue location</Text>
+            <Pressable accessibilityRole="button" onPress={closeMap} style={styles.backButton}><Text style={styles.backText}>Done</Text></Pressable></View>
+          <Text style={styles.helper}>Drag to move. Pinch or use + / − to zoom. Tap to place the issue pin.</Text>
+          {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+          {mapView}
+          <Pressable accessibilityRole="button" disabled={locating} onPress={useCurrentLocation} style={styles.locationButton}><Text style={styles.locationButtonText}>{locating ? 'Finding location…' : 'Use current location'}</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={!coordinates || locating} accessibilityState={{ disabled: !coordinates || locating }} onPress={closeMap} style={[styles.locationButton, (!coordinates || locating) && styles.disabled]}><Text style={styles.locationButtonText}>Use this location</Text></Pressable>
+        </SafeAreaView>
+      </Modal> : mapView}
 
       <ReportFacilityHint loading={facilityPoints.loading} error={facilityPoints.error}
-        count={facilityPoints.facilities.length} onRetry={facilityPoints.reload} />
+        count={facilityPoints.facilities.length} onRetry={facilityPoints.reload} markersVisible={showFacilities} />
 
       <Text style={styles.helper}>
         {coordinates && isInsidePilot(coordinates)
@@ -430,7 +471,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
   },
   mapContainer: {
-    height: 280,
+    height: 360,
     borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: colors.lavender,
@@ -438,6 +479,12 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  mapToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  fullScreen: { flex: 1, backgroundColor: colors.white, paddingHorizontal: 16, gap: 12 },
+  expandedMap: { flex: 1, height: undefined, borderRadius: 16 },
+  zoomControls: { position: 'absolute', right: 12, top: 52, gap: 4 },
+  zoomButton: { width: 44, height: 44, borderRadius: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  zoomText: { color: colors.navy, fontSize: 24, fontWeight: '600' },
   pin: {
     width: 44,
     height: 44,

@@ -36,6 +36,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const [endText, setEndText] = useState('');
   const [field, setField] = useState<Field>('origin');
   const [searching, setSearching] = useState(false);
+  const [showFacilityMarkers, setShowFacilityMarkers] = useState(false);
   const [inputMode, setInputMode] = useState<'search' | 'map'>('map');
   const [results, setResults] = useState<ModeResult[]>([]);
   const [mode, setMode] = useState<Mode>('shortest');
@@ -79,9 +80,9 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       properties: { simulated: f.routingSource === 'simulation' },
       geometry: { type: 'LineString' as const, coordinates: f.geometry } })) }), [dataset]);
   const facilityData = useMemo(() => ({ type: 'FeatureCollection' as const,
-    features: dataset.facilities.map(f => ({ type: 'Feature' as const, id: f.id,
+    features: dataset.facilities.filter(f => showFacilityMarkers || isBlocked(f, state)).map(f => ({ type: 'Feature' as const, id: f.id,
       properties: { id: f.id, blocked: isBlocked(f, state), symbol: symbols[f.kind] },
-      geometry: { type: 'Point' as const, coordinates: f.coordinate } })) }), [dataset, state]);
+      geometry: { type: 'Point' as const, coordinates: f.coordinate } })) }), [dataset, state, showFacilityMarkers]);
   const placeData = useMemo(() => ({ type: 'FeatureCollection' as const,
     features: dataset.landmarks.map(p => ({ type: 'Feature' as const, id: p.id, properties: { id: p.id, name: p.name },
       geometry: { type: 'Point' as const, coordinates: p.coordinate } })) }), [dataset]);
@@ -398,24 +399,24 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         </Marker>}
         {guidanceTarget && <Marker id="demo-guidance-target" lngLat={guidanceTarget}><View collapsable={false} style={[styles.marker, styles.accessPin]}><Text style={styles.pinText}>Next</Text></View></Marker>}
         {(gpsPosition || lastLocation) && <Marker id="demo-gps" lngLat={(gpsPosition || lastLocation)!}><View collapsable={false} style={[styles.marker, styles.accessPin]}><Text style={styles.pinText}>Me</Text></View></Marker>}
-        <GeoJSONSource id="demo-places" data={placeData} hitbox={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        {showFacilityMarkers && <GeoJSONSource id="demo-places" data={placeData} hitbox={{ top: 8, right: 8, bottom: 8, left: 8 }}
           onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'place', id }); setSearching(false); Keyboard.dismiss(); } }}>
           <Layer id="demo-place-points" type="circle" minzoom={15} paint={{ 'circle-radius': 4, 'circle-color': '#175CD3', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 1 }} />
-        </GeoJSONSource>
+        </GeoJSONSource>}
         <GeoJSONSource id="demo-facilities" data={facilityData} hitbox={{ top: 10, right: 10, bottom: 10, left: 10 }}
           onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'facility', id }); setSearching(false); Keyboard.dismiss(); } }}>
           <Layer id="demo-facility-points" type="circle" paint={{ 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 4, 16, 10],
             'circle-color': ['case', ['get', 'blocked'], '#A63E37', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
           <Layer id="demo-facility-labels" type="symbol" minzoom={15.5} layout={{ 'text-field': ['get', 'symbol'], 'text-font': ['Noto Sans Regular'], 'text-size': 9, 'text-allow-overlap': true }} paint={{ 'text-color': '#FFFFFF' }} />
         </GeoJSONSource>
-        <GeoJSONSource id="demo-navigation-lines" data={navigationLines}>
+        {showFacilityMarkers && <GeoJSONSource id="demo-navigation-lines" data={navigationLines}>
           <Layer id="demo-navigation-lines-layer" type="line" minzoom={14} paint={{ 'line-width': 2, 'line-color': ['case', ['get', 'simulated'], '#8147B4', '#247A80'] }} />
-        </GeoJSONSource>
-        <GeoJSONSource id="demo-navigation-facilities" data={navigationPoints} hitbox={{ top: 10, right: 10, bottom: 10, left: 10 }}
+        </GeoJSONSource>}
+        {showFacilityMarkers && <GeoJSONSource id="demo-navigation-facilities" data={navigationPoints} hitbox={{ top: 10, right: 10, bottom: 10, left: 10 }}
           onPress={event => { event.stopPropagation(); const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') { setSelected({ type: 'navigation', id }); setSearching(false); Keyboard.dismiss(); } }}>
           <Layer id="demo-navigation-points" type="circle" minzoom={14.5} paint={{ 'circle-radius': ['interpolate', ['linear'], ['zoom'], 14.5, 3, 17, 7], 'circle-color': ['case', ['get', 'simulated'], '#8147B4', '#247A80'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 }} />
           <Layer id="demo-navigation-labels" type="symbol" minzoom={16} layout={{ 'text-field': ['get', 'symbol'], 'text-font': ['Noto Sans Regular'], 'text-size': 9 }} paint={{ 'text-color': '#FFFFFF' }} />
-        </GeoJSONSource>
+        </GeoJSONSource>}
         {feature && selectedMarkerData && <GeoJSONSource id="demo-selection-highlight" data={selectedMarkerData}>
           <Layer id="demo-selection-shadow" type="circle" paint={{
             'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 12, 5, 14, 7, 16, 9, 18, 11],
@@ -440,10 +441,14 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         <Pressable accessibilityRole="button" onPress={() => { setMapError(false); setMapKey(n => n + 1); }} style={styles.textButton}><Text style={styles.link}>Retry map</Text></Pressable>
       </View>}
     </View>
-    <View style={styles.row}><Text style={styles.count}>{dataset.facilities.length} facilities · {dataset.facilities.filter(f => isBlocked(f, state)).length} reported issues in the pilot area</Text>
+    <View style={styles.row}><Text style={styles.count}>{showFacilityMarkers ? `${dataset.facilities.length} facilities · ` : ''}{dataset.facilities.filter(f => isBlocked(f, state)).length} reported issues in the pilot area</Text>
       <Pressable accessibilityRole="button" onPress={() => camera.current?.fitBounds(bounds, { padding: { top: 15, right: 15, bottom: 15, left: 15 }, duration: 400 })} style={styles.textButton}><Text style={styles.link}>Show area</Text></Pressable></View>
-    <Text style={styles.hint}>Red: reported damage · Teal: facilities · Blue: real places. A gold frame marks your selection. {inputMode === 'map' ? `Tap the map to choose ${field === 'origin' ? 'your start' : 'your destination'}.` : 'Search for an address or place above, or switch to Pick on map.'}</Text>
-    {Boolean(dataset.navigationFacilities?.length) && <Text style={styles.hint}>Purple SZX/SFB: simulated crossings/footbridges, demo only. Teal ZX/FB: mapped facilities. {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'simulation').length} simulated · {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'openstreetmap').length} mapped.</Text>}
+    <Pressable accessibilityRole="switch" accessibilityLabel="Show facility markers" accessibilityState={{ checked: showFacilityMarkers }}
+      onPress={() => { setShowFacilityMarkers(value => !value); setSelected(null); }} style={styles.textButton}>
+      <Text style={styles.link}>{showFacilityMarkers ? 'Hide facility markers' : 'Show facility markers'}</Text>
+    </Pressable>
+    <Text style={styles.hint}>{showFacilityMarkers ? 'Red: reported damage · Teal: facilities · Blue: places.' : 'Landmarks are shown by the basemap. Red markers show reported damage.'} A gold frame marks your selection. {inputMode === 'map' ? `Tap the map to choose ${field === 'origin' ? 'your start' : 'your destination'}.` : 'Search for an address or place above, or switch to Pick on map.'}</Text>
+    {showFacilityMarkers && Boolean(dataset.navigationFacilities?.length) && <Text style={styles.hint}>Purple SZX/SFB: simulated crossings/footbridges, demo only. Teal ZX/FB: mapped facilities. {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'simulation').length} simulated · {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'openstreetmap').length} mapped.</Text>}
     {feature && <View style={styles.selectedPanel}>
       <Text style={styles.cardTitle}>{feature.name}</Text>
       <Text style={styles.body}>{facility ? `${facility.kind.replaceAll('_', ' ')} · ${isBlocked(facility, state) ? `${facility.reporters} residents reported` : 'No confirmed damage'}` : navigationFacility ? navigationFacility.routingSource === 'simulation' ? 'Simulated infrastructure · demo only' : 'Mapped pedestrian infrastructure' : 'Real mapped landmark'}</Text>
