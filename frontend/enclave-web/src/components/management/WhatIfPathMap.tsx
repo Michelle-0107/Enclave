@@ -190,16 +190,21 @@ export default function WhatIfPathMap({
       dot.type = "button";
       dot.title = issue.facility_name;
       dot.setAttribute("aria-label", issue.facility_name);
+      dot.textContent = "!";
       Object.assign(dot.style, {
-        width: "14px",
-        height: "14px",
+        width: "30px",
+        height: "30px",
         borderRadius: "50%",
-        border: "2px solid white",
-        background: "#a63e37",
+        border: "3px solid white",
+        background: "#d42b35",
+        color: "white",
+        fontSize: "18px",
+        fontWeight: "800",
+        boxShadow: "0 0 0 5px #d42b3533, 0 2px 8px #0006",
         cursor: "pointer",
       });
       dot.addEventListener("click", (event) => event.stopPropagation());
-      const popup = new M.Popup({ offset: 12 }).setText(
+      const popup = new M.Popup({ offset: 22 }).setText(
         `${issue.facility_name} · ${issue.facility_type}`,
       );
       popups.push(popup);

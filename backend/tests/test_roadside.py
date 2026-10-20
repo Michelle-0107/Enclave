@@ -253,7 +253,7 @@ class RoadsideTests(unittest.TestCase):
     def test_real_graphs_support_same_side_trips_with_same_policy(self):
         for area in ('kl-east-pilot','kajang-prima-saujana'):
             g=walking_graph(area)
-            edge=next(e for e in g.edges if e.kind=='road_fallback' and distance(*e.points)>30 and e.direction==0)
+            edge=next(e for e in g.edges if e.kind=='road_fallback' and distance(*e.points)>30 and e.direction==0 and all(g.endpoint_inside(p) for p in e.points))
             a,b=edge.points
             mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
             route=g.route(body(mix(.2),mix(.8)),area_id=area)
@@ -267,7 +267,7 @@ class RoadsideTests(unittest.TestCase):
 class DemoRouteCalculationTests(unittest.TestCase):
     def test_demo_profiles_are_calculated_on_the_server_osm_graph(self):
         area=find_area('kl-east-pilot'); graph=walking_graph(area.id); dataset=demo_area_dataset(area.id).dataset
-        edge=next(e for e in graph.edges if e.kind=='road_fallback' and e.direction==0 and distance(*e.points)>30)
+        edge=next(e for e in graph.edges if e.kind=='road_fallback' and e.direction==0 and distance(*e.points)>30 and all(graph.endpoint_inside(p) for p in e.points))
         a,b=edge.points; mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
         start,end=mix(.2),mix(.8)
         location=lambda point:{'longitude':point[0],'latitude':point[1]}
@@ -358,7 +358,7 @@ class LiveAreaApiTests(unittest.TestCase):
     def test_resident_route_uses_shared_policy_without_contacting_car_engine(self):
         for area in ('kl-east-pilot','kajang-prima-saujana'):
             g=walking_graph(area)
-            edge=next(e for e in g.edges if e.kind=='road_fallback' and distance(*e.points)>30 and e.direction==0)
+            edge=next(e for e in g.edges if e.kind=='road_fallback' and distance(*e.points)>30 and e.direction==0 and all(g.endpoint_inside(p) for p in e.points))
             a,b=edge.points
             mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
             response=self.fixture.request(self.client,body(mix(.2),mix(.8)).model_dump())
@@ -370,7 +370,7 @@ class LiveAreaApiTests(unittest.TestCase):
 
     def test_resident_demo_routes_use_server_osm_graph_and_synthetic_access_profile(self):
         area='kl-east-pilot'; graph=walking_graph(area)
-        edge=next(e for e in graph.edges if e.kind=='road_fallback' and e.direction==0 and distance(*e.points)>30)
+        edge=next(e for e in graph.edges if e.kind=='road_fallback' and e.direction==0 and distance(*e.points)>30 and all(graph.endpoint_inside(p) for p in e.points))
         a,b=edge.points; mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
         start,end=mix(.2),mix(.8)
         location=lambda point:{'longitude':point[0],'latitude':point[1]}
@@ -404,7 +404,7 @@ class LiveAreaApiTests(unittest.TestCase):
         from backend.tests import test_what_if as what_if
         fixture=what_if.WhatIfTests(); fixture.setUp(); self.addCleanup(fixture.doCleanups)
         g=walking_graph('kl-east-pilot')
-        edge=next(e for e in g.edges if e.kind=='road_fallback' and e.direction==0 and distance(*e.points)>80)
+        edge=next(e for e in g.edges if e.kind=='road_fallback' and e.direction==0 and distance(*e.points)>80 and all(g.endpoint_inside(p) for p in e.points))
         a,b=edge.points; mix=lambda t:(a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]))
         middle=mix(.5)
         fixture.issues=[what_if.issue(longitude=middle[0],latitude=middle[1])]

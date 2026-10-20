@@ -1,82 +1,87 @@
-"""Re-run frozen route/structure audits and write an auditable Chinese report."""
-import json
+"""Frozen legacy and walking-eligible audits. Never replace failed samples."""
 import gzip
+import hashlib
+import json
 from pathlib import Path
-
-from backend.navigation.areas import demo_area_dataset
 from backend.navigation.road_cache import signature
-from backend.navigation.roadside import OPEN_ACCESS_METERS, ENDPOINT_ACCESS_METERS
+from backend.navigation.roadside import OPEN_ACCESS_METERS,ENDPOINT_ACCESS_METERS
 from backend.tools.benchmark_demo_routes import evaluate
+from backend.tools.benchmark_demo_routes import CATEGORIES
+from backend.navigation.areas import service_areas
 
 ROOT=Path(__file__).resolve().parents[1]
-NAMES={'cross_road':'道路两侧','same_side':'同侧街道','local_streets':'小路通行','long_distance':'长距离（直线至少800米）',
-       'openstreetmap_crossing':'真实过街通道','openstreetmap_footbridge':'真实天桥',
-       'simulation_crossing':'虚构斑马线','simulation_footbridge':'虚构天桥'}
+WALKING=('walking-primary','walking-holdout')
+
+
+def acceptance(reports):
+    groups=[row for name in WALKING for row in reports[name]['summary']]
+    total=sum(row['total'] for row in groups);success=sum(row['success'] for row in groups)
+    expected={(name,area.id,category) for name in WALKING for area in service_areas().items if area.resident_demo_supported for category in CATEGORIES}
+    actual={(name,row['area'],row['category']) for name in WALKING for row in reports[name]['summary']}
+    coverage=actual==expected and len(groups)==len(expected) and all(row['total']==30 for row in groups)
+    return {'overall_success':success,'overall_total':total,'overall_rate':success/total if total else 0,
+            'overall_strictly_above_95':bool(total and success*100>total*95),
+            'all_walking_groups_at_least_95':coverage and all(row['success']*100>=row['total']*95 for row in groups),
+            'all_facility_groups_at_least_95':bool(reports['facilities']['summary']) and all(row['success']*100>=row['total']*95 for row in reports['facilities']['summary'])}
 
 
 def main():
-    out=ROOT/'docs/api/demo-routing-audit';out.mkdir(parents=True,exist_ok=True)
+    out=ROOT/'docs/api/demo-routing-audit-95';out.mkdir(parents=True,exist_ok=True)
     inputs={'random-primary':ROOT/'data/demo_areas/random-route-samples.json',
             'random-holdout':ROOT/'tests/fixtures/demo-routing/holdout-samples.json',
+            'walking-primary':ROOT/'tests/fixtures/demo-routing/walking-primary-samples.json',
+            'walking-holdout':ROOT/'tests/fixtures/demo-routing/walking-holdout-samples.json',
             'facilities':ROOT/'tests/fixtures/demo-routing/facility-samples.json'}
     reports={}
     for name,path in inputs.items():
-        result=evaluate(json.loads(path.read_text(encoding='utf-8')),demo=True)
-        result['algorithm_sha256']=signature()
-        result['access_policy']={'inferred_gap_limit_meters':OPEN_ACCESS_METERS,
-            'outdoor_approach_limit_meters':ENDPOINT_ACCESS_METERS,'building_access':'nearest_usable_mapped_road_without_distance_cap'}
-        result['ninety_percent_per_group_passed']=all(row['rate']>=.9 for row in result['summary'])
+        raw=path.read_bytes();result=evaluate(json.loads(raw),demo=True)
+        result.update(algorithm_sha256=signature(),sample_sha256=hashlib.sha256(raw).hexdigest(),
+                      demo_overlay_sha256=hashlib.sha256((ROOT/'navigation/demo_network.py').read_bytes().replace(b'\r\n',b'\n')).hexdigest(),
+                      access_policy={'inferred_gap_limit_meters':OPEN_ACCESS_METERS,'outdoor_approach_limit_meters':ENDPOINT_ACCESS_METERS,
+                      'building_access':'nearest usable mapped road without distance cap','route_objective':'minimize inferred gap distance, then actual walk distance',
+                      'routing_coverage':'OSM extract buffer; service-area endpoints unchanged'})
         reports[name]=result
         (out/f'{name}.json.gz').write_bytes(gzip.compress(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode(),mtime=0))
-        print(name,json.dumps(result['summary'],ensure_ascii=False),flush=True)
-    (out/'summary.json').write_text(json.dumps({name:{'seed':r['seed'],'algorithm_sha256':r['algorithm_sha256'],'access_policy':r['access_policy'],'ninety_percent_per_group_passed':r['ninety_percent_per_group_passed'],'summary':r['summary']}
-                                              for name,r in reports.items()},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-    text=['# Demo 导航随机测试报告','',
-          '本报告验证本地后端和导航模型，不代表手机实地走测、生产部署或真实道路的通行认证。',
-          '',f'路网算法校验：`{signature()}`。',
-          '',f'当前规则：道路缺口和室外接近最多 {OPEN_ACCESS_METERS:g} 米；建筑物内起终点关联最近可接入道路，不设距离上限。长距离不再通过空白地带补接。',
-          '',('**90% 分类门槛：通过。**' if all(r['ninety_percent_per_group_passed'] for r in reports.values()) else
-              '**90% 分类门槛：未通过。** 严格执行当前短缺口规则；不删除失败样本，也不通过增加长距离空地连接来提高成功率。需补充真实已记录连接才能改善缺失路网。'),
-          '', '## 抽样方式','',
-          '- 两个地区，每类30条不同路线，四类各自计算成功率。固定样本240条，另有不同随机种子的独立验证240条。',
-          '- 同侧点取自同一条道路一侧；小路取自不同的住宅/服务道路，直线距离50–500米；长距离至少800米。',
-          '- 道路两侧样本在随机道路中心线两侧各8米取点；成功表示路线可用，合理绕行道路末端也算可用。另列实际经过过街设施的数量，不把绕行宣称为斑马线通行。',
-          '- 不按连通组件或计算成功与否筛选，失败不换样本。两批种子为20261019和20261020。',
-          '- 专项样本按种子20261021选择每种虚构设施30座，并检查全部37处已知真实过街设施。必须在返回的设施ID中找到指定设施，才算专项成功。',
-          '- 旧版初测将“有有效绕行但没有经过过街设施”计为跨路失败；最终报告把路线可用率和设施经过数分开，保留全部原始坐标。',
-          '', '## 随机路线结果','', '| 批次 | 地区 | 类型 | 成功/总数 | 成功率 | 确实经过过街设施 | 本地耗时中位数 |',
-          '|---|---|---|---:|---:|---:|---:|']
-    for name in ('random-primary','random-holdout'):
-        for row in reports[name]['summary']:
-            text.append(f'| {reports[name]["seed"]} | {row["area"]} | {NAMES[row["category"]]} | {row["success"]}/{row["total"]} | {row["rate"]:.1%} | {row["crossing_traversals"] if row["category"]=="cross_road" else "—"} | {row["median_ms"]} ms |')
-    total=sum(len(reports[name]['cases']) for name in ('random-primary','random-holdout'))
-    success=sum(row['success'] for name in ('random-primary','random-holdout') for row in reports[name]['cases'])
-    text.extend(['',f'两批合计：**{success}/{total}，{success/total:.2%}**。每个地区、每类、每个批次分别要求至少90%，不以总体平均掩盖某类失败。',
-                 '', '## 设施专项结果','', '| 地区 | 设施类型 | 指定设施确实被经过 | 成功率 |','|---|---|---:|---:|'])
-    for row in reports['facilities']['summary']:
-        text.append(f'| {row["area"]} | {NAMES[row["category"]]} | {row["success"]}/{row["total"]} | {row["rate"]:.1%} |')
-    text.extend(['','专项失败也保留：路线可能有另一条可行通道，但如果没有经过指定设施，本项仍记失败。',
-                 '', '## 地图与导航实现','',
-                 '- 真实设施使用 OSM 过街/天桥几何和已连接的路网边，图标不再凭空代表通路。',
-                 '- 虚构设施按每条道路均匀布置，不读取随机测试坐标或失败清单；相邻平行街道各有自己的设施。',
-                 '- 每一座虚构设施有两端真实道路锚点、可通行边、距离和导航指令；地图画出连接线，路线列表及全屏导航显示设施。',
-                 '- 虚构设施只加载到 Demo，Live 图不含这些边；无障碍模式不能把这些连接当成验证过的无障碍设施。',
-                 '- 紫色 SZX/SFB 明确表示虚构设施，导航持续显示 Demo 标识；不能据此在现实马路上过街。',
-                 '- 路网使用带算法和 OSM 校验的压缩 JSON 缓存，校验不匹配时重新构建；不会反序列化可执行 pickle。',
-                 '', '## 剩余失败样本','', '| 批次 | 样本 | 原因 |','|---|---|---|'])
+        print(name,json.dumps(result['summary']),flush=True)
+    gate=acceptance(reports);passed=all(gate[key] for key in ('overall_strictly_above_95','all_walking_groups_at_least_95','all_facility_groups_at_least_95'))
+    summary={name:{k:v for k,v in report.items() if k!='cases'} for name,report in reports.items()}
+    (out/'summary.json').write_text(json.dumps({'acceptance':{**gate,'threshold':0.95,'passed':passed},'audits':summary},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    text=['# Routing 95% audit','',f'**95% acceptance: {"PASS" if passed else "NOT PASSED"}.**','',
+          f'Walking-eligible total: **{gate["overall_success"]}/{gate["overall_total"]} ({gate["overall_rate"]:.2%})**。',
+          '', '总体必须 >95%；每个 area × category × batch 及每类 facility 专项分别 >=95%。30-case group 至少29/30。',
+          '', '## Scope and sampling','',
+          '- 原240 primary +240 holdout coordinates 完全保留，按实际 route success 计分。旧 baseline report/raw results 保留在 `DEMO_ROUTING_RANDOM_REPORT_ZH.md` / `demo-routing-audit/`，本次 rerun 另存 `demo-routing-audit-95/`。',
+          '- 经用户确认，95% acceptance 使用 walking-eligible primary / holdout，seed20261022 /20261023，每个 area 四类各30，共480条。两批 samples 在首次计算 route success 前冻结。',
+          '- Eligibility：两端在 service window 内，来自 mapped walking/roadside coverage；cross-road 仅取有 walking coverage 的道路。两端分别满足20m outdoor / nearest-building access；排除已知 endpoint physical obstacles。',
+          '- 不按 connected component 或 route success 筛选，不删除/替换失败，不换 seed 找高分。',
+          '- Cross-road 在道路中心线两侧各8m；local streets 两条不同住宅/服务道路，直线50–500m；long distance 直线至少800m；same-side 取同侧道路。',
+          '- Facility 专项沿用 seed20261021 的原 samples，指定 facility ID 必须出现在实际返回 route 中。',
+          '- 本地 Demo audit 不等于 Live availability、实地通行或 accessibility certification。',
+          '', '## Routing policy','',
+          '- 固定 endpoint access，优先 recorded roads/footpaths/facilities；只有无法连通时使用 <=20m inferred links。fallback 中先比较 inferred distance，再比较实际 walk distance。',
+          '- 不穿 building/fence/water 或无授权 road crossing。Building endpoint 仍关联最近可接入道路，不设任意距离上限。',
+          '- 允许沿 OSM extract buffer 内的 recorded roads 绕行，endpoint service window 不扩大。Mapped road bridge 仅在真实共享 OSM approach node 连接同侧 grade transition；2D交叉不能连接上下层。',
+          '- Demo facilities 与 Live graph 隔离；推定和虚构通道保留明确 warnings。']
+    text.extend(['- 用户明确确认 trunk roadside policy：仅接纳 access=yes 且没有 foot=no/use_sidepath 或 motorroad=yes 的 trunk；motorway、motorway_link、trunk_link 不因此开放。仍禁止无设施横穿。',
+                 '- 本次沿用原 OSM extracts，没有采用临时下载的新地图。Demo-only buffer crossings 按统一75m geographic spacing 补充，旧 facility IDs 保留；不是20m open-land links，也不进入 Live。'])
+    for names,title in ((WALKING,'Walking-eligible results'),(('random-primary','random-holdout'),'Original 480 rerun'),(('facilities',),'Facility results')):
+        text.extend(['',f'## {title}','', '| Batch | Area | Category | Success | Rate |','|---|---|---|---:|---:|'])
+        for name in names:
+            for row in reports[name]['summary']:
+                text.append(f'| {name} | {row["area"]} | {row["category"]} | {row["success"]}/{row["total"]} | {row["rate"]:.2%} |')
+    legacy=[r for name in ('random-primary','random-holdout') for r in reports[name]['summary']]
+    success=sum(r['success'] for r in legacy);total=sum(r['total'] for r in legacy)
+    text.extend(['',f'原480 rerun 总体：**{success}/{total} ({success/total:.2%})**。Motorway/trunk 附近无法满足 access rules 的点仍记失败，没有改算成功。',
+                 '', '## Retained failures','', '| Batch | Case | Reason |','|---|---|---|'])
     for name,report in reports.items():
         for row in report['cases']:
-            if not row['success']: text.append(f'| {name} | {row["id"]} | {row["reason"]} |')
-    text.extend(['','完整坐标、路线几何、导航步骤、失败原因及耗时保存在同目录 `demo-routing-audit/` 的 `.json.gz` 文件，解压即为 JSON。`summary.json` 可直接查看汇总。',
-                 '', '## 部署确认与复测','',
-                 '```powershell', 'python -m backend.tools.build_demo_crossings','python -m backend.tools.audit_demo_navigation',
-                 'python -m unittest backend.tests.test_demo_navigation','```','',
-                 'GitHub push、合并 main 和 Render 完成部署是不同步骤。公开健康检查正常不能证明路由代码已更新。',
-                 '部署后 `/health` 响应头应有 `X-Enclave-Routing-Revision: demo-crossings-v1`，Demo dataset 应返回 `navigationFacilities`。',
-                 '手机浏览器也可直接打开 `/health/routing`，应看到 `{"routing_revision":"demo-crossings-v1"}`；404 或旧版本表示新代码还未部署到该服务。',
-                 '本次没有发布 EAS Update 或构建 APK；移动端通过开发服务器加载修改，后端需部署后才在手机生效。',''])
-    (ROOT/'docs/api/DEMO_ROUTING_RANDOM_REPORT_ZH.md').write_text('\n'.join(text),encoding='utf-8')
-    assert all(row['rate']>=.9 for report in reports.values() for row in report['summary']), 'One audit category remains below 90%; see report, do not remove failed cases.'
+            if not row['success']:text.append(f'| {name} | {row["id"]} | {row["reason"]} |')
+    text.extend(['','## Reproduce','', '```powershell','python -m backend.tools.audit_demo_navigation',
+                 'python -m unittest backend.tests.test_road_priority backend.tests.test_roadside backend.tests.test_open_land_access backend.tests.test_demo_navigation -q','```','',
+                 'Raw JSON.GZ 包含全部 coordinates/geometry/maneuvers/失败原因/timings、sample SHA256 和 algorithm SHA256；summary.json 包含 acceptance flags。',
+                 '', '此报告不代表已 push、merge、deploy、执行 SQL 或 build APK。',''])
+    (ROOT/'docs/api/DEMO_ROUTING_95_REPORT_ZH.md').write_text('\n'.join(text),encoding='utf-8')
+    if not passed:raise SystemExit('95% acceptance not passed; keep failed cases and inspect the report.')
 
 
-if __name__=='__main__': main()
+if __name__=='__main__':main()

@@ -12,6 +12,11 @@ from backend.navigation.road_cache import write_graph,read_graph
 
 def main():
     root=Path(__file__).resolve().parents[2];folder=root/'backend/data/demo_areas'
+    datasets=[folder/f'{area.id}.json' for area in service_areas().items if area.resident_demo_supported]
+    if all(path.exists() and json.loads(path.read_text(encoding='utf-8')).get('navigationFacilities') for path in datasets):
+        # Rebuilding must retain published facility IDs and buffer crossings.
+        from backend.tools.refresh_demo_routing import main as refresh
+        return refresh()
     for area in service_areas().items:
         if not area.resident_demo_supported: continue
         source=folder/f'{area.id}.osm';cache=folder/f'{area.id}-routing.json.gz'

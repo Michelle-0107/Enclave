@@ -53,10 +53,10 @@ def mapped_facilities(graph):
     return result
 
 
-def generate_facilities(area_id,*,spacing=75):
+def generate_facilities(area_id,*,spacing=75,include_buffer=False,source=None):
     """Uniform geographic placement; never consumes benchmark endpoints/results."""
     base=walking_graph(area_id)
-    source=Path(__file__).resolve().parents[1]/'data/demo_areas'/f'{area_id}.osm'
+    source=source or Path(__file__).resolve().parents[1]/'data/demo_areas'/f'{area_id}.osm'
     root=ET.parse(source).getroot()
     points={n.attrib['id']:(float(n.attrib['lon']),float(n.attrib['lat'])) for n in root.findall('node')}
     candidates=[]
@@ -66,7 +66,8 @@ def generate_facilities(area_id,*,spacing=75):
         refs=[n.attrib['ref'] for n in way.findall('nd')]
         for j,(a,b) in enumerate(zip(refs,refs[1:])):
             if a not in points or b not in points or distance(points[a],points[b])<20: continue
-            if not all(base.inside(p) for p in (points[a],points[b])): continue
+            inside=base.inside if include_buffer else base.endpoint_inside
+            if not all(inside(p) for p in (points[a],points[b])): continue
             count=max(1,math.ceil(distance(points[a],points[b])/100))
             for k in range(count):
                 t=(k+.5)/count

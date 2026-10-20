@@ -1,5 +1,7 @@
 # Demo 导航随机测试报告
 
+> Historical baseline（旧 algorithm / policy，434/480）；为保留原始证据不覆盖以下历史内容。当前结果和用户确认的新95% walking-eligible acceptance，见 [Routing 95% audit](DEMO_ROUTING_95_REPORT_ZH.md)。原480个 samples 仍原样 rerun，最新 raw results 另存于 `demo-routing-audit-95/`。
+
 本报告验证本地后端和导航模型，不代表手机实地走测、生产部署或真实道路的通行认证。
 
 路网算法校验：`34b266b6aa3e5591cf70895326bcb6fade996bd4d92d1341d4f3b69050e6874f`。

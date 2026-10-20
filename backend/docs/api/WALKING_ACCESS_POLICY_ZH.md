@@ -2,6 +2,15 @@
 
 此规则在后端统一执行，适用于所有已启用区域的 Live 和 Resident Demo，地区资料不写入前端。
 
+## Recorded roads first
+
+- 固定 endpoint access 后，优先使用 recorded roads、footpaths 和可用 facilities。只有这些连接无法完成 journey 时才使用 <=20m 的 inferred links；fallback 先最小化 inferred distance，再最小化实际 walking distance。显示的 distance/ETA 仍由真实 geometry 计算，不含优化 penalty。
+- OSM extract buffer 用来保留 service window 外已下载的 recorded-road detours，endpoint 仍必须位于原 service area。路线经过 buffer 时返回明确 warning，不扩大可选择起终点范围。
+- Mapped road bridge / underpass 在真实共享 OSM approach node 上保持同侧连续；不同 level 的几何交叉不会自动连接，也不能连接对面车道。
+- 用户已明确确认 trunk roadside policy：仅 OSM `highway=trunk`、`access=yes`，且没有 `foot=no` / `foot=use_sidepath`、`motorroad=yes` 或其他硬性禁用时接纳。`motorway`、`motorway_link`、`trunk_link` 不因此开放；无设施横穿仍禁止。这是 product policy，不是 surveyed sidewalk 或实地通行认证，route 包含专用 warning。
+- Demo 在 OSM extract buffer 按统一75m geographic spacing 增补明确虚构的 crossings/footbridges；保留既有 facility IDs，approach 只关联同一 mapped way，调整不得超过20m或穿障碍。虚构设施不是 open-land gap，绝不进入 Live graph。
+- 95% audit、原480 rerun、facility专项及全部失败参见 [Routing 95% audit](DEMO_ROUTING_95_REPORT_ZH.md)。旧 report 保留为历史 baseline。
+
 ## 没画出来的小路与空地
 
 - 两段断开的地面步行通道，相距不超过 20 米，且中间没有已知障碍时，可以补上推定连接。封闭环形小路也参与补接，不只检查断头端点。
@@ -30,6 +39,8 @@
 
 ```powershell
 python -m unittest backend.tests.test_open_land_access backend.tests.test_roadside backend.tests.test_demo_facility_mapping backend.tests.test_service_areas
+python -m backend.tools.refresh_demo_routing
+python -m backend.tools.audit_demo_navigation
 ```
 
 真实资料回归使用 KL East Mall 的三个地图位置和原先误标为斑马线的人行道。测试不使用住户账号或生产数据库。

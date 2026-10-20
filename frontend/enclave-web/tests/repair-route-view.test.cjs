@@ -237,13 +237,15 @@ test('switching route removes old geometry, endpoints and distances before drawi
   const active = markers.filter(m => !m.removed);
   for (const label of ['2A', '2B']) assert.ok(active.some(m => m.options.element.textContent === label));
   assert.ok(active.every(m => !m.options.element.textContent.includes('P1')));
-  assert.ok(active.some(m => m.options.element.textContent.includes('P2 · Journey 2 · After: 591 m')));
+  assert.equal(active.length, 2, 'only compact endpoints remain; long route labels are omitted');
+  assert.ok(active.every(m => !m.options.element.textContent.includes('P2')));
   cleanupSecond();
   effects.length = 0; refIndex = 0;
   Component({ ...props, selectedKey: 'all:avoid_damage' });
   const cleanupAll = effects[1]();
   assert.deepEqual([...sources.keys()], ['repair-1-before', 'repair-2-before', 'repair-1-after', 'repair-2-after']);
   assert.ok(fitted.includes(points[0]) && fitted.includes(secondPoints[1]));
+  assert.equal(markers.filter(m => !m.removed).length, 4, 'all-route mode keeps only four compact endpoints');
   cleanupAll();
   assert.equal(sources.size, 0); assert.ok(markers.every(m => m.removed));
   unmount();

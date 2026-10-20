@@ -19,6 +19,8 @@ def signature():
 def write_graph(path,graph,source):
     payload={'version':1,'algorithm':signature(),'source':hashlib.sha256(source.read_bytes()).hexdigest(),
              'bounds':graph.bounds,'nodes':graph.nodes,'private_way_ids':sorted(graph.private_way_ids),
+             'routing_bounds':graph.routing_bounds,
+             'explicit_trunk_way_ids':sorted(graph.explicit_trunk_way_ids),
              'carriageways':graph.carriageways,
              'edges':[[e.a,e.b,e.points,e.name,e.kind,e.way_id,e.direction,e.grade] for e in graph.edges]}
     # Deterministic compression makes rebuilds reviewable and reproducible.
@@ -26,7 +28,7 @@ def write_graph(path,graph,source):
 
 
 def read_graph(path,source,bounds):
-    from .roadside import RoadsideGraph,Edge
+    from .roadside import RoadsideGraph,Edge,coverage_bounds
     try:
         if not path.is_file(): return None
         with gzip.open(path,'rb') as file:
@@ -38,7 +40,9 @@ def read_graph(path,source,bounds):
                 or data['bounds']!=list(bounds)): return None
         graph=RoadsideGraph.__new__(RoadsideGraph)
         graph.bounds=tuple(bounds);graph.nodes={n:tuple(p) for n,p in data['nodes'].items()}
+        graph.routing_bounds=tuple(data['routing_bounds'])
         graph.private_way_ids=set(data['private_way_ids'])
+        graph.explicit_trunk_way_ids=set(data['explicit_trunk_way_ids'])
         graph.edges=[Edge(a,b,tuple(map(tuple,points)),name,kind,way,direction,tuple(grade))
                      for a,b,points,name,kind,way,direction,grade in data['edges']]
         graph.carriageways=[(tuple(a),tuple(b),tuple(grade)) for a,b,grade in data['carriageways']]
@@ -46,6 +50,7 @@ def read_graph(path,source,bounds):
         for i,(a,b,_) in enumerate(graph.carriageways):
             for cell in graph.cells(a,b): graph.barrier_index[cell].add(i)
         root=ET.parse(source).getroot()
+        if graph.routing_bounds != coverage_bounds(root,bounds): return None
         tags=lambda e:{t.attrib['k']:t.attrib['v'] for t in e.findall('tag')}
         points={n.attrib['id']:(float(n.attrib['lon']),float(n.attrib['lat'])) for n in root.findall('node')}
         node_tags={n.attrib['id']:tags(n) for n in root.findall('node')}
