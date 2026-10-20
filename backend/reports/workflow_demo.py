@@ -117,6 +117,7 @@ def create_workflow_demo_app():
         return httpx.Response(503,json={})
 
     app = create_app(Settings('https://exampleproject.supabase.co','sb_secret_workflow_fixture_only'),
+        locations_transport=httpx.MockTransport(lambda request: httpx.Response(404,json={'code':'PGRST202'})),
         auth_transport=httpx.MockTransport(unavailable),reports_transport=httpx.MockTransport(reports),
         residents_transport=httpx.MockTransport(residency),map_transport=httpx.MockTransport(maps),community_transport=httpx.MockTransport(unavailable),
         workflow_transport=httpx.MockTransport(workflow),media_services=DemoMedia())

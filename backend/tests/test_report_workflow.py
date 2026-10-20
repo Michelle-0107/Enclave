@@ -94,6 +94,7 @@ class ReportWorkflowTests(unittest.TestCase):
         def unavailable(request):
             raise AssertionError('Unexpected provider request')
         app=create_app(Settings('https://exampleproject.supabase.co',key),
+            locations_transport=httpx.MockTransport(lambda request: httpx.Response(404,json={'code':'PGRST202'})),
             auth_transport=httpx.MockTransport(unavailable),reports_transport=httpx.MockTransport(unavailable),
             residents_transport=httpx.MockTransport(unavailable),map_transport=httpx.MockTransport(unavailable),
             workflow_transport=httpx.MockTransport(handler))

@@ -2,6 +2,7 @@ import { ApiError, apiRequest } from '@/lib/api';
 import type { MaintenanceGateway, MaintenanceTask, TaskStatus } from './types';
 
 export type BackendTask = {
+  location_id?: string | null; location_name?: string | null; location_address?: string | null; location_storage?: 'database' | 'unavailable' | null;
   id: string; ticket_id: string; title: string; description: string;
   latitude: number; longitude: number; priority: 'low' | 'medium' | 'high';
   status: 'assigned' | 'in_progress' | 'awaiting_verification' | 'changes_requested' | 'resolved';
@@ -37,7 +38,7 @@ export function toMaintenanceTask(value: BackendTask): MaintenanceTask {
   const task = validateTask(value);
   return {
     id: task.id, ticketId: task.ticket_id, title: task.title, description: task.description,
-    location: `${task.latitude.toFixed(5)}, ${task.longitude.toFixed(5)}`,
+    location: task.location_name?.trim() || 'Selected map point',
     latitude: task.latitude, longitude: task.longitude,
     priority: ({ low: 'Low', medium: 'Medium', high: 'High' } as const)[task.priority],
     status: statuses[task.status], assignedAt: new Date(task.created_at).toLocaleString(),

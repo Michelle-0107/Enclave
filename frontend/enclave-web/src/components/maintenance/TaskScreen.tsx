@@ -233,7 +233,7 @@ export default function TaskScreen({
           </div>
           <div className="task-workspace flex min-w-0 flex-col gap-5">
             {typeof task.latitude === 'number' && typeof task.longitude === 'number' && Number.isFinite(task.latitude) && Number.isFinite(task.longitude)
-              ? <ReportLocationMap latitude={task.latitude} longitude={task.longitude} />
+              ? <ReportLocationMap latitude={task.latitude} longitude={task.longitude} locationName={task.location} />
               : <p className="text-sm text-muted-foreground">Map location is unavailable for this task.</p>}
             <div className="flex flex-col gap-[14px] rounded-3xl bg-white p-5">
               <h2 className="text-xl font-semibold">{task.team}</h2>

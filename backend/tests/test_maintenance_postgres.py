@@ -115,6 +115,7 @@ class MaintenanceTests(unittest.TestCase):
             except psycopg2.Error:
                 return httpx.Response(400,json={'message':'Synthetic RPC failure'})
         app=create_app(Settings('https://fixture.supabase.co','sb_secret_maintenance_fixture'),
+            locations_transport=httpx.MockTransport(lambda request: httpx.Response(404,json={'code':'PGRST202'})),
             maintenance_transport=httpx.MockTransport(rpc), workflow_transport=httpx.MockTransport(rpc),media_services=self.media)
         def verified(request: Request):
             token=request.headers.get('authorization','').removeprefix('Bearer ')

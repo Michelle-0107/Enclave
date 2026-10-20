@@ -8,6 +8,7 @@ export type ApiReportStatus =
   | 'resolved';
 
 export type BackendReport = {
+  location_id?: string | null; location_name?: string | null; location_address?: string | null; location_storage?: 'database' | 'unavailable' | null;
   ticket_id: string;
   user_id: string;
   description: string;
@@ -358,7 +359,7 @@ export function toManagementReport(report: BackendReport): ManagementReport {
   return {
     id: report.ticket_id,
     title: titleText.length > 88 ? `${titleText.slice(0, 85)}…` : titleText,
-    location: `${report.latitude.toFixed(5)}, ${report.longitude.toFixed(5)}`,
+    location: report.location_name?.trim() || 'Selected map point',
     status: report.status,
     priority,
     description: report.description,

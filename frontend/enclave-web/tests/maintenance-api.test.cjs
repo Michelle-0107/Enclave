@@ -34,7 +34,9 @@ test('maps backend task fields, real photo URLs and all workflow status labels',
   for (const [raw, ui] of [['assigned', 'assigned'], ['in_progress', 'in-progress'], ['changes_requested', 'changes-requested'], ['awaiting_verification', 'awaiting-verification'], ['resolved', 'resolved']]) {
     const mapped = api.toMaintenanceTask(task(1, raw));
     assert.equal(mapped.status, ui); assert.equal(mapped.ticketId, 'TICK-2026');
-    assert.equal(mapped.priority, 'High'); assert.equal(mapped.location, '3.22649, 101.73076');
+    assert.equal(mapped.priority, 'High'); assert.equal(mapped.location, 'Selected map point');
+    assert.equal(mapped.latitude, task().latitude); assert.equal(mapped.longitude, task().longitude);
+    assert.equal(api.toMaintenanceTask({ ...task(), location_name: 'Jalan Melati · Section 2' }).location, 'Jalan Melati · Section 2');
     assert.equal(mapped.beforePhotoUrl, task().before_photo_url);
   }
   assert.throws(() => api.toMaintenanceTask({ ...task(), version: 0 }), { status: 503 });

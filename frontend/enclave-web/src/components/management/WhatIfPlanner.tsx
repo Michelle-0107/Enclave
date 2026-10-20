@@ -11,6 +11,7 @@ import {
   type WhatIfResult,
 } from "@/lib/api";
 
+import SharedLocationPicker from './SharedLocationPicker';
 import RepairPlanRoutes from "./RepairPlanRoutes";
 import RepairSummaryPanel from "./RepairSummaryPanel";
 
@@ -446,6 +447,12 @@ export default function WhatIfPlanner() {
                     Clear points
                   </button>
                 </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <SharedLocationPicker label="A · Starting place" point={parseMapPoint(path.fromLat, path.fromLng)}
+                    onChoose={point => patchJourney(index, { fromLat: String(point.latitude), fromLng: String(point.longitude) })} />
+                  <SharedLocationPicker label="B · Destination" point={parseMapPoint(path.toLat, path.toLng)}
+                    onChoose={point => patchJourney(index, { toLat: String(point.latitude), toLng: String(point.longitude) })} />
+                </div>
                 <WhatIfPathMap
                   origin={parseMapPoint(path.fromLat, path.fromLng)}
                   destination={parseMapPoint(path.toLat, path.toLng)}
@@ -475,6 +482,7 @@ export default function WhatIfPlanner() {
                   }}
                 />
               </div>
+              <details className="sm:col-span-2"><summary className="text-xs text-muted-foreground">Edit coordinates</summary><div className="grid gap-3 sm:grid-cols-2">
               {numericInput("Start latitude", path.fromLat, (value) =>
                 patchJourney(index, { fromLat: value }),
               )}
@@ -487,6 +495,7 @@ export default function WhatIfPlanner() {
               {numericInput("Destination longitude", path.toLng, (value) =>
                 patchJourney(index, { toLng: value }),
               )}
+              </div></details>
               {journeys.length > 1 && (
                 <button
                   type="button"

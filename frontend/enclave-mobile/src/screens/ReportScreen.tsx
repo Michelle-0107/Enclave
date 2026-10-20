@@ -18,6 +18,7 @@ import ReportSuccessScreen from './ReportSuccessScreen';
 import type { ResidentReport } from './MyReportsScreen';
 
 import {
+  ApiError,
   communityIssuesApi,
   facilitiesApi,
   navigationApi,
@@ -29,6 +30,7 @@ import {
   type ReportRecord,
 } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { distanceToRoadSection } from '../lib/road-report-sections';
 import { colors } from '../theme';
 
 type Props = {
@@ -250,6 +252,8 @@ export default function ReportScreen({
           'longitude',
           String(details.coordinates.longitude),
         );
+
+        form.append('location_id', selected.facility.id);
 
         form.append('file', {
           uri: photo.uri,
@@ -489,7 +493,7 @@ export default function ReportScreen({
           />
 
           <Text style={styles.label}>
-            Submitting report and linking issue…
+            Submitting report and linking issueÃ¢â‚¬Â¦
           </Text>
         </View>
       )}
@@ -525,6 +529,9 @@ function IssueSelection({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [roadPointNotice, setRoadPointNotice] = useState('');
+  const reportLatitude = details.coordinates?.latitude;
+  const reportLongitude = details.coordinates?.longitude;
 
   useEffect(() => {
     let mounted = true;
@@ -536,6 +543,17 @@ function IssueSelection({
       try {
         const token = await getAccessToken();
         const area = await navigationApi.getArea(token);
+        let queryBounds = area.bbox;
+        if (reportLatitude !== undefined && reportLongitude !== undefined
+            && reportLongitude >= area.bbox[0] && reportLongitude <= area.bbox[2]
+            && reportLatitude >= area.bbox[1] && reportLatitude <= area.bbox[3]) {
+          const latitudeRadius = 101 / 111195.08;
+          const longitudeRadius = latitudeRadius / Math.cos(reportLatitude * Math.PI / 180);
+          queryBounds = [Math.max(area.bbox[0], reportLongitude - longitudeRadius),
+            Math.max(area.bbox[1], reportLatitude - latitudeRadius),
+            Math.min(area.bbox[2], reportLongitude + longitudeRadius),
+            Math.min(area.bbox[3], reportLatitude + latitudeRadius)];
+        }
 
         const facilityItems: FacilityRecord[] = [];
         const issueItems: CommunityIssueRecord[] = [];
@@ -548,7 +566,7 @@ function IssueSelection({
             {
               limit: 100,
               offset,
-              bbox: area.bbox,
+              bbox: queryBounds,
             },
           );
 
@@ -575,6 +593,25 @@ function IssueSelection({
           offset = next;
         }
 
+        setRoadPointNotice('');
+        if (reportLatitude !== undefined && reportLongitude !== undefined) {
+          try {
+            offset = 0;
+            while (mounted) {
+              const page = await facilitiesApi.getRoadSections(token, reportLatitude, reportLongitude, { limit: 100, offset });
+              if (!mounted) return;
+              facilityItems.push(...page.items);
+              if (!page.pagination.has_more) break;
+              const next = page.pagination.offset + page.pagination.returned;
+              if (next <= offset) throw new Error('Unable to load road report points.');
+              offset = next;
+            }
+          } catch (failure) {
+            if (failure instanceof ApiError && failure.status === 404) {
+              if (mounted) setRoadPointNotice('Road report points are unavailable on this backend version; existing facilities remain available.');
+            } else throw failure;
+          }
+        }
         offset = 0;
 
         while (mounted) {
@@ -583,7 +620,7 @@ function IssueSelection({
             {
               limit: 100,
               offset,
-              bbox: area.bbox,
+              bbox: queryBounds,
             },
           );
 
@@ -650,7 +687,7 @@ function IssueSelection({
     return () => {
       mounted = false;
     };
-  }, [attempt]);
+  }, [attempt, reportLatitude, reportLongitude]);
 
   const coordinates = details.coordinates;
 
@@ -658,6 +695,7 @@ function IssueSelection({
     ? facilities
         .map((facility) => ({
           facility,
+          sectionDistance: distanceToRoadSection(facility, coordinates.latitude, coordinates.longitude),
           distance: distanceMeters(
             coordinates.latitude,
             coordinates.longitude,
@@ -670,7 +708,7 @@ function IssueSelection({
             Number.isFinite(item.distance) &&
             item.distance <= 100,
         )
-        .sort((a, b) => a.distance - b.distance)
+        .sort((a, b) => (a.sectionDistance ?? a.distance) - (b.sectionDistance ?? b.distance) || a.distance - b.distance)
     : [];
 
   const selected = nearby.find(
@@ -693,10 +731,12 @@ function IssueSelection({
       <Text style={styles.sectionTitle}>Choose a facility</Text>
 
       <Text style={styles.body}>
-        Select the facility nearest to the pin. Your report
-        location must be within 100 m of the facility.
+        Choose the facility or road section at the issue location.
+        Roads have report points for sections of about 100 m, with separate reporter counts.
+        Your report must be within 100 m of the selected point.
       </Text>
 
+      {roadPointNotice ? <Text style={styles.body}>{roadPointNotice}</Text> : null}
       {loading ? (
         <ActivityIndicator color={colors.navy} />
       ) : error ? (
@@ -723,7 +763,7 @@ function IssueSelection({
           to be registered before linking.
         </Text>
       ) : (
-        nearby.map(({ facility, distance }) => (
+        nearby.map(({ facility, distance, sectionDistance }) => (
           <Pressable
             key={facility.id}
             accessibilityRole="radio"
@@ -744,9 +784,10 @@ function IssueSelection({
             </Text>
 
             <Text style={styles.body}>
-              {facility.facility_type.replace(/_/g, ' ')}
-              {' · '}
-              {Math.round(distance)} m from report location
+              {facility.road_section ? `Road section Ã‚Â· ${Math.round(facility.road_section.length_meters)} m long` : facility.facility_type.replace(/_/g, ' ')}
+              {' Ã‚Â· '}
+              {facility.road_section && sectionDistance !== null ? `${Math.round(sectionDistance)} m from section Ã‚Â· ` : ''}
+              {Math.round(distance)} m to report point
             </Text>
           </Pressable>
         ))
@@ -756,8 +797,10 @@ function IssueSelection({
         <View style={styles.summary}>
           <Text style={styles.label}>Report preview</Text>
           <Image source={{ uri: photoUri }} style={styles.confirmPhoto} resizeMode="contain" />
-          <Text style={styles.body}>Location: {coordinates ? `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}` : 'Not selected'}</Text>
+          <Text style={styles.body}>Location: {selected.name}</Text>
+          {coordinates && <Text style={styles.body}>{coordinates.latitude.toFixed(5)}, {coordinates.longitude.toFixed(5)} · actual issue pin</Text>}
           <Text style={styles.body}>Facility: {selected.name}</Text>
+          {selected.road_section && <Text style={styles.body}>Reports are grouped within this road section only; adjacent sections are counted separately.</Text>}
           <Text style={styles.body}>
             {existingIssue
               ? `Matching open issue: ${existingIssue.reporter_count} residents reported. Your report will be linked to this issue.`
@@ -804,7 +847,7 @@ function mapCreatedReport(
   return {
     id: record.ticket_id,
     title: record.category || 'Community report',
-    location: `${record.latitude.toFixed(5)}, ${record.longitude.toFixed(5)}`,
+    location: record.location_name?.trim() || 'Selected map point',
     date: record.created_at
       ? new Date(record.created_at).toLocaleDateString(
           'en-GB',
