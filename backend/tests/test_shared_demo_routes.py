@@ -49,6 +49,36 @@ class SharedDemoRouteTests(unittest.TestCase):
         accessible=accessible_graph(base,data['accessibilityFacilities'],data)
         with self.assertRaises(NavigationRejected):accessible.snap_candidates(p(0,50))
 
+    def test_unreachable_registered_ramp_does_not_disable_other_ordinary_building_access(self):
+        nodes={'a':(-150,20),'b':(150,20),'c':(150,100),'d':(80,100),'e':(80,30),
+            'w':(-20,30),'x':(20,30),'y':(20,70),'z':(-20,70),'m':(-30,50),'n':(30,50)}
+        base=osm_graph(nodes,[(['a','b','c','d','e'],{'highway':'footway'}),
+            (['w','x','y','z','w'],{'building':'yes'}),(['m','n'],{'barrier':'wall'})])
+        graph,data=prepared(base)
+        self.assertTrue(any(f['kind']=='accessible_entrance' for f in data['accessibilityFacilities']))
+        origin,destination=p(0,60),p(80,80)
+        self.assertTrue(base.snap_candidates(origin))
+        route=graph.route(body(origin,destination),demo_mode=True)
+        self.assertGreater(route.distance_meters,0)
+        self.assertEqual(graph.snap_candidates(origin)[0][3],base.snap_candidates(origin)[0][3])
+        accessible=accessible_graph(base,data['accessibilityFacilities'],data)
+        with self.assertRaises(NavigationRejected):accessible.snap_candidates(origin)
+        # Loading ordinary access does not mutate the shared graph's manifest.
+        self.assertTrue(graph.demo_building_entrances)
+        self.assertTrue(accessible.demo_building_entrances)
+
+    def test_actual_catalog_buildings_keep_their_ordinary_access_when_registered_ramp_is_unreachable(self):
+        import json
+        from pathlib import Path
+        data=json.loads((Path(__file__).resolve().parents[1]/'data/map_places.json').read_text(encoding='utf-8'))
+        graph=shared_demo_walking_graph('kl-east-pilot')
+        for name in ('Decathlon','Residensi Rabung KL Timur Tower B'):
+            place=next(p for p in data if p['area_id']=='kl-east-pilot' and p['name']==name)
+            point=(place['longitude'],place['latitude'])
+            with self.subTest(place=name):
+                self.assertTrue(graph.snap_candidates(point))
+                with self.assertRaises(NavigationRejected):demo_step_free_graph('kl-east-pilot').snap_candidates(point)
+
     def fixture_routes(self):
         short=osm_graph({'a':(0,0),'b':(100,0)},[(['a','b'],{'highway':'footway'})]).route(body(p(0,0),p(100,0)),demo_mode=True)
         long=osm_graph({'a':(0,0),'b':(0,100),'c':(100,100),'d':(100,0)},[(['a','b','c','d'],{'highway':'footway'})]).route(body(p(0,0),p(100,0)),demo_mode=True)

@@ -95,6 +95,16 @@ class SharedSimulationTests(unittest.TestCase):
             self.assertGreater(fallback['distance_meters'], 400)
             self.assertLess(fallback['distance_meters'], 600)
 
+    def test_ordinary_building_access_works_through_the_actual_comparison_endpoint(self):
+        places=json.loads((Path(__file__).resolve().parents[1]/'data/map_places.json').read_text(encoding='utf-8'))
+        for key,name in (('origin','Decathlon'),('destination','Jaya Grocer')):
+            place=next(p for p in places if p['area_id']=='kl-east-pilot' and p['name']==name)
+            self.payload['paths'][0][key]={field:place[field] for field in ('latitude','longitude')}
+        data=self.compare()
+        self.assert_avoids(data['baseline'][0]['current'],data['routing_restrictions'])
+        self.assert_avoids(data['plans'][0]['paths'][0]['after'],
+            [r for r in data['routing_restrictions'] if r['facility_id']!=self.ids[0]])
+
     def test_simulation_does_not_enable_hypothetical_facilities_in_live_navigation(self):
         self.compare()
         request = WalkingRouteRequest(**{key: self.payload['paths'][0][key] for key in ('origin', 'destination')}, route_mode='avoid_damage')
