@@ -22,7 +22,7 @@ function button(t,label){return find(t,n=>n.type==='Pressable'&&(n.props.accessi
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function wrapper(api){const hooks=runtime(true),touches=[];const Screen=compile('src/demo/ServiceAreaDemoScreen.tsx',{
  react:hooks.react,'react/jsx-runtime':jsx,'react-native':native,'../theme':{colors:{}},'./network':network,
- './DemoMapScreen':{__esModule:true,default:'DemoMapScreen'},'../lib/api':{demoAreasApi:api},
+ './DemoMapSkeleton':{__esModule:true,default:'DemoMapSkeleton'},'./DemoMapScreen':{__esModule:true,default:'DemoMapScreen'},'../lib/api':{demoAreasApi:api},
  '../lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'synthetic'}}})}}},
 }).default;return{unmount:()=>hooks.unmount(),render(){hooks.reset();const t=Screen({onShowLiveMap(){},onMapTouchChange:x=>touches.push(x)});hooks.flush();return t;},touches};}
 function dataFor(id){return{area_id:id,dataset:id==='kl-east-pilot'?kl:kajang};}
@@ -61,10 +61,18 @@ async function main(){let count=0;async function test(name,fn){await fn();count+
   let tree=render();assert.equal(JSON.stringify(find(tree,n=>n.type==='Camera').props.initialViewState.bounds),JSON.stringify(kajang.bbox));
   const input=find(tree,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='Starting point');input.props.onFocus();input.props.onChangeText(kajang.landmarks[0].name);
   tree=render();const search=find(tree,n=>n.type==='PlaceSearch');
-  assert.equal(search.props.areaId,'kajang-prima-saujana');assert.ok(search.props.local.some(item=>item.label===kajang.landmarks[0].name));
-  let pick=find(tree,n=>n.type==='SavedPlacesControl'&&n.props.field==='starting point');pick.props.onChoose({label:'Local start',coordinate:a});
-  tree=render();pick=find(tree,n=>n.type==='SavedPlacesControl'&&n.props.field==='end point');pick.props.onChoose({label:'Local destination',coordinate:b});
-  tree=render();button(tree,'Choose route').props.onPress();await tick();tree=render();
+  assert.equal(search.props.areaId,'kajang-prima-saujana');assert.equal(search.props.query,kajang.landmarks[0].name);
+  let startingSearches=0;search.props.ref.current={search:async()=>{startingSearches++;}};
+  find(tree,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='Starting point').props.onSubmitEditing();assert.equal(startingSearches,1);
+  search.props.onChoose({label:'Local start',coordinate:a});
+  tree=render();const endInput=find(tree,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='End point');
+  endInput.props.onFocus();endInput.props.onChangeText('Local destination');tree=render();
+  const endSearch=find(tree,n=>n.type==='PlaceSearch');assert.equal(endSearch.props.field,'end point');
+  let submits=0;endSearch.props.ref.current={search:async()=>{submits++;}};
+  find(tree,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='End point').props.onSubmitEditing();assert.equal(submits,1);
+  endSearch.props.onChoose({label:'Local destination',coordinate:b});
+  tree=render();assert.equal(find(tree,n=>n.type==='TextInput'&&n.props.accessibilityLabel==='End point').props.value,'Local destination');
+  button(tree,'Find Best Route').props.onPress();await tick();tree=render();
   assert.equal(calls.length,1);assert.equal(calls[0].id,'kajang-prima-saujana');assert.equal(calls[0].token,'fixture-token');
   assert.equal(JSON.stringify(calls[0].payload.origin),JSON.stringify({longitude:a[0],latitude:a[1]}));
   assert.equal(JSON.stringify(calls[0].payload.destination),JSON.stringify({longitude:b[0],latitude:b[1]}));
