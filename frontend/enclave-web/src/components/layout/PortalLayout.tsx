@@ -109,28 +109,30 @@ export default function PortalLayout({ children }: Props) {
   const isReportDetail = pathname.startsWith('/management/reports/') && pathname !== '/management/reports';
 
   return (
-    <div className="portal-shell min-h-dvh bg-background text-foreground lg:[zoom:1.25]" data-role="management">
+    <div className="portal-shell min-h-dvh bg-background text-foreground lg:[zoom:1.125]" data-role="management">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] overflow-y-auto bg-card p-4 lg:block">
-        <Link
-          href="/management"
-          className="flex min-h-11 items-center gap-3"
-          aria-label="Enclave management dashboard"
-        >
-          <EnclaveLogo className="h-[29px] w-6" />
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] bg-card p-4 lg:flex lg:flex-col">
+        <div className="shrink-0">
+          <Link
+            href="/management"
+            className="flex min-h-11 items-center gap-3"
+            aria-label="Enclave management dashboard"
+          >
+            <EnclaveLogo className="h-[29px] w-6" />
 
-          <span className="text-[23px] font-bold tracking-[5px] text-[#526B8A]">
-            ENCLAVE
-          </span>
-        </Link>
+            <span className="text-[23px] font-bold tracking-[5px] text-[#526B8A]">
+              ENCLAVE
+            </span>
+          </Link>
 
-        <Link href="/management/account" className="mt-8 block rounded-xl focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="management" name={displayName} /></Link>
+          <Link href="/management/account" className="mt-8 block rounded-xl focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="management" name={displayName} /></Link>
+        </div>
 
         <nav
           aria-label="Management navigation"
-          className="mt-9 flex flex-col gap-3"
+          className="mt-6 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1"
         >
-          {navigation.map((item) => {
+          {navigation.filter(item => item.href !== '/management/account').map((item) => {
             const selected = isSelected(item.href);
             const Icon = item.icon;
 
@@ -140,7 +142,7 @@ export default function PortalLayout({ children }: Props) {
                 href={item.href}
                 aria-current={selected ? 'page' : undefined}
                 className={[
-                  'flex min-h-[52px] items-center gap-[14px]',
+                  'flex min-h-[44px] items-center gap-3',
                   'rounded-2xl px-4 text-sm font-semibold',
                   'transition-colors',
                   'focus-visible:outline-2 focus-visible:outline-offset-2',
@@ -151,7 +153,7 @@ export default function PortalLayout({ children }: Props) {
                 ].join(' ')}
               >
                 <Icon
-                  size={24}
+                  size={22}
                   strokeWidth={1.7}
                   aria-hidden="true"
                 />
@@ -161,14 +163,28 @@ export default function PortalLayout({ children }: Props) {
           })}
         </nav>
 
-        <button
-          type="button"
-          onClick={() => setConfirmSignOut(true)}
-          className="mt-9 flex min-h-[52px] w-full items-center gap-[14px] rounded-2xl px-4 text-sm font-semibold text-muted-foreground hover:bg-secondary"
-        >
-          <LogOut size={24} strokeWidth={1.7} />
-          Log out
-        </button>
+        <div className="mt-auto shrink-0 space-y-1 border-t border-border pt-2">
+          <Link
+            href="/management/account"
+            aria-current={isSelected('/management/account') ? 'page' : undefined}
+            className={[
+              'flex min-h-[44px] items-center gap-3 rounded-2xl px-4 text-sm font-semibold transition-colors',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+              isSelected('/management/account') ? 'bg-brand text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+            ].join(' ')}
+          >
+            <UserRound size={22} strokeWidth={1.7} aria-hidden="true" />
+            Account
+          </Link>
+          <button
+            type="button"
+            onClick={() => setConfirmSignOut(true)}
+            className="flex min-h-[44px] w-full items-center gap-3 rounded-2xl px-4 text-sm font-semibold text-status-red transition-colors hover:bg-status-red-bg hover:text-status-red focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            <LogOut size={22} strokeWidth={1.7} aria-hidden="true" />
+            Log out
+          </button>
+        </div>
       </aside>
 
       {/* Workspace */}
@@ -230,6 +246,7 @@ export default function PortalLayout({ children }: Props) {
         title="Confirm log out"
         description="Are you sure you want to log out of your management account?"
         confirmLabel="Log out"
+        destructive
         onCancel={() => setConfirmSignOut(false)}
         onConfirm={handleSignOut}
       />

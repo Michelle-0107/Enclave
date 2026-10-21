@@ -39,6 +39,7 @@ function fixture(related = null) {
     if(name==='react')return runtime.react;
     if(name==='react/jsx-runtime')return jsx;
     if(name==='react-native')return native;
+    if(name==='../components/DataSkeleton')return{SkeletonList:'SkeletonList'};
     if(name==='../theme')return{colors:{}};
     if(name==='../lib/supabase')return{supabase:{auth:{getSession:async()=>{if(failSession)throw Error('Offline');return{data:{session:{access_token:'synthetic'}}};}}}};
     if(name==='../lib/api')return{notificationsApi:{getAll:async()=>({items:[data]}),markRead:async(token,id)=>{receipts.push([token,id]);if(failRead)throw Error('Offline');}}};

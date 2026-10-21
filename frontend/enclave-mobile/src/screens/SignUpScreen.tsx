@@ -120,7 +120,7 @@ export default function SignUpScreen({ onBack, onSignInPress, onRegistered }: Pr
               <View style={styles.passwordField}>
                 <TextInput value={password} onChangeText={(value) => { setPassword(value); setError(''); }} accessibilityLabel="Password" placeholder="Create a password" placeholderTextColor={colors.muted} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} autoComplete="new-password" style={styles.passwordInput} />
                 <Pressable onPress={() => setShowPassword((value) => !value)} accessibilityRole="button" accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} style={styles.eyeButton}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.muted} />
+                  <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.muted} />
                 </Pressable>
               </View>
             </View>

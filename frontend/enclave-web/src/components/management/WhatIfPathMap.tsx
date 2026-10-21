@@ -9,11 +9,15 @@ import type { FacilityIssue } from "@/lib/api";
 type Point = { latitude: number; longitude: number };
 export type PickTarget = "origin" | "destination";
 type Props = {
-  origin: Point | null;
-  destination: Point | null;
+  paths: Array<{ origin: Point | null; destination: Point | null; name: string }>;
+  selectedIndex: number;
+  onSelect: (index: number) => void;
   issues: FacilityIssue[];
   onPick: (target: PickTarget, point: Point) => void;
+  readOnly?: boolean;
+  selectedFacilities?: string[];
 };
+const PATH_COLORS = ["#2563eb", "#a855f7", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#ef4444", "#8b5cf6", "#84cc16", "#f97316"];
 // Matches backend/navigation/config.py PILOT_BBOX; a development window, not a legal boundary.
 const [west, south, east, north] = PILOT_SERVICE_BOUNDS;
 export function isPilotPoint(point: Point) {
@@ -42,10 +46,13 @@ export function pathDistance(a: Point, b: Point) {
 }
 
 export default function WhatIfPathMap({
-  origin,
-  destination,
+  paths,
+  selectedIndex,
+  onSelect,
   issues,
   onPick,
+  readOnly = false,
+  selectedFacilities = [],
 }: Props) {
   const panel = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -77,14 +84,14 @@ export default function WhatIfPathMap({
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre.Map | null>(null);
   const api = useRef<typeof MapLibre | null>(null);
-  const latest = useRef({ onPick });
+  const latest = useRef({ onPick, onSelect, selectedIndex, readOnly });
   const selectionPopup = useRef<MapLibre.Popup | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [tileError, setTileError] = useState(false);
   useEffect(() => {
-    latest.current = { onPick };
-  }, [onPick]);
+    latest.current = { onPick, onSelect, selectedIndex, readOnly };
+  }, [onPick, onSelect, selectedIndex, readOnly]);
   useEffect(() => {
     let disposed = false;
     let instance: MapLibre.Map | undefined;
@@ -124,6 +131,15 @@ export default function WhatIfPathMap({
         );
         instance.on("click", (event) => {
           if (!instance) return;
+          // Facility clicks have their own popup. Do not open the endpoint chooser over it.
+          if (instance.getLayer("candidate-facilities-circle") &&
+            instance.queryRenderedFeatures(event.point, { layers: ["candidate-facilities-circle"] }).length) return;
+          const hit = instance.getLayer("endpoint-connector-hit") ? instance.queryRenderedFeatures(event.point, { layers: ["endpoint-connector-hit"] })[0] : undefined;
+          if (hit?.properties && typeof hit.properties.index === "number") {
+            latest.current.onSelect(hit.properties.index);
+            return;
+          }
+          if (latest.current.readOnly) return;
           const point = {
             latitude: event.lngLat.lat,
             longitude: event.lngLat.lng,
@@ -175,11 +191,12 @@ export default function WhatIfPathMap({
             type: "line",
             source: "endpoint-connector",
             paint: {
-              "line-color": "#202c46",
+              "line-color": ["get", "color"],
               "line-width": 3,
               "line-dasharray": [2, 2],
             },
           });
+          instance.addLayer({ id: "endpoint-connector-hit", type: "line", source: "endpoint-connector", paint: { "line-color": "#000000", "line-opacity": 0, "line-width": 20 } });
           setReady(true);
         });
         observer = new ResizeObserver(() => instance?.resize());
@@ -207,23 +224,37 @@ export default function WhatIfPathMap({
     const instance = map.current;
     if (!M || !instance || !ready) return;
     const markers: MapLibre.Marker[] = [];
-    const seen = new Set<string>();
-    const issuePins = issues.filter(issue => {
-      if (seen.has(issue.facility_id) || !isPilotPoint(issue)) return false;
-      seen.add(issue.facility_id); return true;
-    }).map(issue => ({ id: issue.facility_id, coordinate: [issue.longitude, issue.latitude] as [number, number],
-      label: '!', description: `${issue.facility_name} - ${issue.facility_type}`, color: '#d42b35' }));
+    const issuesByFacility = new Map<string, FacilityIssue[]>();
+    for (const issue of issues) {
+      if (!isPilotPoint(issue)) continue;
+      const group = issuesByFacility.get(issue.facility_id) ?? [];
+      group.push(issue);
+      issuesByFacility.set(issue.facility_id, group);
+    }
+    const issuePins = Array.from(issuesByFacility, ([facilityId, facilityIssues]) => {
+      const issue = facilityIssues[0];
+      const selected = selectedFacilities.includes(facilityId);
+      const faultKinds = Array.from(new Set(facilityIssues.map(item => item.fault_kind))).join(', ');
+      return {
+        id: facilityId,
+        coordinate: [issue.longitude, issue.latitude] as [number, number],
+        label: selected ? 'R' : '!',
+        description: `${issue.facility_name}\n${issue.facility_type} · ${facilityIssues.length} qualified issue${facilityIssues.length === 1 ? '' : 's'}\nFault: ${faultKinds}\n${selected ? 'Selected for this repair plan' : 'Not selected for this repair plan'}`,
+        color: selected ? '#10b981' : '#d42b35',
+      };
+    });
     const facilityLayer = addFixedFacilityLayer(instance, M, 'candidate-facilities', issuePins);
     const pin = (
       point: Point | null,
       label: string,
       color: string,
       kind: PickTarget,
+      index: number,
     ) => {
       if (!point) return;
       const el = document.createElement("div");
       el.textContent = label;
-      el.title = kind === "origin" ? "Starting point A" : "Destination B";
+      el.title = `Path ${index + 1} ${kind === "origin" ? "start" : "destination"}`;
       Object.assign(el.style, {
         display: "flex",
         alignItems: "center",
@@ -236,10 +267,10 @@ export default function WhatIfPathMap({
         color: "white",
         fontWeight: "700",
         boxShadow: "0 1px 5px #0004",
-        cursor: "grab",
+        cursor: readOnly ? "pointer" : "grab",
       });
-      el.addEventListener("click", (event) => event.stopPropagation());
-      const marker = new M.Marker({ element: el, draggable: true })
+      el.addEventListener("click", (event) => { event.stopPropagation(); latest.current.onSelect(index); });
+      const marker = new M.Marker({ element: el, draggable: !readOnly && index === selectedIndex })
         .setLngLat([point.longitude, point.latitude])
         .addTo(instance);
       marker.on("dragend", () => {
@@ -250,50 +281,50 @@ export default function WhatIfPathMap({
       });
       markers.push(marker);
     };
-    pin(origin, "A", "#139b74", "origin");
-    pin(destination, "B", "#e44861", "destination");
+    paths.forEach((path, index) => {
+      const color = PATH_COLORS[index % PATH_COLORS.length];
+      pin(path.origin, `${index + 1}A`, color, "origin", index);
+      pin(path.destination, `${index + 1}B`, color, "destination", index);
+    });
     const source = instance.getSource("endpoint-connector") as
       MapLibre.GeoJSONSource | undefined;
     source?.setData({
       type: "FeatureCollection",
-      features:
-        origin && destination
-          ? [
-              {
-                type: "Feature",
-                properties: {},
-                geometry: {
-                  type: "LineString",
-                  coordinates: [
-                    [origin.longitude, origin.latitude],
-                    [destination.longitude, destination.latitude],
-                  ],
-                },
-              },
-            ]
-          : [],
+      features: paths.flatMap((path, index) => path.origin && path.destination ? [{
+        type: "Feature" as const,
+        properties: { index, color: PATH_COLORS[index % PATH_COLORS.length] },
+        geometry: { type: "LineString" as const, coordinates: [[path.origin.longitude, path.origin.latitude], [path.destination.longitude, path.destination.latitude]] },
+      }] : []),
     });
     return () => {
       markers.forEach((marker) => marker.remove());
       if (map.current === instance) facilityLayer.remove();
     };
-  }, [origin, destination, issues, ready]);
+  }, [paths, selectedIndex, issues, ready, readOnly, selectedFacilities]);
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    const path = paths[selectedIndex];
+    const points = [path?.origin, path?.destination].filter((point): point is Point => !!point);
+    if (points.length === 2) {
+      map.current.fitBounds([[Math.min(points[0].longitude, points[1].longitude), Math.min(points[0].latitude, points[1].latitude)], [Math.max(points[0].longitude, points[1].longitude), Math.max(points[0].latitude, points[1].latitude)]], { padding: 90, maxZoom: 17, duration: 350 });
+    }
+  }, [selectedIndex, ready, paths]);
   return (
     <div
       ref={panel}
       className={
         expanded
-          ? "flex h-dvh w-screen min-w-0 flex-col gap-3 overflow-auto bg-background p-4 sm:p-6"
+          ? "flex h-dvh w-screen min-w-0 flex-col gap-3 overflow-auto bg-brand p-4 text-white sm:p-6"
           : "flex min-w-0 flex-col gap-3"
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-primary">
-            Choose journey points
+          <h3 className="text-sm font-semibold text-white">
+            {readOnly ? "Plan map preview" : "Choose journey points"}
           </h3>
-          <p className="text-xs text-muted-foreground">
-            Click the map, then choose Start or End. Drag either marker to adjust it.
+          <p className="text-xs text-slate-300">
+            {readOnly ? "Dashed lines join selected endpoints; green facilities are in this plan." : "Click the map, then choose Start or End. Drag either marker to adjust it."}
             {expanded ? " Press Esc to exit fullscreen." : ""}
           </p>
         </div>
@@ -317,14 +348,25 @@ export default function WhatIfPathMap({
         </p>
       )}
       <div
-        ref={host}
         role="region"
-        aria-label="Journey map. Click a point, then choose Start or End. Draggable markers and coordinate fields are also available."
-        className={`relative isolate z-0 w-full overflow-hidden rounded-2xl border border-border bg-muted ${expanded ? "min-h-[260px] flex-1" : "h-[420px] sm:h-[520px]"}`}
-      />
-      {!ready && !error && (
-        <div role="status" aria-label="Loading map" aria-busy="true" className="absolute inset-0 z-10 animate-pulse bg-slate-200/70"><span className="absolute left-1/4 top-1/3 h-3 w-1/3 rounded-full bg-white/80" /><span className="absolute bottom-1/4 right-1/4 h-3 w-1/4 rounded-full bg-white/80" /></div>
-      )}
+        aria-label={readOnly ? "Map preview of journeys and selected candidate facilities" : "Journey map. Click a point, then choose Start or End. Draggable markers and coordinate fields are also available."}
+        className={`relative isolate z-0 w-full overflow-hidden rounded-2xl border border-border bg-[#edf0ed] ${expanded ? "min-h-[260px] flex-1" : "h-[420px] sm:h-[520px]"}`}
+      >
+        <div ref={host} aria-hidden="true" className="absolute inset-0 h-full w-full" />
+        {!ready && !error && (
+          <div role="status" aria-label="Loading map" aria-busy="true" className="absolute inset-0 z-10 overflow-hidden bg-[#edf0ed]">
+            <div aria-hidden="true" className="absolute inset-0 animate-pulse">
+              <span className="absolute left-[5%] top-[8%] h-[30%] w-[30%] rounded-2xl bg-[#dfe9dc]" />
+              <span className="absolute right-[7%] top-[12%] h-[38%] w-[26%] rounded-2xl bg-[#dfe9dc]" />
+              <span className="absolute bottom-[8%] left-[28%] h-[26%] w-[35%] rounded-2xl bg-[#e4e7e2]" />
+              <span className="absolute left-[-8%] top-[43%] h-7 w-[116%] rotate-[-9deg] bg-white/90" />
+              <span className="absolute left-[42%] top-[-10%] h-[125%] w-6 rotate-[16deg] bg-white/90" />
+              <span className="absolute left-[16%] top-[35%] h-3 w-[24%] rotate-[22deg] rounded-full bg-white/80" />
+              <span className="absolute right-[16%] bottom-[26%] h-3 w-[20%] rotate-[-18deg] rounded-full bg-white/80" />
+            </div>
+          </div>
+        )}
+      </div>
       {error && (
         <p role="alert" className="text-xs text-status-red">
           {error}
@@ -336,7 +378,7 @@ export default function WhatIfPathMap({
           support; coordinate entry is still available.
         </p>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
         <span>
           A: Starting point · B: Destination · Red dots: Candidate facilities · Dashed outline: Service area
         </span>
@@ -346,15 +388,13 @@ export default function WhatIfPathMap({
           onClick={() =>
             map.current?.fitBounds([[west, south], [east, north]], { padding: 24, duration: 400 })
           }
-          className="min-h-10 px-2 font-semibold text-primary underline transition-all duration-200 hover:-translate-y-0.5 hover:text-[#526B8A] hover:underline-offset-4 active:translate-y-0 disabled:opacity-50"
+          className="min-h-10 px-2 font-semibold text-white underline transition-all duration-200 hover:-translate-y-0.5 hover:text-blue-300 hover:underline-offset-4 active:translate-y-0 disabled:opacity-50"
         >
           Show service area
         </button>
       </div>
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        The short dashed connector joins your selected endpoints. It is not a
-        calculated walking route. The backend evaluates the journey when you
-        compare plans.
+      <p className="text-xs leading-relaxed text-slate-300">
+        Dashed connectors join the selected endpoints. They are not calculated walking routes. The backend evaluates each journey when you compare plans.
       </p>
     </div>
   );

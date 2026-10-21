@@ -56,9 +56,9 @@ export default function ReportSuccessScreen({
         </Text>
 
         <Text style={styles.description}>
-          Your private ticket is saved. Community visibility
-          depends on reports from distinct verified residents,
-          not management approval.
+          Your private ticket is saved. Its issue can appear on the map
+          as pending; confirmation and route restrictions require reports
+          from two distinct verified residents.
         </Text>
 
         {deduplicated ? (
@@ -67,11 +67,11 @@ export default function ReportSuccessScreen({
           </Text>
         ) : communityVisible ? (
           <Text style={styles.communityResult}>
-            This issue is now visible on the community map.
+            This issue is now community-confirmed on the map.
           </Text>
         ) : reporterCount !== null ? (
           <Text style={styles.communityResult}>
-            {reporterCount} resident report{reporterCount === 1 ? '' : 's'} recorded. Waiting for another resident.
+            {reporterCount} resident report{reporterCount === 1 ? '' : 's'} recorded. Shown as pending while waiting for another resident.
           </Text>
         ) : null}
       </View>

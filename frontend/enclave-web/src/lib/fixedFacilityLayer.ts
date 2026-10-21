@@ -22,7 +22,11 @@ export function addFixedFacilityLayer(map: MapLibre.Map, api: Pick<typeof MapLib
   function showPopup(pinId: string) {
     const pin = index.get(pinId); if (!pin) return;
     popup?.remove();
-    popup = new api.Popup({ offset: 20 }).setLngLat(pin.coordinate).setText(pin.description).addTo(map);
+    const content = document.createElement('div');
+    content.textContent = pin.description;
+    content.style.cssText = 'min-width:160px;max-width:280px;padding:2px 4px;color:#202c46;font:13px/1.45 Arial,Helvetica,sans-serif;white-space:pre-line;overflow-wrap:anywhere';
+    popup = new api.Popup({ offset: 20, closeButton: true, closeOnClick: false, maxWidth: '300px' })
+      .setLngLat(pin.coordinate).setDOMContent(content).addTo(map);
   }
   const click = (event: MapLibre.MapLayerMouseEvent) => {
     const pinId = event.features?.[0]?.properties?.id;

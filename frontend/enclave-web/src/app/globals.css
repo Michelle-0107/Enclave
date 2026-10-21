@@ -209,7 +209,7 @@
 .portal-title, .staff-avatar { color: var(--portal-accent); }
 .staff-avatar { background: var(--portal-soft); }
 .what-if-planner button:not(:disabled) { transition: background-color .22s ease, background-image .22s ease, border-color .22s ease, box-shadow .22s ease, transform .18s ease, color .22s ease; }
-.what-if-planner button:not(:disabled):hover { background-image: linear-gradient(115deg, #edf2f7 0%, #dce6f0 52%, #c7d6e6 100%); border-color: #9aadc2; box-shadow: 0 6px 16px rgb(32 44 70 / 14%); transform: translateY(-2px); }
+.what-if-planner button:not(:disabled):not([class*="bg-blue-"]):not([class*="bg-brand"]):not([class*="bg-slate-950"]):hover { background-image: linear-gradient(115deg, #edf2f7 0%, #dce6f0 52%, #c7d6e6 100%); border-color: #9aadc2; box-shadow: 0 6px 16px rgb(32 44 70 / 14%); transform: translateY(-2px); }
 .what-if-planner button:not(:disabled)[class*="bg-brand"]:hover,
 .what-if-planner button:not(:disabled)[aria-pressed="true"],
 .what-if-planner .what-if-toggle-selected { background-color: #526B8A !important; background-image: linear-gradient(110deg, #7188A6 0%, #526B8A 52%, #394F6D 100%) !important; border-color: transparent; color: #fff !important; box-shadow: 0 7px 18px rgb(64 77 111 / 28%); }
@@ -217,6 +217,9 @@
 .what-if-planner button:not(:disabled):active { background-image: linear-gradient(115deg, #d8e3ef 0%, #b9ccdf 100%); box-shadow: 0 3px 10px rgb(32 44 70 / 18%); transform: translateY(0) scale(.97); }
 .what-if-planner button:not(:disabled)[class*="bg-brand"]:active,
 .what-if-planner button:not(:disabled)[aria-pressed="true"]:active { background-color: #526B8A !important; background-image: linear-gradient(115deg, #526B8A, #405976) !important; color: #fff; }
+.what-if-planner button:not(:disabled)[class*="bg-slate-950"]:hover { background-color: #172033 !important; background-image: none !important; border-color: #172033; color: #fff !important; box-shadow: 0 7px 18px rgb(15 23 42 / 24%); }
+.what-if-planner button.what-if-plan-card-selected { background-color: #eff6ff !important; background-image: none !important; color: #202c46 !important; border-color: #2563eb !important; }
+.what-if-planner button.what-if-plan-card-selected:hover { background-color: #e5eef8 !important; background-image: none !important; color: #202c46 !important; border-color: #2563eb !important; box-shadow: 0 5px 14px rgb(32 44 70 / 12%); }
 .portal-workspace h1 { font-size: 26px; line-height: 1.4; }
 .portal-workspace { overflow-wrap: anywhere; }
 .quick-access { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -230,11 +233,6 @@
 /* Keep headings and controls in the same product sans-serif family. */
 .portal-shell, .portal-shell h1, .portal-shell h2, .portal-shell h3,
 .portal-shell .font-semibold, .portal-shell .font-bold { font-family: Arial, Helvetica, sans-serif; }
-
-/* Match the maintenance portal's more readable desktop scale on management pages. */
-@media (min-width: 1024px) {
-  .portal-shell[data-role="management"] { zoom: 1.25; }
-}
 
 /* Shared brand and compact read-only labels. */
 .enclave-emblem { display: inline-block; flex-shrink: 0; mask: url('/images/enclave-logo.png') center / contain no-repeat; -webkit-mask: url('/images/enclave-logo.png') center / contain no-repeat; }

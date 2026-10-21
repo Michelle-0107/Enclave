@@ -77,6 +77,8 @@ test('Report photo-to-location flow forwards the page scroll lock callback to th
     'react-native': { View: 'View', Text: 'Text', Pressable: 'Pressable', Image: 'Image', StyleSheet: { create: value => value } },
     './ReportPhotoScreen': { __esModule: true, default: 'Photo' },
     './ReportLocationScreen': { __esModule: true, default: 'Location' }, './ReportSuccessScreen': {},
+    '../components/DataSkeleton': { SkeletonList: 'SkeletonList' },
+    '../components/EnclaveLoading': { __esModule: true, default: 'EnclaveLoading' },
     '../lib/api': {}, '../lib/supabase': {}, '../lib/road-report-sections': {}, '../theme': { colors: {} },
   });
   function render() { hooks.reset(); const tree = Screen({ onGoHome() {}, onViewReports() {}, onReportCreated() {}, onMapTouchChange: lock }); hooks.flush(); return tree; }
@@ -100,6 +102,8 @@ test('report upload keeps the selected location ID, actual pin and returned name
     './ReportPhotoScreen': { __esModule: true, default: 'Photo' },
     './ReportLocationScreen': { __esModule: true, default: 'Location' },
     './ReportSuccessScreen': { __esModule: true, default: 'Success' },
+    '../components/DataSkeleton': { SkeletonList: 'SkeletonList' },
+    '../components/EnclaveLoading': { __esModule: true, default: 'EnclaveLoading' },
     '../lib/api': {
       reportsApi: { submit: async (token, form) => { uploads.push({ token, form }); return { ticket_id: record.ticket_id, data: [record] }; } },
       communityIssuesApi: { createOrLink: async (token, input) => { links.push({ token, input }); return { community_visible: false, issue: { reporter_count: 1 } }; } },
@@ -127,6 +131,7 @@ test('report list and details retain the shared location name as well as numeric
     react: {}, 'react/jsx-runtime': jsx,
     'react-native': { StyleSheet: { create: value => value } },
     '../navigation/NativeMap': {}, '@maplibre/maplibre-react-native': {}, '@expo/vector-icons': {},
+    '../components/DataSkeleton': { SkeletonList: 'SkeletonList' },
     '../lib/api': {}, '../lib/supabase': {}, '../theme': { colors: {} },
   };
   const record = { ticket_id: 'SYNTHETIC-REPORT', location_name: 'Taman Melati Station', latitude: 3.225, longitude: 101.731, status: 'approved' };

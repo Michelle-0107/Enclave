@@ -16,11 +16,14 @@ import {
 } from '@maplibre/maplibre-react-native';
 
 import {
+  communityIssuesApi,
   navigationApi,
   reportsApi,
+  type CommunityIssueRecord,
   type MapIssueFeature,
   type NavigationArea,
 } from '../lib/api';
+import { mapIssueLayers, type DisplayMapIssue } from '../lib/map-issue-layers';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import { SkeletonBlock, SkeletonList } from '../components/DataSkeleton';
@@ -58,8 +61,8 @@ function formatFacilityType(value: string): string {
     .join(' ');
 }
 
-function faultLabel(issue: MapIssueFeature): string {
-  return issue.properties.fault_kind === 'obstruction'
+function faultLabel(issue: DisplayMapIssue): string {
+  return issue.faultKind === 'obstruction'
     ? 'Obstruction'
     : 'Damage';
 }
@@ -80,14 +83,14 @@ export default function MapScreen({
   const placeSearch = useRef<PlaceSearchHandle>(null);
   const camera = useRef<CameraRef>(null);
 
-  const [issues, setIssues] =
-    useState<MapIssueFeature[]>([]);
+  const [issues, setIssues] = useState<DisplayMapIssue[]>([]);
 
   const [selectedIssueId, setSelectedIssueId] =
     useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pendingError, setPendingError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [area, setArea] = useState<NavigationArea | null>(navigationArea ?? null);
 
@@ -102,6 +105,7 @@ export default function MapScreen({
     async function loadIssues() {
       setIsLoading(true);
       setError('');
+      setPendingError(false);
 
       try {
         const {
@@ -129,10 +133,8 @@ export default function MapScreen({
           return;
         }
 
-        const loaded = new globalThis.Map<
-          string,
-          MapIssueFeature
-        >();
+        const confirmed = new globalThis.Map<string, MapIssueFeature>();
+        const discovered = new globalThis.Map<string, CommunityIssueRecord>();
 
         let offset = 0;
 
@@ -149,7 +151,7 @@ export default function MapScreen({
           if (!mounted) return;
 
           for (const issue of response.features) {
-            loaded.set(issue.id, issue);
+            confirmed.set(issue.id, issue);
           }
 
           if (!response.pagination.has_more) {
@@ -176,9 +178,28 @@ export default function MapScreen({
           offset = nextOffset;
         }
 
-        if (mounted) {
-          setIssues(Array.from(loaded.values()));
+        try {
+          offset = 0;
+          while (mounted) {
+            const response = await communityIssuesApi.getAll(accessToken, {
+              limit: 100,
+              offset,
+              bbox: loadedArea.bbox,
+            });
+            if (!mounted) return;
+            for (const issue of response.items) discovered.set(issue.id, issue);
+            if (!response.pagination.has_more) break;
+            if (response.pagination.returned <= 0) throw new Error('Unable to load all pending issues. Please retry.');
+            const nextOffset = response.pagination.offset + response.pagination.returned;
+            if (nextOffset <= offset) throw new Error('Invalid pending issue pagination. Please retry.');
+            offset = nextOffset;
+          }
+        } catch {
+          discovered.clear();
+          if (mounted) setPendingError(true);
         }
+
+        if (mounted) setIssues(mapIssueLayers(Array.from(confirmed.values()), Array.from(discovered.values())));
       } catch (loadError) {
         if (!mounted) return;
 
@@ -208,6 +229,8 @@ export default function MapScreen({
   const selectedIssue =
     issues.find((issue) => issue.id === selectedIssueId) ??
     null;
+  const confirmedCount = issues.filter(issue => issue.confirmed).length;
+  const pendingCount = issues.length - confirmedCount;
 
   function handleRefresh() {
     setSelectedIssueId(null);
@@ -366,24 +389,26 @@ export default function MapScreen({
             <Marker
               key={issue.id}
               id={issue.id}
-              lngLat={issue.geometry.coordinates}
+              lngLat={issue.coordinates}
               onPress={event => { event.stopPropagation(); setSelectedIssueId(issue.id); Keyboard.dismiss(); setSearching(false); }}
             >
               <View
                 collapsable={false}
                 accessible
                 accessibilityLabel={
-                  `${issue.properties.facility_name}, ` +
+                  `${issue.facilityName}, ` +
                   `${faultLabel(issue)}, ` +
-                  `${issue.properties.reporter_count} residents reported`
+                  `${issue.reporterCount} resident${issue.reporterCount === 1 ? '' : 's'} reported, ` +
+                  (issue.confirmed ? 'community confirmed' : 'awaiting another resident')
                 }
                 style={[
                   styles.marker,
+                  !issue.confirmed && styles.pendingMarker,
                   issue.id === selectedIssueId &&
                     styles.selectedMarker,
                 ]}
               >
-                <Text style={styles.markerText}>!</Text>
+                <Text style={styles.markerText}>{issue.confirmed ? '!' : '?'}</Text>
               </View>
             </Marker>
           ))}
@@ -419,9 +444,7 @@ export default function MapScreen({
         {isLoading ? <SkeletonBlock width="58%" height={13} /> : <Text style={styles.mapCount}>
           {error
               ? 'Community issues unavailable'
-              : `${issues.length} community issue${
-                  issues.length === 1 ? '' : 's'
-                } in this area`}
+              : pendingError ? `${confirmedCount} confirmed · Pending reports unavailable` : `${confirmedCount} confirmed · ${pendingCount} awaiting another resident`}
         </Text>}
 
         <Pressable
@@ -464,12 +487,11 @@ export default function MapScreen({
       ) : issues.length === 0 ? (
         <View style={styles.issueState}>
           <Text style={styles.cardTitle}>
-            {area?.community_issues_supported === false ? 'Community issue coverage is not enabled in this temporary area.' : 'No community-confirmed issues in this area.'}
+            {area?.community_issues_supported === false ? 'Community issue coverage is not enabled in this temporary area.' : pendingError ? 'No confirmed issues loaded in this area.' : 'No reported issues in this area.'}
           </Text>
 
           <Text style={styles.mapHint}>
-            Issues appear after reports from at least
-            2 distinct verified residents.
+            {pendingError ? 'Pending reports could not be loaded; tap Refresh to retry.' : 'Pending reports appear here while another distinct verified resident is needed for confirmation.'}
           </Text>
         </View>
       ) : (
@@ -477,28 +499,28 @@ export default function MapScreen({
           {selectedIssue && (
             <View style={styles.selectedCard}>
               <Text style={styles.cardTitle}>
-                {selectedIssue.properties.facility_name}
+                {selectedIssue.facilityName}
               </Text>
 
               <Text style={styles.closureDescription}>
                 {formatFacilityType(
-                  selectedIssue.properties.facility_type,
+                  selectedIssue.facilityType,
                 )}
                 {' · '}
                 {faultLabel(selectedIssue)}
               </Text>
 
               <Text style={styles.closureDescription}>
-                {selectedIssue.properties.reporter_count}
-                {' residents reported · '}
-                {selectedIssue.properties.status === 'open'
-                  ? 'Open issue'
-                  : 'Resolved issue'}
+                {selectedIssue.reporterCount}
+                {' resident'}{selectedIssue.reporterCount === 1 ? '' : 's'}
+                {' reported · '}
+                {selectedIssue.confirmed ? 'Community confirmed' : 'Awaiting another distinct resident'}
               </Text>
 
               <Text style={styles.closureDescription}>
-                Community-reported; this does not imply
-                an on-site inspection.
+                {selectedIssue.confirmed
+                  ? 'Community-reported; this does not imply an on-site inspection.'
+                  : 'Pending confirmation. This issue is not yet used as a route restriction or repair candidate.'}
               </Text>
 
               <Pressable
@@ -520,28 +542,33 @@ export default function MapScreen({
               onPress={() => setSelectedIssueId(issue.id)}
               style={({ pressed }) => [
                 styles.closureNotice,
+                !issue.confirmed && styles.pendingNotice,
                 issue.id === selectedIssueId &&
                   styles.selectedNotice,
                 pressed && styles.pressed,
               ]}
             >
               <Text style={styles.closureTitle}>
-                {issue.properties.facility_name}
+                {issue.facilityName}
                 {' · '}
                 {faultLabel(issue)}
               </Text>
 
               <Text style={styles.closureDescription}>
-                {issue.properties.reporter_count}
-                {' residents reported · '}
+                {issue.reporterCount}
+                {' resident'}{issue.reporterCount === 1 ? '' : 's'}
+                {' reported · '}
                 {formatFacilityType(
-                  issue.properties.facility_type,
+                  issue.facilityType,
                 )}
+                {!issue.confirmed && ' · Awaiting another resident'}
               </Text>
             </Pressable>
           ))}
         </>
       )}
+
+      {!isLoading && !error && pendingError && <Text accessibilityRole="alert" style={styles.mapHint}>Pending reports could not be loaded. Confirmed issues remain visible; tap Refresh to retry.</Text>}
 
       <Pressable
         accessibilityRole="button"
@@ -635,6 +662,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pendingMarker: {
+    backgroundColor: '#A66A12',
+  },
   selectedMarker: {
     width: 50,
     height: 50,
@@ -701,6 +731,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 4,
+  },
+  pendingNotice: {
+    backgroundColor: '#FFF3D0',
   },
   selectedNotice: {
     borderColor: colors.navy,

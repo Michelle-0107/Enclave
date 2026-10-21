@@ -15,7 +15,7 @@ function text(t){if(t==null)return'';if(typeof t!=='object')return String(t);ret
 function find(t,fn){const n=nodes(t).find(fn);assert.ok(n,'Expected UI node');return n;}
 const button=(t,label)=>find(t,n=>n.type==='Pressable'&&(n.props.accessibilityLabel===label||text(n).trim()===label));
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function component(file,api,props){const hooks=runtime(),touches=[];const Screen=compile(file,{'../navigation/NamedMapPoint':{__esModule:true,default:'NamedMapPoint',useMapPointName:()=>null},'../navigation/PlaceSearch':{__esModule:true,default:'PlaceSearch'},'../components/DataSkeleton':{SkeletonMap:'SkeletonMap',SkeletonBlock:'SkeletonBlock'},react:hooks.react,'react/jsx-runtime':jsx,'react-native':native,'../navigation/NativeMap':{NativeMap:'Map'},'@maplibre/maplibre-react-native':native,'../theme':{colors:{}},'../screens/MapScreen':{__esModule:true,default:'MapScreen'},'../savedPlaces/SavedPlacesControl':{__esModule:true,default:'SavedPlacesControl'},'../lib/api':{ApiError,demoAreasApi:{getAll:async()=>catalog},...api},'../lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'synthetic'}}})}}}}).default;return{unmount:()=>hooks.unmount(),render(){hooks.reset();const t=Screen({onReportPress(){},onMapTouchChange:x=>touches.push(x),...props});hooks.flush();return t;},touches};}
+function component(file,api,props){const hooks=runtime(),touches=[];const Screen=compile(file,{'../navigation/NamedMapPoint':{__esModule:true,default:'NamedMapPoint',useMapPointName:()=>null},'../navigation/PlaceSearch':{__esModule:true,default:'PlaceSearch'},'../components/DataSkeleton':{SkeletonMap:'SkeletonMap',SkeletonBlock:'SkeletonBlock',SkeletonList:'SkeletonList'},react:hooks.react,'react/jsx-runtime':jsx,'react-native':native,'../navigation/NativeMap':{NativeMap:'Map'},'@maplibre/maplibre-react-native':native,'../theme':{colors:{}},'../lib/map-issue-layers':compile('src/lib/map-issue-layers.ts',{}),'../screens/MapScreen':{__esModule:true,default:'MapScreen'},'../savedPlaces/SavedPlacesControl':{__esModule:true,default:'SavedPlacesControl'},'../lib/api':{ApiError,demoAreasApi:{getAll:async()=>catalog},...api},'../lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'synthetic'}}})}}}}).default;return{unmount:()=>hooks.unmount(),render(){hooks.reset();const t=Screen({onReportPress(){},onMapTouchChange:x=>touches.push(x),...props});hooks.flush();return t;},touches};}
 async function main(){let count=0;async function test(name,fn){await fn();count++;console.log('PASS: '+name);}
  await test('Live area catalog loads the default, switches by server ID and remounts the map',async()=>{
   const calls=[];const app=component('src/navigation/LiveAreaMapScreen.tsx',{navigationApi:{getArea:async(_token,id)=>{calls.push(id);return details[id];}}},{});
@@ -50,6 +50,25 @@ async function main(){let count=0;async function test(name,fn){await fn();count+
   tree=app.render();const endSearch=find(tree,n=>n.type==='PlaceSearch');assert.equal(endSearch.props.query,'Local end');endSearch.props.onChoose({label:'Local end',coordinate:[101.805,3.009]});
   tree=app.render();button(tree,'Choose route').props.onPress();assert.equal(chosen[0][2].area.id,area.id);assert.equal(chosen[0][2].origin.longitude,101.804);assert.equal(communityCalls,0);
   assert.ok(text(tree).includes('coverage is not enabled'));
+ });
+ await test('One-resident issue is visible as pending on the live map without being called confirmed',async()=>{
+  const area=details['kl-east-pilot'];let confirmedCalls=0,discoveryCalls=0;
+  const pending={id:'same-place-issue',latitude:3.22649,longitude:101.730755,facility_name:'Unnamed footway road · Section 186',facility_type:'path_surface',fault_kind:'damage',status:'open',reporter_count:1};
+  const app=component('src/screens/MapScreen.tsx',{navigationApi:{getArea:async()=>area},reportsApi:{getCommunityIssues:async()=>{confirmedCalls++;return{features:[],pagination:{has_more:false}};}},communityIssuesApi:{getAll:async()=>{discoveryCalls++;return{items:[pending],pagination:{has_more:false}};}}},{navigationArea:area});
+  app.render();await tick();let tree=app.render();
+  const marker=find(tree,n=>n.type==='Marker'&&n.props.id==='same-place-issue');
+  assert.equal(JSON.stringify(marker.props.lngLat),JSON.stringify([101.730755,3.22649]));
+  assert.ok(marker.props.children.props.accessibilityLabel.includes('awaiting another resident'));
+  assert.ok(text(tree).includes('0 confirmed · 1 awaiting another resident'));
+  assert.equal(confirmedCalls,1);assert.equal(discoveryCalls,1);
+ });
+ await test('Confirmed map markers remain when pending discovery is unavailable',async()=>{
+  const area=details['kl-east-pilot'];
+  const issue={id:'confirmed-issue',geometry:{coordinates:[101.730755,3.22649]},properties:{facility_name:'Confirmed road',facility_type:'path_surface',fault_kind:'damage',reporter_count:2}};
+  const app=component('src/screens/MapScreen.tsx',{navigationApi:{getArea:async()=>area},reportsApi:{getCommunityIssues:async()=>({features:[issue],pagination:{has_more:false}})},communityIssuesApi:{getAll:async()=>{throw Error('Unavailable');}}},{navigationArea:area});
+  app.render();await tick();const tree=app.render();
+  assert.ok(nodes(tree).some(n=>n.type==='Marker'&&n.props.id==='confirmed-issue'));
+  assert.ok(text(tree).includes('Pending reports unavailable'));
  });
  await test('Route options accept Kajang coordinates and only request modes actually enabled by the backend',async()=>{
   const calls=[],area=details['kajang-prima-saujana'];const a={longitude:101.804,latitude:3.008},b={longitude:101.805,latitude:3.009};

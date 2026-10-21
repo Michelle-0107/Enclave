@@ -7,7 +7,7 @@ export default function PasswordInput({ className = '', ...props }: Omit<Compone
   return <div className="relative">
     <Input {...props} type={visible ? 'text' : 'password'} className={`h-[54px] rounded-2xl bg-white px-4 pr-14 text-sm shadow-none ${className}`} />
     <button type="button" disabled={props.disabled} aria-label={visible ? 'Hide password' : 'Show password'} aria-pressed={visible} aria-controls={props.id} onClick={() => setVisible(!visible)} className="absolute inset-y-0 right-1 flex w-12 items-center justify-center rounded-xl text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">
-      {visible ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
+      {visible ? <Eye size={20} aria-hidden="true" /> : <EyeOff size={20} aria-hidden="true" />}
     </button>
   </div>;
 }

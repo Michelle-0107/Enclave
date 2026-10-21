@@ -173,7 +173,7 @@ export default function SignInScreen({
                   style={styles.eyeButton}
                 >
                   <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                     size={22}
                     color={colors.muted}
                   />

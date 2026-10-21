@@ -471,7 +471,10 @@ function ResidentApp({
         ref={scrollRef}
         scrollEnabled={!mapTouchActive}
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          activeTab === 'Report' && styles.fillContent,
+        ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
@@ -659,6 +662,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 28,
+  },
+  fillContent: {
+    flexGrow: 1,
   },
   tabBar: {
     flexDirection: 'row',

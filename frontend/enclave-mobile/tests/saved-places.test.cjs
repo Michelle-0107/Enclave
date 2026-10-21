@@ -70,6 +70,8 @@ function screen(file, extras = {}, props = {}) {
   const runtime = hooks();
   const Screen = load(file, { react: runtime.react, 'react/jsx-runtime': jsx, 'react-native': native,
     '../lib/api': {}, '../lib/supabase': {}, './navigationProgress': {},
+    '../lib/map-issue-layers': load('src/lib/map-issue-layers.ts'),
+    '../components/DataSkeleton': { SkeletonBlock: 'SkeletonBlock', SkeletonList: 'SkeletonList' },
     '../navigation/NativeMap': { NativeMap: 'Map' }, '@maplibre/maplibre-react-native': native, '../theme': { colors: {} },
     '../navigation/NamedMapPoint': { __esModule: true, default: 'NamedMapPoint', useMapPointName: () => null },
     '../savedPlaces/SavedPlacesControl': { __esModule: true, default: 'SavedPlacesControl' }, ...extras,
@@ -156,9 +158,12 @@ async function main() {
       './network': { dataset: { facilities:[],landmarks:[],bbox:[101.721,3.217,101.741,3.235] }, initialScenario:()=>({}), searchPlaces:()=>[],
         insidePilot:()=>true, selectLocation:(label,coordinate)=>({label,coordinate}), labels:{}, meters:()=>0 },
     }, { onShowLiveMap() {} });
-    let tree=render(); const controls=elements(tree).filter(x=>x.type==='SavedPlacesControl');
-    controls[0].props.onChoose({id:'a',label:'Home',coordinate:[101.73,3.22]});
-    controls[1].props.onChoose({id:'b',label:'Gym',coordinate:[101.731,3.225]});
+    let tree=render(); let control=elements(tree).find(x=>x.type==='SavedPlacesControl');
+    assert.equal(control.props.field,'starting point');
+    control.props.onChoose({id:'a',label:'Home',coordinate:[101.73,3.22]});
+    tree=render(); control=elements(tree).find(x=>x.type==='SavedPlacesControl');
+    assert.equal(control.props.field,'end point');
+    control.props.onChoose({id:'b',label:'Gym',coordinate:[101.731,3.225]});
     tree=render(); const inputs=elements(tree).filter(x=>x.type==='TextInput');
     assert.equal(inputs[0].props.value,'Home'); assert.equal(inputs[1].props.value,'Gym');
     const markers=elements(tree).filter(x=>x.type==='Marker');

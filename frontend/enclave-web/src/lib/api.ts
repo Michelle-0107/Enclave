@@ -142,6 +142,8 @@ export type FacilityIssue = {
   affects_routes: boolean;
   created_at: string;
   resolved_at: string | null;
+  // Optional until candidate pricing is supplied by the backend.
+  estimated_cost_myr?: string | null;
 };
 
 export type RepairCandidate = FacilityIssue & { review_ticket_id: string };

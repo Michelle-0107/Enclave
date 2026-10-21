@@ -67,6 +67,7 @@ export default function Account() {
         title="Confirm log out"
         description="Are you sure you want to log out of your maintenance account?"
         confirmLabel="Log out"
+        destructive
         busy={busy}
         onCancel={() => setConfirmSignOut(false)}
         onConfirm={() => void logout()}

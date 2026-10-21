@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -17,6 +16,7 @@ import ReportLocationScreen, {
 import ReportSuccessScreen from './ReportSuccessScreen';
 import type { ResidentReport } from './MyReportsScreen';
 import { SkeletonList } from '../components/DataSkeleton';
+import EnclaveLoading from '../components/EnclaveLoading';
 
 import {
   ApiError,
@@ -486,20 +486,9 @@ export default function ReportScreen({
   return (
     <View style={styles.container}>
       {renderStep()}
-
       {isSubmitting && (
-        <View
-          style={styles.busyOverlay}
-          accessibilityViewIsModal
-        >
-          <ActivityIndicator
-            size="large"
-            color={colors.navy}
-          />
-
-          <Text style={styles.label}>
-            Submitting report and linking issue...
-          </Text>
+        <View style={styles.loadingOverlay}>
+          <EnclaveLoading message="Submitting report and linking issue..." />
         </View>
       )}
     </View>
@@ -1010,17 +999,12 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  busyOverlay: {
+  loadingOverlay: {
     position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 24,
     zIndex: 20,
     elevation: 20,
   },

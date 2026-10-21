@@ -14,6 +14,7 @@ const moduleResult = { exports: {} }, native = { ActivityIndicator: 'Spinner', P
 const deps = {
   react, 'react-native': native,
   'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
+  '../components/DataSkeleton': { SkeletonMap: 'SkeletonMap' },
   '@maplibre/maplibre-react-native': { Map: 'NativeMap', GeoJSONSource: 'GeoJSONSource', Layer: 'Layer' },
   './nativeMapStyle': {
     normalizeNativeMapStyle: style => ({ ...style, normalized: true }),

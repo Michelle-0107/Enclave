@@ -17,15 +17,16 @@ const AFTER = '#137b79';
 const EMPTY_RESTRICTIONS: RoutingRestriction[] = [];
 const EMPTY_CANDIDATES: FacilityIssue[] = [];
 
-export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_RESTRICTIONS, candidates = EMPTY_CANDIDATES, selectedKey, onSelectionChange }: {
+export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_RESTRICTIONS, candidates = EMPTY_CANDIDATES, selectedKey, onSelectionChange, compact = false }: {
   baseline: WhatIfResult['baseline']; plan: RepairPlanResult; restrictions?: RoutingRestriction[]; candidates?: FacilityIssue[];
-  selectedKey?: string; onSelectionChange?: (key: string) => void;
+  selectedKey?: string; onSelectionChange?: (key: string) => void; compact?: boolean;
 }) {
   const repaired = useMemo(() => new Set(plan.facility_impacts?.map(item => item.facility_id) ?? []), [plan.facility_impacts]);
   const facilities = useMemo(()=>repairMapFacilities(plan,candidates,restrictions),[plan,candidates,restrictions]);
   const facilityLayer = useRef<ReturnType<typeof addFixedFacilityLayer> | null>(null);
   const views = useMemo(() => repairPathViews(baseline, plan.paths), [baseline, plan.paths]);
   const [selected, setSelected] = useState('');
+  const [phase, setPhase] = useState<'before' | 'after' | 'both'>('both');
   const requested = selectedKey ?? selected;
   const selection = requested === 'all:avoid_damage' || requested === 'all:accessible'
     ? requested : views.find(view => view.key === requested)?.key ?? views[0]?.key ?? '';
@@ -110,9 +111,10 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     }] : []));
     facilityLayer.current = fixedFacilities;
     // Only the selected journey is drawn; cleanup removes its previous layers and markers.
-    for (const phase of ['before', 'after'] as const) for (const path of mapPaths) {
-      const before = phase === 'before';
-      draw(`repair-${path.number}-${phase}`, before ? path.beforePoints : path.afterPoints,
+    for (const displayPhase of ['before', 'after'] as const) for (const path of mapPaths) {
+      if (phase !== 'both' && phase !== displayPhase) continue;
+      const before = displayPhase === 'before';
+      draw(`repair-${path.number}-${displayPhase}`, before ? path.beforePoints : path.afterPoints,
         before ? BEFORE : AFTER, before);
     }
     const points = repairMapBoundsPoints(beforePoints,afterPoints,facilities,endpointPoints);
@@ -140,7 +142,30 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       for (const id of layers.reverse()) if (instance.getLayer(id)) instance.removeLayer(id);
       for (const id of sources) if (instance.getSource(id)) instance.removeSource(id);
     };
-  }, [beforePoints, afterPoints, mapPaths, loaded, restrictions, repaired, facilities, endpointPoints]);
+  }, [beforePoints, afterPoints, mapPaths, loaded, restrictions, repaired, facilities, endpointPoints, phase]);
+
+  if (compact) return <section className="flex flex-col gap-3" aria-label={`${plan.name} route comparison`}>
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <label className="min-w-[180px] flex-1 text-xs font-semibold text-primary">Path and route mode
+        <select aria-label={`${plan.name}: path and route mode`} value={selection} onChange={event => { setSelected(event.target.value); onSelectionChange?.(event.target.value); }} className="mt-1 min-h-10 w-full rounded-lg border border-border bg-white px-3 text-sm font-normal">
+          {views.some(view => view.mode === 'avoid_damage') && <option value="all:avoid_damage">All paths · Avoid damage</option>}
+          {views.some(view => view.mode === 'accessible') && <option value="all:accessible">All paths · Accessible</option>}
+          {!views.length && <option value="">No comparable paths</option>}
+          {views.map(view => <option key={view.key} value={view.key}>{view.name} · {view.mode === 'accessible' ? 'Accessible' : 'Avoid damage'}</option>)}
+        </select>
+      </label>
+      <div className="flex rounded-lg bg-slate-100 p-1 text-[10px] font-bold" aria-label="Route layer">
+        {(['before', 'after', 'both'] as const).map(value => <button type="button" key={value} aria-pressed={phase === value} onClick={() => setPhase(value)} className={`rounded-md px-2 py-2 ${phase === value ? 'bg-slate-900 text-white' : 'text-slate-600'}`}>{value === 'both' ? 'Both' : value === 'before' ? 'Before' : 'After'}</button>)}
+      </div>
+    </div>
+    <div ref={host} className="h-[430px] min-h-[300px] w-full overflow-hidden rounded-xl border border-border bg-slate-100" aria-label="Real map showing backend before and after repair routes" />
+    <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-slate-100 p-2 text-[11px] font-semibold"><span style={{ color: BEFORE }}>● Dashed orange · Before repair</span><span style={{ color: AFTER }}>● Solid teal · After repair</span><span className="text-slate-500">R: simulated repair · !: other issue</span></div>
+    {error && <p role="status" className="text-xs text-status-red">{error}</p>}
+    {!beforePoints.length && !afterPoints.length && <p className="text-xs text-slate-500">Route geometry is unavailable. The map still shows requested endpoints and known facilities.</p>}
+    {mapPaths.some(path => path.view.before.reference || path.view.after.reference) && <p role="note" className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">An unverified walking reference is shown where no verified accessible route exists. It is not counted as accessible.</p>}
+    <div className="flex flex-wrap gap-2">{facilities.filter(item => item.selected).map(item => <button type="button" key={item.id} disabled={!item.coordinate} onClick={() => { if (item.coordinate) { map.current?.flyTo({ center: item.coordinate, zoom: 18 }); facilityLayer.current?.showPopup(item.id); } }} className="rounded-lg border border-emerald-300 px-2 py-1 text-[11px] font-semibold text-emerald-800 disabled:opacity-50">{item.label} · {item.name}</button>)}</div>
+    <details className="text-xs text-slate-600"><summary className="cursor-pointer font-semibold">Route details & map methodology</summary><div className="mt-2 space-y-2">{mapPaths.map(({ view }) => <p key={view.key}><strong>{view.name}</strong> · {routeChange(view)} · {routeTimeChange(view)}{routeFailureReason(view.before) && ` · Before: ${routeFailureReason(view.before)}`}{routeFailureReason(view.after) && ` · After: ${routeFailureReason(view.after)}`}</p>)}<p>Dashed outline: service area. Red areas: remaining restrictions. Green areas: cleared in this simulation. Purple: mapped facility road segment.</p><p>Before and after use the same matched endpoints. Simulation only.</p></div></details>
+  </section>;
 
   return <section className="flex flex-col gap-3" aria-label={`${plan.name} route comparison`}>
     <h4 className="font-semibold text-primary">Before and after routes</h4>

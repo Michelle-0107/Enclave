@@ -285,7 +285,7 @@ test('a shared selection displays route 2 in every plan and hides route 1 result
   }
 });
 
-test('planner passes the same route selection and change handler to every repair plan', () => {
+test('planner passes the selected route and change handler to the selected plan map', () => {
   const React = fromWeb('react');
   const captured = [];
   const select = () => {};
@@ -297,23 +297,45 @@ test('planner passes the same route selection and change handler to every repair
     useState(value) {
       const index = stateIndex++;
       if (index === 0) return [3, () => {}];
-      if (value === null) return [result, () => {}];
+      if (index === 8) return [result, () => {}];
       if (index === 9) return ['two:avoid_damage', select];
+      if (index === 11) return [1, () => {}];
+      if (index === 14) return [true, () => {}];
       return [value, () => {}];
     },
   };
   const Planner = load('src/components/management/WhatIfPlanner.tsx', {
     react: hooks, '@/lib/api': { ApiError: class extends Error {}, WHAT_IF_LIMITS: load('src/lib/api.ts', { '@/lib/auth-session': {} }).WHAT_IF_LIMITS },
     '@/components/ui/DataSkeleton': { DataSkeleton: () => null },
-    './SharedLocationPicker': { __esModule: true, default: () => null }, './RepairSummaryPanel': { __esModule: true, default: () => null }, './WhatIfPathMap': { __esModule: true, default: () => null, parseMapPoint: () => null, pathDistance: () => 0 }, './RepairPlanRoutes': { default: props => { captured.push(props); return null; }, __esModule: true },
+    '@/lib/repairRouteView': { formatRouteSeconds: () => '0 s', repairPathViews: () => [], routeDistance: () => '', routeTimeChange: () => '' },
+    './CandidateReviewButton': { __esModule: true, default: () => null },
+    './RepairSummaryPanel': { __esModule: true, default: () => null },
+    './WhatIfPathMap': { __esModule: true, default: () => null, parseMapPoint: () => null, pathDistance: () => 0 },
+    './RepairPlanRoutes': { default: props => { captured.push(props); return null; }, __esModule: true },
   }).default;
   const { renderToStaticMarkup } = fromWeb('react-dom/server');
   renderToStaticMarkup(React.createElement(Planner));
-  assert.equal(captured.length, 2);
-  for (const props of captured) {
-    assert.equal(props.selectedKey, 'two:avoid_damage');
-    assert.equal(props.onSelectionChange, select);
-  }
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].plan.id, '1');
+  assert.equal(captured[0].selectedKey, 'two:avoid_damage');
+  assert.equal(captured[0].onSelectionChange, select);
+});
+
+test('compact result map keeps real route controls and does not invent geometry', () => {
+  const Component = load('src/components/management/RepairPlanRoutes.tsx', {
+    '@/lib/repairRouteView': view, 'maplibre-gl/dist/maplibre-gl.css': {},
+  }).default;
+  const React = fromWeb('react');
+  const { renderToStaticMarkup } = fromWeb('react-dom/server');
+  const unavailable = { state: 'not_assessable', reason: 'no_fixed_reference_endpoints' };
+  const html = renderToStaticMarkup(React.createElement(Component, {
+    compact: true,
+    baseline: [{ ...baseline[0], current: unavailable }],
+    plan: { name: 'Plan 1', paths: [{ ...paths[0], after: unavailable }] },
+  }));
+  assert.ok(html.includes('Before') && html.includes('After') && html.includes('Both'));
+  assert.ok(html.includes('Route geometry is unavailable'));
+  assert.ok(html.includes('Real map showing backend before and after repair routes'));
 });
 
 

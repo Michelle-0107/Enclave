@@ -63,20 +63,27 @@ test('ten paths and five plans with twenty repairs are submitted intact', async 
   assert.deepEqual(JSON.parse(calls[0].options.body), body);
 });
 
-test('planner instructions and Add buttons use the API limits', () => {
+test('planner instructions and path Add button use the API limit', () => {
   const { api } = gateway();
   const React = require('react');
   const { renderToStaticMarkup } = require('react-dom/server');
+  let stateIndex = 0;
+  const hooks = { ...React, useEffect() {}, useCallback: fn => fn, useMemo: fn => fn(),
+    useRef: value => ({ current: value }),
+    useState(value) { return stateIndex++ === 14 ? [true, () => {}] : [value, () => {}]; },
+  };
   const Planner = load('src/components/management/WhatIfPlanner.tsx', {
+    react: hooks,
     '@/lib/api': api,
     '@/components/ui/DataSkeleton': { DataSkeleton: () => null },
+    '@/lib/repairRouteView': { formatRouteSeconds: () => '0 s', repairPathViews: () => [], routeDistance: () => '', routeTimeChange: () => '' },
     './RepairPlanRoutes': { default: () => null },
     './RepairSummaryPanel': { default: () => null },
+    './CandidateReviewButton': { default: () => null },
     './WhatIfPathMap': { default: () => null, parseMapPoint: () => null, pathDistance: () => 0 },
   }).default;
   const html = renderToStaticMarkup(React.createElement(Planner));
   const text = html.replace(/<[^>]*>/g, '');
-  assert.match(text, /Define up to 10 major journeys and compare up to 5 independent/);
-  assert.match(text, /Add path \(1\/10\)/);
-  assert.match(text, /Add repair plan \(1\/5\)/);
+  assert.match(text, /Up to 10 paths can be compared/);
+  assert.match(text, /Add Path \(1\/10\)/);
 });

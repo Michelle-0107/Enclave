@@ -56,6 +56,7 @@ export default function Account() {
         title="Confirm log out"
         description="Are you sure you want to log out of your management account?"
         confirmLabel="Log out"
+        destructive
         onCancel={() => setConfirmSignOut(false)}
         onConfirm={handleSignOut}
       />

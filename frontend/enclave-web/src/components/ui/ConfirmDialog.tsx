@@ -6,6 +6,7 @@ type Props = {
   description: string;
   confirmLabel?: string;
   busy?: boolean;
+  destructive?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -16,6 +17,7 @@ export default function ConfirmDialog({
   description,
   confirmLabel = "Confirm",
   busy = false,
+  destructive = false,
   onCancel,
   onConfirm,
 }: Props) {
@@ -38,7 +40,7 @@ export default function ConfirmDialog({
           <button type="button" disabled={busy} onClick={onCancel} className="min-h-11 rounded-xl border border-border px-5 text-sm font-semibold text-primary disabled:opacity-60">
             Cancel
           </button>
-          <button type="button" disabled={busy} onClick={onConfirm} className="min-h-11 rounded-xl bg-brand px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
+          <button type="button" disabled={busy} onClick={onConfirm} className={`min-h-11 rounded-xl px-5 text-sm font-semibold disabled:opacity-60 ${destructive ? 'bg-status-red text-white hover:bg-status-red/90' : 'bg-brand text-primary-foreground'}`}>
             {busy ? "Signing out…" : confirmLabel}
           </button>
         </div>

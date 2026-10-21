@@ -35,6 +35,8 @@ function harness({oldBackend=false,pending=[],extraFacilities=[],places=[],place
  const Component=compile('src/screens/ReportScreen.tsx',{
   react:hooks,'react/jsx-runtime':jsx,'react-native':{StyleSheet:{create:value=>value},View:'View',Text:'Text',Image:'Image',ActivityIndicator:'ActivityIndicator',Pressable:'Pressable',Alert:{alert(){}}},
   './ReportPhotoScreen':{},'./ReportLocationScreen':{},'./ReportSuccessScreen':{},'../lib/api':api,'../lib/road-report-sections':helper,
+  '../components/DataSkeleton':{SkeletonList:'SkeletonList'},
+  '../components/EnclaveLoading':{__esModule:true,default:'EnclaveLoading'},
   '../lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'fixture-token'}}})}}},'../theme':{colors:{}},
  },';module.exports.TestSelection=IssueSelection;').TestSelection;
  return{calls,submitted,render(details=photo){cursor=0;const tree=Component({details,photoUri:'file:///synthetic.jpg',onSubmit:value=>submitted.push(value)});effects.splice(0).forEach(fn=>fn());return tree;}};
@@ -91,6 +93,7 @@ test('report search explicitly sets visible placeholder, input and selection col
  const Picker=compile('src/navigation/SharedLocationPicker.tsx',{
   react:{useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect(){}},'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},
   'react-native':{View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable'},'../lib/api':{},'../lib/supabase':{},'../theme':{colors},
+    '../components/DataSkeleton':{SkeletonList:'SkeletonList'},
  }).default;
  const input=nodes(Picker({point:null,onChoose(){}})).find(n=>n.type==='TextInput');
  assert.equal(input.props.placeholderTextColor,colors.muted);assert.equal(input.props.selectionColor,colors.navy);
