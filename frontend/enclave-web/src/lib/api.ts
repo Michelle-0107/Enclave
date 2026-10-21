@@ -187,6 +187,7 @@ export type WalkingReference = RouteDetails & {
 };
 
 export type RouteOutcome = RouteDetails & {
+  details?: string | null;
   state: 'available' | 'no_route' | 'not_assessable';
   reason?: string | null;
   fallback?: WalkingReference | null;
@@ -213,8 +214,10 @@ export type WhatIfResult = {
     path_id: string;
     path_name: string;
     route_mode: 'avoid_damage' | 'accessible';
-    comparison_origin?: Location | null;
-    comparison_destination?: Location | null;
+    requested_origin?: { latitude: number; longitude: number } | null;
+    requested_destination?: { latitude: number; longitude: number } | null;
+    comparison_origin?: { latitude: number; longitude: number } | null;
+    comparison_destination?: { latitude: number; longitude: number } | null;
     current: RouteOutcome;
     reference_without_damage: RouteOutcome;
   }>;
@@ -500,10 +503,15 @@ export function compareRepairPlans(input: {
   budget_myr: string | null;
   include_geometry: boolean;
 }) {
+  const submittedPaths = input.paths.map(path => ({ ...path, origin: { ...path.origin }, destination: { ...path.destination } }));
   return apiRequest<WhatIfResult>('/api/v1/management/what-if/compare', {
     method: 'POST',
-    body: input,
-  });
+    body: { ...input, paths: submittedPaths },
+  }).then(result => ({ ...result, baseline: result.baseline.map(row => {
+    const submitted = submittedPaths.find(path => path.id === row.path_id);
+    return { ...row, requested_origin: row.requested_origin ?? submitted?.origin,
+      requested_destination: row.requested_destination ?? submitted?.destination };
+  }) }));
 }
 
 

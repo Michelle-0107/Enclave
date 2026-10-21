@@ -1,19 +1,39 @@
 import type { RouteOutcome, RouteDetails, WhatIfResult, FacilityIssue, RoutingRestriction } from './api';
 
 export type RepairPlanResult = WhatIfResult['plans'][number];
-export type RouteDisplay = { route: RouteDetails | null; reference: boolean; state: string };
+export type RouteDisplay = { route: RouteDetails | null; reference: boolean; state: string; reason?: string | null; details?: string | null };
 export type RepairPathView = {
   key: string; pathId: string; name: string; mode: 'avoid_damage' | 'accessible';
+  origin?: [number,number] | null; destination?: [number,number] | null;
   before: RouteDisplay; after: RouteDisplay; effect: string; explanation?: string | null;
 };
 
 function display(outcome: RouteOutcome | undefined, walking: RouteOutcome | undefined): RouteDisplay {
   if (outcome?.state === 'available') return { route: outcome, reference: false, state: outcome.state };
-  if (outcome?.fallback) return { route: outcome.fallback, reference: true, state: outcome.state };
+  if (outcome?.fallback) return { route: outcome.fallback, reference: true, state: outcome.state, reason: outcome.reason, details: outcome.details };
   // Also works while the previous backend is rolling out: its walking outcome
   // stays explicitly labelled as a reference instead of becoming accessible.
-  if (walking?.state === 'available') return { route: walking, reference: true, state: outcome?.state ?? 'no_route' };
-  return { route: null, reference: false, state: outcome?.state ?? 'no_route' };
+  if (walking?.state === 'available') return { route: walking, reference: true, state: outcome?.state ?? 'no_route', reason: outcome?.reason, details: outcome?.details };
+  return { route: null, reference: false, state: outcome?.state ?? 'no_route', reason: outcome?.reason, details: outcome?.details };
+}
+
+function endpoint(point: { longitude: number; latitude: number } | null | undefined): [number,number] | null {
+  return point && Number.isFinite(point.longitude) && Number.isFinite(point.latitude) && Math.abs(point.longitude)<=180 && Math.abs(point.latitude)<=90
+    ? [point.longitude,point.latitude] : null;
+}
+
+export function routeFailureReason(display: RouteDisplay): string | null {
+  if (display.state==='available') return null;
+  const reasons: Record<string,string> = {
+    blocked_endpoint:'The start or destination is inside an unrepaired restriction.',
+    no_fixed_reference_endpoints:'No supported walking route was found, even with all damage restrictions removed. Check walking access near the start and destination.',
+    no_verified_accessible_reference:'No verified step-free network connects these endpoints. Repairs alone do not verify accessibility.',
+    comparison_endpoint_changed:'A route could not keep the same comparison endpoints; this result cannot be compared.',
+    remaining_damage_intersection:'Unrepaired restrictions still block all validated routes or their endpoint approaches.',
+    no_supported_route:'No route meeting the walking access and remaining restriction rules was found.',
+  };
+  const summary = reasons[display.reason ?? ''] ?? (display.state==='not_assessable' ? 'This journey could not be assessed.' : 'No supported route was found.');
+  return display.details ? `${summary} ${display.details}` : summary;
 }
 
 export function repairPathViews(baseline: WhatIfResult['baseline'], paths: RepairPlanResult['paths']): RepairPathView[] {
@@ -23,6 +43,8 @@ export function repairPathViews(baseline: WhatIfResult['baseline'], paths: Repai
     const walkingAfter = paths.find(row => row.path_id === path.path_id && row.route_mode === 'avoid_damage');
     return {
       key: `${path.path_id}:${path.route_mode}`, pathId: path.path_id, name: path.path_name, mode: path.route_mode,
+      origin: endpoint(original?.requested_origin) ?? endpoint(original?.comparison_origin),
+      destination: endpoint(original?.requested_destination) ?? endpoint(original?.comparison_destination),
       before: display(original?.current, path.route_mode === 'accessible' ? walkingBefore?.current : undefined),
       after: display(path.after, path.route_mode === 'accessible' ? walkingAfter?.after : undefined),
       effect: path.effect, explanation: path.explanation,
@@ -88,8 +110,8 @@ export function repairMapFacilities(plan: RepairPlanResult, candidates: Facility
   });
 }
 
-export function repairMapBoundsPoints(before:[number,number][],after:[number,number][],facilities:RepairMapFacility[]):[number,number][] {
-  return [...before,...after,...facilities.filter(item=>item.selected && item.coordinate).map(item=>item.coordinate!)];
+export function repairMapBoundsPoints(before:[number,number][],after:[number,number][],facilities:RepairMapFacility[],endpoints:[number,number][]=[]):[number,number][] {
+  return [...before,...after,...endpoints,...facilities.filter(item=>item.selected && item.coordinate).map(item=>item.coordinate!)];
 }
 
 // Individual selection shows one journey; explicit all-route mode shows one mode per journey.
@@ -101,6 +123,8 @@ export function repairMapPaths(views: RepairPathView[], selection = '') {
   return visible.map(view => ({
     view, number: ids.indexOf(view.pathId) + 1,
     beforePoints: routeCoordinates(view.before.route), afterPoints: routeCoordinates(view.after.route),
+    origin: view.origin ?? routeCoordinates(view.after.route)[0] ?? routeCoordinates(view.before.route)[0] ?? null,
+    destination: view.destination ?? routeCoordinates(view.after.route).at(-1) ?? routeCoordinates(view.before.route).at(-1) ?? null,
     beforeLabel: `Before: ${routeDistance(view.before.route)}${view.before.reference ? ' · walking reference' : ''}`,
     afterLabel: `After: ${routeDistance(view.after.route)}${view.after.reference ? ' · walking reference' : ''}`,
   }));

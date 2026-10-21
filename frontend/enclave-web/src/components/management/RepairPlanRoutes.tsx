@@ -8,7 +8,7 @@ import { addServiceAreaBoundary, PILOT_SERVICE_BOUNDS } from '@/lib/serviceAreaB
 import { restrictionZoneFeatures } from '@/lib/restrictionZones';
 import type { WhatIfResult, RoutingRestriction, FacilityIssue } from '@/lib/api';
 import {
-  repairPathViews, routeChange, repairMapPaths, routeDistance, formatRouteSeconds, routeTimeChange, repairMapFacilities, repairMapBoundsPoints,
+  repairPathViews, routeFailureReason, routeChange, repairMapPaths, routeDistance, formatRouteSeconds, routeTimeChange, repairMapFacilities, repairMapBoundsPoints,
   type RepairPlanResult,
 } from '@/lib/repairRouteView';
 
@@ -30,6 +30,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
   const selection = requested === 'all:avoid_damage' || requested === 'all:accessible'
     ? requested : views.find(view => view.key === requested)?.key ?? views[0]?.key ?? '';
   const mapPaths = useMemo(() => repairMapPaths(views, selection), [views, selection]);
+  const endpointPoints = useMemo(() => mapPaths.flatMap(path => [path.origin,path.destination].filter((p): p is [number,number] => p !== null)), [mapPaths]);
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre.Map | null>(null);
   const api = useRef<typeof MapLibre | null>(null);
@@ -114,16 +115,15 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       draw(`repair-${path.number}-${phase}`, before ? path.beforePoints : path.afterPoints,
         before ? BEFORE : AFTER, before);
     }
-    const points = repairMapBoundsPoints(beforePoints,afterPoints,facilities);
+    const points = repairMapBoundsPoints(beforePoints,afterPoints,facilities,endpointPoints);
     if (points.length) {
       const bounds = new M.LngLatBounds();
       points.forEach(point => bounds.extend(point));
       instance.fitBounds(bounds, { padding: 80, maxZoom: 18, duration: 0 });
     }
     for (const path of mapPaths) {
-      const route = path.afterPoints.length ? path.afterPoints : path.beforePoints;
-      if (!route.length) continue;
-      for (const [label, point] of [['A', route[0]], ['B', route[route.length - 1]]] as const) {
+      for (const [label, point] of [['A', path.origin], ['B', path.destination]] as const) {
+        if (!point) continue;
         const el = document.createElement('div');
         el.textContent = `${path.number}${label}`;
         el.title = `P${path.number} · ${path.view.name} · ${label === 'A' ? 'Start' : 'Destination'}`;
@@ -140,7 +140,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       for (const id of layers.reverse()) if (instance.getLayer(id)) instance.removeLayer(id);
       for (const id of sources) if (instance.getSource(id)) instance.removeSource(id);
     };
-  }, [beforePoints, afterPoints, mapPaths, loaded, restrictions, repaired, facilities]);
+  }, [beforePoints, afterPoints, mapPaths, loaded, restrictions, repaired, facilities, endpointPoints]);
 
   return <section className="flex flex-col gap-3" aria-label={`${plan.name} route comparison`}>
     <h4 className="font-semibold text-primary">Before and after routes</h4>
@@ -182,7 +182,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
         </li>)}
       </ul>
       <button type="button" className="mt-2 min-h-9 underline text-primary" onClick={()=>{
-        const M=api.current;const instance=map.current;const points=repairMapBoundsPoints(beforePoints,afterPoints,facilities);
+        const M=api.current;const instance=map.current;const points=repairMapBoundsPoints(beforePoints,afterPoints,facilities,endpointPoints);
         if(M && instance && points.length){const bounds=new M.LngLatBounds();points.forEach(point=>bounds.extend(point));instance.fitBounds(bounds,{padding:80,maxZoom:18,duration:0});}
       }}>Show route and selected repairs</button>
       <button type="button" className="mt-2 min-h-9 px-3 underline text-primary" onClick={()=>{
@@ -193,8 +193,8 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     </div>
     <div ref={host} className="h-[420px] min-h-[300px] w-full overflow-hidden rounded-2xl border border-border" aria-label="Map showing before and after repair routes" />
     {error && <p role="status" className="text-sm text-status-red">{error}</p>}
-    {!beforePoints.length && !afterPoints.length && <p className="text-sm text-muted-foreground">No mapped route geometry is available for this selection.</p>}
-    <p className="text-xs text-muted-foreground">A: selected path start · B: selected path destination. P identifies the selected path. Orange and teal overlap when the route is unchanged. Simulation only.</p>
+    {!beforePoints.length && !afterPoints.length && <p className="text-sm text-muted-foreground">No route geometry is available. A and B show the selected start and destination.</p>}
+    <p className="text-xs text-muted-foreground">A: selected path start · B: selected path destination, shown even when routing fails. P identifies the selected path. Orange and teal overlap when the route is unchanged. Simulation only.</p>
     <ul className="flex flex-col gap-3">
       {mapPaths.map(({ view }) => <li key={view.key} className="rounded-xl border border-border p-3 text-sm">
         <div className="flex flex-wrap justify-between gap-2 font-semibold text-primary">
@@ -204,7 +204,9 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
         <p className="mt-1 font-semibold text-primary">{routeTimeChange(view)}</p>
         {view.explanation && <p className="mt-1 text-xs text-muted-foreground">{view.explanation}</p>}
         <p className="mt-1" style={{ color: BEFORE }}>Before repairs: {routeDistance(view.before.route)} · {formatRouteSeconds(view.before.route?.duration_seconds)}{view.before.reference ? ' · Avoid damage reference, accessibility unverified' : ''}</p>
+        {routeFailureReason(view.before) && <p className="mt-1 text-xs text-amber-900">Before: {routeFailureReason(view.before)}</p>}
         <p className="mt-1" style={{ color: AFTER }}>After repairs: {routeDistance(view.after.route)} · {formatRouteSeconds(view.after.route?.duration_seconds)}{view.after.reference ? ' · Avoid damage reference, accessibility unverified' : ''}</p>
+        {routeFailureReason(view.after) && <p className="mt-1 text-xs text-amber-900">After: {routeFailureReason(view.after)}</p>}
       </li>)}
     </ul>
   </section>;

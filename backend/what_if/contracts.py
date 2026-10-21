@@ -108,6 +108,7 @@ class WalkingReference(BaseModel):
 
 
 class RouteOutcome(BaseModel):
+    details: str | None = None
     state: Literal['available', 'no_route', 'not_assessable']
     reason: str | None = None
     distance_meters: float | None = None
@@ -130,6 +131,8 @@ class RoutingRestriction(BaseModel):
 
 
 class BaselinePath(BaseModel):
+    requested_origin: Location | None = None
+    requested_destination: Location | None = None
     path_id: str
     path_name: str
     route_mode: SimulationMode

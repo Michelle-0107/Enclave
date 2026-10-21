@@ -9,7 +9,8 @@ from uuid import uuid4
 from ..navigation.accessibility import VerifiedNetwork
 from ..navigation.contracts import WalkingRouteRequest
 from ..navigation.provider import NavigationRejected, NavigationUnavailable
-from ..navigation.service import NavigationService, distance_meters
+from ..navigation.service import distance_meters
+from .routing import SimulationNavigation
 from ..navigation.facility_segments import restriction_for
 from ..navigation.zones import zone_bounds, zone_ring, route_intersects_zone
 from ..reports.issues import CommunityObstacle, CommunityObstacleSnapshot
@@ -23,6 +24,7 @@ class CalculatedRoute:
     route: object | None
     state: str
     reason: str | None = None
+    details: str | None = None
 
 
 class WhatIfService:
@@ -84,7 +86,7 @@ class WhatIfService:
             # Freeze survey data and validity time too, so all plans use the same assumptions.
             network = VerifiedNetwork(document=network.load().model_dump(mode='json'),
                                       assessment_time=snapshot.checked_at)
-        navigation = NavigationService(self.navigation.provider, accessibility=network, fixed_snap=True)
+        navigation = SimulationNavigation(self.navigation.provider, accessibility=network, fixed_snap=True)
         anchors = {}
         semaphore = asyncio.Semaphore(4)
         tasks = {}
@@ -101,23 +103,23 @@ class WhatIfService:
                                 ends = (route.geometry.coordinates[0], route.geometry.coordinates[-1])
                                 targets = [(p.longitude,p.latitude) for p in (request.origin,request.destination)]
                                 if any(distance_meters(a,b)>1 for a,b in zip(ends,targets)):
-                                    return CalculatedRoute(None, 'not_assessable', 'comparison_endpoint_changed')
+                                    return CalculatedRoute(None, 'not_assessable', 'comparison_endpoint_changed', 'The route could not retain the same matched endpoints within one metre.')
                             return CalculatedRoute(route, 'available')
                         except NavigationRejected as error:
                             if error.status not in (409, 422):
                                 raise
                             reason = 'blocked_endpoint' if error.status == 409 else 'no_supported_route'
-                            return CalculatedRoute(None, 'no_route', reason)
+                            return CalculatedRoute(None, 'no_route', reason, error.message)
                 tasks[key] = asyncio.create_task(run())
             return await tasks[key]
 
         async def compare_path(path, mode):
             reference = await calculate(path, mode, reference_snapshot)
             if mode == 'accessible' and reference.route is None:
-                unknown = CalculatedRoute(None, 'not_assessable', 'no_verified_accessible_reference')
+                unknown = CalculatedRoute(None, 'not_assessable', 'no_verified_accessible_reference', reference.details)
                 return path, mode, unknown, unknown, {p.id: unknown for p in body.plans}
             if reference.route is None:
-                unknown = CalculatedRoute(None, 'not_assessable', 'no_fixed_reference_endpoints')
+                unknown = CalculatedRoute(None, 'not_assessable', 'no_fixed_reference_endpoints', reference.details)
                 return path, mode, unknown, unknown, {p.id: unknown for p in body.plans}
             anchored_request = None
             if reference.route is not None:
@@ -148,7 +150,7 @@ class WhatIfService:
                         feasible.append(route)
                 if not feasible:
                     if original.route is not None:
-                        return CalculatedRoute(None, 'no_route', 'remaining_damage_intersection')
+                        return CalculatedRoute(None, 'no_route', 'remaining_damage_intersection', 'Every validated route still intersects an unrepaired restriction or its endpoint approach.')
                     return original
                 route = min(feasible, key=lambda item: (item.distance_meters, item.duration_seconds))
                 route = route.model_copy(update={
@@ -205,7 +207,7 @@ class WhatIfService:
                     fallback = WalkingReference(distance_meters=route.distance_meters,
                         duration_seconds=route.duration_seconds, geometry=route_geometry(route),
                         data_source=route.data_source)
-                return RouteOutcome(state=calculated.state, reason=calculated.reason, fallback=fallback)
+                return RouteOutcome(state=calculated.state, reason=calculated.reason, details=calculated.details, fallback=fallback)
             route = calculated.route
             geometry = route_geometry(route)
             return RouteOutcome(state='available', distance_meters=route.distance_meters,
@@ -213,6 +215,7 @@ class WhatIfService:
                                 data_source=route.data_source, field_verified=route.field_verified)
 
         baseline = [BaselinePath(path_id=path.id, path_name=path.name, route_mode=mode,
+                                 requested_origin=path.origin, requested_destination=path.destination,
                                  comparison_origin=anchors.get((path.id,mode),(None,None))[0],
                                  comparison_destination=anchors.get((path.id,mode),(None,None))[1],
                                  current=project(before, walking[path.id][1] if mode == 'accessible' and path.id in walking else None),
@@ -295,6 +298,7 @@ class WhatIfService:
             budget_myr=body.budget_myr, baseline_road_obstacle_count=len({i.issue_id for i in before_snapshot.items}), routing_restrictions=restrictions, baseline=baseline, plans=results,
             warnings=[
                 'Simulation only; do not use these routes for live navigation.',
+                *(['Walking simulations share the resident app facility model, including hypothetical crossings, bridges, ramps and entrances; these are not field verified.'] if navigation.uses_resident_facilities else []),
                 'Paths are management-defined journeys, counted once across route modes.',
                 'Affected paths cross selected damage zones on the damage-free reference route.',
                 'Before and after routes share fixed endpoints.',

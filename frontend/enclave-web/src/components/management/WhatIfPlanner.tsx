@@ -54,6 +54,7 @@ const routeModes = [
 ];
 
 const comparisonNoteLabels: Array<[string, string]> = [
+  ["Walking simulations share", "Walking simulations use modelled facilities; they are not field verified."],
   ["Simulation only:", "Simulation only; do not use these routes for live navigation."],
   ["Major paths are", "Paths are management-defined journeys, counted once across route modes."],
   ["Affected counts", "Affected paths cross selected damage zones on the damage-free reference route."],
