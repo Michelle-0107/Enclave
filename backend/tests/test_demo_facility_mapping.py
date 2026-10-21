@@ -44,6 +44,10 @@ class DemoFacilityMappingTests(unittest.TestCase):
         area = find_area('kl-east-pilot').model_dump(mode='json')
         metadata = json.loads((FOLDER / 'kl-east-pilot-source.json').read_text())
         rebuilt = build(FOLDER / 'kl-east-pilot.osm', area, metadata, add_demo_facilities=True)
+        from backend.navigation.demo_accessibility import generate_accessibility
+        from backend.navigation.demo_network import demo_walking_graph
+        rebuilt['demoAccessibility']=json.loads((FOLDER / 'kl-east-pilot.json').read_text(encoding='utf-8'))['demoAccessibility']
+        rebuilt['accessibilityFacilities']=generate_accessibility('kl-east-pilot',demo_walking_graph('kl-east-pilot'),rebuilt)
         for target in (FOLDER / 'kl-east-pilot.json', ROOT / 'frontend/enclave-mobile/src/demo/kl-east-demo.json'):
             self.assertEqual(json.loads(target.read_text(encoding='utf-8')), rebuilt)
         facilities = {item['id']: item for item in rebuilt['facilities']}

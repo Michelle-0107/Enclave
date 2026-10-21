@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type * as MapLibre from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { addFixedFacilityLayer } from '@/lib/fixedFacilityLayer';
+import { addServiceAreaBoundary, PILOT_SERVICE_BOUNDS } from '@/lib/serviceAreaBoundary';
 import type { FacilityIssue } from "@/lib/api";
 
 type Point = { latitude: number; longitude: number };
@@ -16,10 +17,7 @@ type Props = {
   onPick: (target: PickTarget, point: Point) => void;
 };
 // Matches backend/navigation/config.py PILOT_BBOX; a development window, not a legal boundary.
-const south = 3.217,
-  west = 101.721,
-  north = 3.235,
-  east = 101.741;
+const [west, south, east, north] = PILOT_SERVICE_BOUNDS;
 export function isPilotPoint(point: Point) {
   return (
     Number.isFinite(point.latitude) &&
@@ -103,12 +101,8 @@ export default function WhatIfPathMap({
           container: host.current,
           center: [101.7308667, 3.2253785],
           zoom: 16,
-          minZoom: 14,
+          minZoom: 12,
           maxZoom: 19,
-          maxBounds: [
-            [west, south],
-            [east, north],
-          ],
           style: {
             version: 8,
             glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -145,6 +139,7 @@ export default function WhatIfPathMap({
         });
         instance.on("load", () => {
           if (disposed || !instance) return;
+          addServiceAreaBoundary(instance);
           instance.addSource("endpoint-connector", {
             type: "geojson",
             data: { type: "FeatureCollection", features: [] },
@@ -331,21 +326,21 @@ export default function WhatIfPathMap({
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
-          A: Starting point · B: Destination · Red dots: Candidate facilities
+          A: Starting point · B: Destination · Red dots: Candidate facilities · Dashed outline: Service area
         </span>
         <button
           type="button"
           disabled={!ready}
           onClick={() =>
-            map.current?.jumpTo({ center: [101.7308667, 3.2253785], zoom: 16 })
+            map.current?.fitBounds([[west, south], [east, north]], { padding: 24, duration: 400 })
           }
           className="min-h-10 px-2 font-semibold text-primary underline disabled:opacity-50"
         >
-          Reset view
+          Show service area
         </button>
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Dashed line connects your selected endpoints only. It is not a
+        The short dashed connector joins your selected endpoints. It is not a
         calculated walking route. The backend evaluates the journey when you
         compare plans.
       </p>

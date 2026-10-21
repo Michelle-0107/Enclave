@@ -1,7 +1,9 @@
 import { ApiError, apiRequest } from '@/lib/api';
 import type { MaintenanceGateway, MaintenanceTask, TaskStatus } from './types';
 
+export type PendingBlocker = { id: number; note: string; created_at: string };
 export type BackendTask = {
+  pending_blocker?: PendingBlocker | null; pending_blocker_count?: number;
   location_id?: string | null; location_name?: string | null; location_address?: string | null; location_storage?: 'database' | 'unavailable' | null;
   id: string; ticket_id: string; related_ticket_ids?: string[]; title: string; description: string;
   latitude: number; longitude: number; priority: 'low' | 'medium' | 'high';
@@ -134,4 +136,10 @@ export const reviewMaintenance = (task: BackendTask, decision: 'approve' | 'rewo
   apiRequest<BackendTask>(`${management}/tasks/${encodeURIComponent(task.id)}/review`, { method: 'POST', body: {
     expected_version: task.version, decision, note, repair_verified: decision === 'approve',
     ...(decision === 'approve' ? { public_note: publicNote } : {}),
+  } });
+
+export const respondToBlocker = (task: BackendTask, blockerId: number, notes: string, newDate?: string) =>
+  apiRequest<BackendTask>(`${management}/tasks/${encodeURIComponent(task.id)}/blocker-feedback`, { method: 'POST', body: {
+    expected_version: task.version, blocker_event_id: blockerId, notes,
+    change_due_date: newDate !== undefined, ...(newDate !== undefined ? { target_date: newDate } : {}),
   } });

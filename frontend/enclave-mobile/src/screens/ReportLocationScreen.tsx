@@ -216,7 +216,7 @@ export default function ReportLocationScreen({
         onTouchStart={() => { Keyboard.dismiss(); onMapTouchChange?.(true); }}
         onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
         onTouchCancel={() => onMapTouchChange?.(false)}>
-        <Map
+        <Map serviceAreaBounds={[101.7211, 3.2171, 101.7409, 3.2349]}
           key={mapKey}
           style={styles.map}
           mapStyle={MAP_STYLE}

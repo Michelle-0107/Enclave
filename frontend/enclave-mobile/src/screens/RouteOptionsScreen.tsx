@@ -390,7 +390,7 @@ export default function RouteOptionsScreen({
         onTouchStart={() => onMapTouchChange?.(true)}
         onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
         onTouchCancel={() => onMapTouchChange?.(false)}>
-        <Map
+        <Map serviceAreaBounds={navigationArea?.bbox ?? [101.7211, 3.2171, 101.7409, 3.2349]}
           key={mapKey}
           style={styles.map}
           mapStyle={MAP_STYLE}
@@ -626,10 +626,15 @@ const styles = StyleSheet.create({
   },
   pointButtons: {
     flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
     gap: 10,
   },
   pointButton: {
     flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    minHeight: 88,
     padding: 12,
     gap: 4,
     borderRadius: 14,

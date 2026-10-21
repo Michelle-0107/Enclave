@@ -326,7 +326,7 @@ export default function MapScreen({
         onTouchStart={() => onMapTouchChange?.(true)}
         onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
         onTouchCancel={() => onMapTouchChange?.(false)}>
-        <Map
+        <Map serviceAreaBounds={area?.bbox}
           key={`${area?.id ?? 'loading'}-${mapKey}`}
           style={styles.map}
           mapStyle={area?.map_style_url || MAP_STYLE}

@@ -118,11 +118,11 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const feature = facility || place || navigationFacility || reportedFeature;
   const usingStepFree = transport === 'wheelchair' || (mode === 'accessible' && Boolean(route));
   const visibleNavigationFacilities = useMemo(() => {
-    const facilities = usingStepFree ? (dataset.accessibilityFacilities ?? []) : (dataset.navigationFacilities ?? []);
+    const facilities = [...(dataset.navigationFacilities ?? []), ...(dataset.accessibilityFacilities ?? [])];
     if (showFacilityMarkers) return facilities;
-    const used = new Set(route?.mode === 'accessible' ? route.navigationFacilities?.map(f => f.id) : []);
+    const used = new Set(route?.navigationFacilities?.map(f => f.id) ?? []);
     return facilities.filter(f => f.stepFree && used.has(f.id));
-  }, [dataset, usingStepFree, showFacilityMarkers, route]);
+  }, [dataset, showFacilityMarkers, route]);
   const showNavigationOverlay = showFacilityMarkers || visibleNavigationFacilities.length > 0;
   const navigationPoints = useMemo(() => ({ type: 'FeatureCollection' as const,
     features: visibleNavigationFacilities.map(f => ({ type: 'Feature' as const, id: f.id,
@@ -412,13 +412,13 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       field={field === 'origin' ? 'starting point' : 'end point'}
       local={suggestions.map(p => ({ id: p.id, label: p.name, coordinate: p.coordinate, address: '', basis: p.positionBasis }))}
       onChoose={p => { choose(p.coordinate, p.label); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} />}
-    <View style={styles.row}>
+    <View style={styles.pointButtons}>
       {(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="button"
         accessibilityLabel={which === 'origin' ? 'Pick starting point on map' : 'Pick end point on map'}
         accessibilityState={{ selected: inputMode === 'map' && field === which }}
         onPress={() => { setField(which); setInputMode('map'); setSearching(false); Keyboard.dismiss(); }} style={[styles.pointButton, inputMode === 'map' && field === which && styles.selectedCard]}>
-        <Text style={styles.cardTitle}>{which === 'origin' ? '1. Starting point' : '2. End point'}</Text>
-        <Text style={styles.body}>{which === 'origin' && origin ? startName : which === 'destination' && destination ? endName : inputMode === 'map' && field === which ? 'Tap map to choose' : 'Tap to select'}</Text>
+        <Text style={styles.cardTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{which === 'origin' ? '1. Starting point' : '2. End point'}</Text>
+        <Text style={[styles.body, styles.pointName]} numberOfLines={2}>{which === 'origin' && origin ? startName : which === 'destination' && destination ? endName : inputMode === 'map' && field === which ? 'Tap map to choose' : 'Tap to select'}</Text>
       </Pressable>)}
     </View>
     <View style={styles.row}>
@@ -431,7 +431,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
     <View style={styles.mapContainer} onTouchStart={() => { followCamera.current = false; onMapTouchChange?.(true); }}
       onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
       onTouchCancel={() => onMapTouchChange?.(false)}>
-      <Map key={mapKey} style={styles.map} mapStyle={dataset.styleUrl} androidView="texture" compass attribution dragPan touchZoom doubleTapZoom
+      <Map serviceAreaBounds={dataset.bbox} key={mapKey} style={styles.map} mapStyle={dataset.styleUrl} androidView="texture" compass attribution dragPan touchZoom doubleTapZoom
         onPress={event => { Keyboard.dismiss(); const p = event.nativeEvent.lngLat; if (savedPlacePicker) { savedPlacePicker(p); setSavedPlacePicker(null); setInputMode('map'); setSearching(false); return; } setInputMode('map'); setSearching(false); choose(p, field === 'origin' ? 'Selected starting point' : 'Selected end point', field, true); }}
         onDidFailLoadingMap={() => setMapError(true)} onDidFinishLoadingMap={() => setMapError(false)}>
         <Camera ref={camera} initialViewState={{ bounds, padding: { top: 15, right: 15, bottom: 15, left: 15 } }} />
@@ -520,7 +520,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <Text style={styles.legendFootnote}>A gold frame highlights your selection. Reported issues are grouped by facility and issue type.</Text>
     </View>}
     <Text style={styles.hint}>{!showFacilityMarkers && 'Landmarks are shown by the basemap. Red markers show reported issues. '}{inputMode === 'map' ? `Tap the map to choose ${field === 'origin' ? 'your starting point' : 'your end point'}.` : 'Choose a search result above, or tap the map to choose a point.'} A gold frame marks your selection.</Text>
-    {usingStepFree && <Text style={styles.hint}>SF: simulated dropped-kerb crossings, lift-access footbridges, ramp connectors and building entrances. Only facilities used by the chosen route appear by default; these are demo assumptions.</Text>}
+    {(usingStepFree || route?.navigationFacilities?.some(f => f.stepFree)) && <Text style={styles.hint}>SF: simulated dropped-kerb crossings, lift-access footbridges, ramp connectors and building entrances. Only facilities used by the chosen route appear by default; these are demo assumptions.</Text>}
     {showFacilityMarkers && !usingStepFree && Boolean(dataset.navigationFacilities?.length) && <Text style={styles.hint}>Purple SZX/SFB: simulated crossings/footbridges, demo only. Teal ZX/FB: mapped facilities. {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'simulation').length} simulated · {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'openstreetmap').length} mapped.</Text>}
     {feature && <View style={styles.selectedPanel}>
       <Text style={styles.cardTitle}>{feature.name}</Text>
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
   endpoints: { backgroundColor: colors.white, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, gap: 12 }, endpoint: { gap: 4 },
   fieldLabel: { fontSize: 11, lineHeight: 16, color: colors.muted }, locationInput: { padding: 0, margin: 0, fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.navy, includeFontPadding: false },
   divider: { height: 1, backgroundColor: colors.border }, suggestion: { padding: 12, gap: 3, backgroundColor: colors.white, borderRadius: 12 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }, pointButton: { flex: 1, padding: 10, gap: 4, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }, pointButtons: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'stretch', gap: 8 }, pointName: { minHeight: 40 }, pointButton: { flex: 1, flexBasis: 0, minWidth: 0, minHeight: 88, padding: 10, gap: 4, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
   transportRow: { flexDirection: 'row', gap: 8 },
   transportButton: { flex: 1, minWidth: 0, height: 78, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 4, backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.border },
   transportLabel: { color: colors.navy, fontSize: 12, fontWeight: '600' },

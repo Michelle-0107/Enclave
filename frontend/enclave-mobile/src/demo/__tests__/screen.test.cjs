@@ -33,7 +33,7 @@ function mapTap(t,coordinate){find(t,n=>n.type==='Map').props.onPress({nativeEve
 async function chooseJourney(){let t=tree();mapTap(t,[101.7307337,3.2254158]);t=tree();mapTap(t,[101.732159,3.2277914]);t=tree();await button(t,'Choose route').props.onPress();return tree();}
 const cases=[],pending=[];function test(name,fn){pending.push(async()=>{pointNameResolver=()=>null;states=[];cursor=0;exited=false;reported=false;cameraCalls=[];openedUrls=[];serverCalls=[];responder=null;try{await fn();cases.push({name,passed:true});}catch(e){cases.push({name,passed:false,error:e.message});}});}
 test('Resident screen starts with blank inputs, no route or predefined endpoints',()=>{
- const t=tree();const inputs=all(t).filter(n=>n.type==='TextInput');assert.equal(inputs.length,2);assert.ok(inputs.every(n=>n.props.value===''));
+ const t=tree();assert.equal(JSON.stringify(find(t,n=>n.type==='Map').props.serviceAreaBounds),JSON.stringify(raw.bbox));const inputs=all(t).filter(n=>n.type==='TextInput');assert.equal(inputs.length,2);assert.ok(inputs.every(n=>n.props.value===''));
  assert.equal(all(t).filter(n=>n.type==='Marker').length,0);assert.ok(!all(t).some(n=>n.props?.id==='demo-selected-route'));
  assert.ok(text(t).includes('Around your neighbourhood.'));
 });
@@ -237,4 +237,25 @@ test('leaving the map cancels a pending resident report response',async()=>{
  finish({features:[{id:'stale',geometry:{type:'Point',coordinates:[101.731,3.226]},properties:{status:'open',reporter_count:2,facility_type:'other'}}],pagination:{offset:0,returned:1,has_more:false}});
  await new Promise(resolve=>setImmediate(resolve));assert.equal(find(tree(),n=>n.props?.id==='demo-facilities').props.data.features.filter(f=>f.properties.entryType==='report').length,0);
 });
+
+test('endpoint buttons stay in one equal-width stretched row with long place names',()=>{
+ pointNameResolver=coordinate=>coordinate?(coordinate[0]<101.731?'A very long starting place name across many words':'End'):null;
+ let t=tree();mapTap(t,[101.7307337,3.2254158]);t=tree();mapTap(t,[101.732159,3.2277914]);t=tree();
+ const start=button(t,'Pick starting point on map'),end=button(t,'Pick end point on map');
+ const parent=all(t).find(n=>Array.isArray(n.props?.children)&&n.props.children.includes(start)&&n.props.children.includes(end));
+ assert.equal(parent.props.style.flexWrap,'nowrap');assert.equal(parent.props.style.alignItems,'stretch');
+ for(const item of [start,end]){
+  const style=Object.assign({},...item.props.style.filter(Boolean));
+  assert.equal(style.flex,1);assert.equal(style.flexBasis,0);assert.equal(style.minWidth,0);assert.equal(style.minHeight,88);
+  const labels=all(item).filter(n=>n.type==='Text');assert.equal(labels[0].props.numberOfLines,1);assert.equal(labels[1].props.numberOfLines,2);
+ }
+});
+test('ordinary walking can show its chosen step-free facilities without exposing unrelated markers',async()=>{
+ const facility=raw.accessibilityFacilities.find(f=>f.kind==='footbridge');
+ responder=payload=>{const result=serverResponse(payload);for(const option of result.options)option.route.demo_facility_ids.push(facility.id);return result;};
+ const t=await chooseJourney();assert.ok(text(t).includes('SF: simulated'));
+ const source=find(t,n=>n.props?.id==='demo-navigation-facilities');assert.equal(source.props.data.features.length,1);
+ assert.equal(source.props.data.features[0].properties.id,facility.id);assert.ok(!all(t).some(n=>n.props?.id==='demo-places'));
+});
+
 void(async()=>{for(const run of pending)await run();console.log(JSON.stringify(cases,null,2));process.exitCode=cases.some(c=>!c.passed)?1:0;})();

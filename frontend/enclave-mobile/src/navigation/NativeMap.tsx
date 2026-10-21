@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Map as MapLibreMap, type MapProps } from '@maplibre/maplibre-react-native';
+import { Map as MapLibreMap, GeoJSONSource, Layer, type MapProps } from '@maplibre/maplibre-react-native';
 import { loadNativeMapStyle, normalizeNativeMapStyle, type NativeMapStyle } from './nativeMapStyle';
 
 /** Load and correct the basemap before passing it to the native renderer. */
-export function NativeMap({ mapStyle, style, ...props }: MapProps) {
+export function NativeMap({ mapStyle, style, children, serviceAreaBounds, ...props }: MapProps & { serviceAreaBounds?: readonly [number, number, number, number] }) {
   const remoteUrl = typeof mapStyle === 'string' && /^https?:\/\//i.test(mapStyle) ? mapStyle : null;
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{
@@ -33,7 +33,19 @@ export function NativeMap({ mapStyle, style, ...props }: MapProps) {
       </> : <ActivityIndicator accessibilityLabel="Loading map" color="#20304d" />}
     </View>;
   }
-  return <MapLibreMap {...props} style={style} mapStyle={current?.value ?? inlineStyle} />;
+  if (!serviceAreaBounds) return <MapLibreMap {...props} style={style} mapStyle={current?.value ?? inlineStyle}>{children}</MapLibreMap>;
+  return <MapLibreMap {...props} style={style} mapStyle={current?.value ?? inlineStyle}>
+    {serviceAreaBounds && <GeoJSONSource id="service-area-boundary" data={{ type: 'Feature', properties: {},
+      geometry: { type: 'LineString', coordinates: [
+        [serviceAreaBounds[0], serviceAreaBounds[1]], [serviceAreaBounds[2], serviceAreaBounds[1]],
+        [serviceAreaBounds[2], serviceAreaBounds[3]], [serviceAreaBounds[0], serviceAreaBounds[3]],
+        [serviceAreaBounds[0], serviceAreaBounds[1]],
+      ] },
+    }}>
+      <Layer id="service-area-boundary-line" type="line" paint={{ 'line-color': '#526987', 'line-width': 2.5, 'line-dasharray': [4, 3], 'line-opacity': 0.95 }} />
+    </GeoJSONSource>}
+    {children}
+  </MapLibreMap>;
 }
 
 const s = StyleSheet.create({

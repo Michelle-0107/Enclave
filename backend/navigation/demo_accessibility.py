@@ -5,7 +5,7 @@ import hashlib
 import json
 from .demo_network import demo_walking_graph,refresh_index
 from .graph_cache import shared_graph_cache
-from .roadside import Edge,distance
+from .roadside import Edge,distance,RoadsideGraph
 from .land_access import intersection
 
 VERSION='demo-step-free-v1'
@@ -118,7 +118,21 @@ def generate_accessibility(area_id,graph,dataset):
     for item in building_entrances(area_id,graph,excluded):facilities[item['id']]=item
     return [facilities[key] for key in sorted(facilities)]
 
-def accessible_graph(base,facilities,dataset):
+class SharedWalkingGraph(RoadsideGraph):
+    """Ordinary walkers may use every modelled facility, including stairs.
+
+    Registered building entrances are shared with the accessible graph. Buildings
+    without a registered ramp keep their existing ordinary nearest-road access.
+    """
+    def snap_candidates(self, point):
+        buildings=self.land_access.buildings_at(point)
+        if buildings and not any(b in self.demo_building_entrances for b in buildings):
+            view=copy(self)
+            del view.demo_building_entrances
+            return RoadsideGraph.snap_candidates(view,point)
+        return super().snap_candidates(point)
+
+def accessible_graph(base,facilities,dataset,*,include_ordinary=False):
     # Validate the checked-in manifest against its geographic generator. No
     # request can invent a crossing or silently label an ordinary graph accessible.
     area_id=dataset['demoAccessibility']['areaId']
@@ -130,17 +144,23 @@ def accessible_graph(base,facilities,dataset):
         raise ValueError('Invalid simulated accessibility manifest')
     by_source={tuple([r['sourceEdge']['a'],r['sourceEdge']['b'],r['sourceEdge']['kind'],r['sourceEdge']['wayId'],r['sourceEdge']['direction'],tuple(r['sourceEdge']['grade'])]):r for r in facilities if r['kind']!='accessible_entrance'}
     excluded=excluded_ways(dataset);graph=copy(base);graph.edges=[];seen=set()
+    if include_ordinary:graph.__class__=SharedWalkingGraph
     for edge in base.edges:
-        if edge.kind=='steps' or edge.way_id in excluded:continue
+        if not include_ordinary and (edge.kind=='steps' or edge.way_id in excluded):continue
         if edge.kind in SPECIAL or edge.kind=='open_access':
             record=by_source.get(edge_key(edge))
-            if record is None or record['id'] in seen:continue
+            if record is None:
+                if include_ordinary:graph.edges.append(edge)
+                continue
+            if record['id'] in seen:continue
             seen.add(record['id'])
-            kind='demo_step_free_link' if edge.kind=='open_access' else 'demo_footbridge' if edge.kind=='demo_footbridge' else 'demo_crossing'
+            # A manifest-backed paved ramp is a modelled facility for ordinary
+            # walking. Unmodelled open_access gaps remain fallback-only.
+            kind=('ramp' if include_ordinary else 'demo_step_free_link') if edge.kind=='open_access' else 'demo_footbridge' if edge.kind=='demo_footbridge' else 'demo_crossing'
             graph.edges.append(Edge(edge.a,edge.b,edge.points,record['name'],kind,record['id'],edge.direction,edge.grade))
         else:graph.edges.append(edge)
     add_building_entrances(graph,[f for f in facilities if f['kind']=='accessible_entrance'])
-    graph.navigation_facility_ids={f['routingWayId']:f['id'] for f in facilities}
+    graph.navigation_facility_ids={**(getattr(base,'navigation_facility_ids',{}) if include_ordinary else {}),**{f['routingWayId']:f['id'] for f in facilities}}
     graph.demo_step_free_policy=VERSION
     graph.step_free_facility_way_ids=set(graph.navigation_facility_ids)
     refresh_index(graph)
@@ -151,3 +171,10 @@ def demo_step_free_graph(area_id):
     from .areas import demo_area_dataset
     dataset=demo_area_dataset(area_id).dataset
     return accessible_graph(demo_walking_graph(area_id),dataset['accessibilityFacilities'],dataset)
+
+
+@shared_graph_cache(maxsize=2)
+def shared_demo_walking_graph(area_id):
+    from .areas import demo_area_dataset
+    dataset=demo_area_dataset(area_id).dataset
+    return accessible_graph(demo_walking_graph(area_id),dataset['accessibilityFacilities'],dataset,include_ordinary=True)
