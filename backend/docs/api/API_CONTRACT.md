@@ -24,6 +24,10 @@ The application uses the exact names from the root `.env.example`. Every Data AP
 | POST   | `/api/v1/reports`             | Active verified resident                   | 201 report submission envelope |
 | GET    | `/api/v1/reports`             | Active verified resident; own reports only | 200 paginated own reports      |
 | GET    | `/api/v1/reports/{ticket_id}` | Active verified resident; own report only  | 200 own report, or 404         |
+| GET    | `/api/v1/account/profile` | Authenticated account; own profile only | 200 signed avatar URL or null |
+| POST   | `/api/v1/account/avatar` | Authenticated account; own profile only | 200 signed avatar URL |
+
+Profile photos are available to any authenticated profile (resident, management, or maintenance). Upload `/api/v1/account/avatar` as `multipart/form-data` with a `photo` field containing a valid JPEG or PNG up to 5 MiB. FastAPI validates the file bytes, stores it in the private S3 bucket under the verified user's profile-photo prefix, and updates only that user's `profiles.avatar_url`. The database stores the stable object URL; API responses return a short-lived signed URL. Apply SQL migration `026_account_profile_photos.sql` before enabling these endpoints. Replacing a photo removes the previous object only when it belongs to that user's profile-photo prefix.
 
 Health is liveness only. Missing, malformed, invalid, or expired tokens return 401 with `WWW-Authenticate: Bearer`. Verification-key or resident-directory failures return 503. Accounts without an active, verified resident binding return 403 before report upload/AI work. Database policy/grant rejection also returns 403; other database failures return 503. Upstream error bodies and credentials are not echoed.
 

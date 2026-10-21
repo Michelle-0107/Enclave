@@ -17,6 +17,8 @@ import httpx
 from pydantic import ValidationError
 
 from .core.auth import AuthUnavailable, InvalidCredentials, TokenVerifier, VerifiedUser
+from .accounts.profile import AccountProfileRepository
+from .accounts.routes import create_router as account_router
 from .core.config import ConfigurationError, Settings, load_settings
 from .reports.media import MediaServices, MediaUnavailable
 from .reports.models import AIAnalysis, CurrentUserResponse, ReportCreatedResponse, ReportListResponse, ReportResponse
@@ -96,6 +98,7 @@ def create_app(
     settings: Settings | None = None, *, auth_transport: httpx.BaseTransport | None = None,
     reports_transport: httpx.AsyncBaseTransport | None = None,
     residents_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
+    account_transport: httpx.AsyncBaseTransport | None = None,
     map_transport: httpx.AsyncBaseTransport | None = None,
     workflow_transport: httpx.AsyncBaseTransport | None = None,
     navigation_settings: NavigationSettings | None = None,
@@ -119,6 +122,7 @@ def create_app(
             raise RuntimeError("Set SUPABASE_URL and SUPABASE_KEY in the root .env.") from None
         verifier = TokenVerifier(configured, transport=auth_transport)
         repository = ReportsRepository(configured, transport=reports_transport)
+        application.state.account_profiles = AccountProfileRepository(configured, transport=account_transport)
         residents = ResidentAccessRepository(configured, transport=residents_transport)
         notifications = NotificationsRepository(configured)
         application.state.verifier = verifier
@@ -152,6 +156,7 @@ def create_app(
         finally:
             verifier.close()
             await repository.close()
+            await application.state.account_profiles.close()
             await residents.close()
             await application.state.community_issues.close()
             await notifications.close()
@@ -205,6 +210,7 @@ def create_app(
         return response
 
     application.include_router(registration_router)
+    application.include_router(account_router(current_user))
     application.include_router(maintenance_router(current_user))
 
     @application.exception_handler(MaintenanceUnavailable)
@@ -228,7 +234,7 @@ def create_app(
 
     @application.exception_handler(RequestValidationError)
     async def sanitized_registration_validation(request, error):
-        if request.url.path.startswith(("/api/v1/registration/", "/api/v1/management/", "/api/v1/maintenance/", "/api/v1/navigation/", "/api/v1/community/", "/api/v1/facilities")) or request.url.path == "/api/send-verification-email":
+        if request.url.path.startswith(("/api/v1/registration/", "/api/v1/account/", "/api/v1/management/", "/api/v1/maintenance/", "/api/v1/navigation/", "/api/v1/community/", "/api/v1/facilities")) or request.url.path == "/api/send-verification-email":
             # FastAPI's default validation output includes input values, including passwords/OTPs.
             details = [{"loc": e["loc"], "type": e["type"], "msg": "Invalid request field"} for e in error.errors()]
             return JSONResponse(status_code=422, content={"detail": details}, headers={"Cache-Control": "no-store"})
