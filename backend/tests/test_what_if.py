@@ -191,6 +191,19 @@ class WhatIfTests(unittest.TestCase):
         self.assertEqual(plan['summaries'][0]['restored_path_count'], 1)
         self.assertEqual(plan['summaries'][0]['distance_saved_on_comparable_paths_meters'], 0)
 
+    def test_failed_reference_keeps_requested_pins_and_the_underlying_failure_details(self):
+        self.engine_override=lambda data:httpx.Response(400,json={'error_code':442})
+        payload=body();payload['include_geometry']=True
+        data=self.compare(self.client(),payload).json()
+        baseline=data['baseline'][0];after=data['plans'][0]['paths'][0]['after']
+        self.assertEqual(baseline['requested_origin'],payload['paths'][0]['origin'])
+        self.assertEqual(baseline['requested_destination'],payload['paths'][0]['destination'])
+        self.assertIsNone(baseline['comparison_origin'])
+        self.assertEqual(baseline['current']['reason'],'no_fixed_reference_endpoints')
+        self.assertEqual(after['reason'],'no_fixed_reference_endpoints')
+        self.assertIn('No walking route',after['details'])
+        self.assertIsNone(after['geometry'])
+
     def test_blocked_endpoint_can_be_restored(self):
         self.issues[0].update(latitude=A[1], longitude=A[0])
         data = self.compare(self.client()).json()

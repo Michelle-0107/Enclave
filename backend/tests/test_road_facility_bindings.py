@@ -79,3 +79,22 @@ class RoadBindingTests(unittest.TestCase):
             if checked==6:break
         self.assertEqual(checked,6)
         self.assertFalse(case.engine_requests,'The strict comparison must use the actual local road graph')
+
+    def test_repair_cannot_invent_outdoor_access_but_nearby_building_access_can_route(self):
+        case=fixtures.WhatIfTests();case.setUp();self.addCleanup(case.doCleanups)
+        import json
+        from pathlib import Path
+        places={p['id']:p for p in json.loads((Path(__file__).resolve().parents[1]/'data/map_places.json').read_text(encoding='utf-8'))}
+        ids=['ed7b553f-63c5-5b4f-98d9-292013005bf0','a061972e-2398-5cdc-91ed-7769edbb5dd2']
+        case.issues=[issue(id=fixtures.I2 if i else fixtures.I1,facility_id=ident,facility_name=places[ident]['name'],latitude=places[ident]['latitude'],longitude=places[ident]['longitude']) for i,ident in enumerate(ids)]
+        payload=body();payload['include_geometry']=True;payload['plans'][0]['repairs']=[{'facility_id':ids[0]}]
+        payload['paths']=[dict(id='ground',name='Open ground without nearby walking access',origin={'longitude':101.723445,'latitude':3.2197639},destination={'longitude':101.7268212875,'latitude':3.2243746375}),
+          dict(id='building',name='Nearby building access',origin={'longitude':101.723445,'latitude':3.2197639},destination={'longitude':101.72675135,'latitude':3.22405179})]
+        client=case.client();client.app.state.navigation.provider.settings=replace(client.app.state.navigation.provider.settings,crossing_policy='mapped_facilities_only')
+        response=case.compare(client,payload);self.assertEqual(response.status_code,200,response.text)
+        data=response.json();failed=data['baseline'][0];after=data['plans'][0]['paths'][0]['after']
+        self.assertEqual(failed['requested_destination'],payload['paths'][0]['destination'])
+        self.assertEqual(failed['current']['reason'],'no_fixed_reference_endpoints');self.assertEqual(after['reason'],'no_fixed_reference_endpoints')
+        self.assertIn('20 m',after['details']);self.assertIsNone(after['geometry'])
+        self.assertEqual(data['baseline'][1]['current']['state'],'available')
+        self.assertEqual(data['plans'][0]['paths'][1]['after']['state'],'available')

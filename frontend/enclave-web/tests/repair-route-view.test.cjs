@@ -249,6 +249,20 @@ test('switching route removes old geometry, endpoints and distances before drawi
   assert.equal(markers.filter(m => !m.removed).length, 4, 'all-route mode keeps only four compact endpoints');
   cleanupAll();
   assert.equal(sources.size, 0); assert.ok(markers.every(m => m.removed));
+  // Failed routing must keep the submitted endpoints, including in bounds.
+  const origin={longitude:101.7234,latitude:3.2197},destination={longitude:101.7268,latitude:3.2244};
+  const failure={state:'not_assessable',reason:'no_fixed_reference_endpoints',details:'No mapped walking access is reachable under the 20 m outdoor gap rule.'};
+  effects.length=0;refIndex=0;
+  Component({baseline:[{...baseline[0],requested_origin:origin,requested_destination:destination,current:failure}],
+    plan:{name:'Failed plan',paths:[{...paths[0],after:failure,effect:'not_assessable'}]}});
+  const cleanupFailed=effects[1]();
+  assert.equal(sources.size,0,'Do not draw a straight line when routing fails');
+  const failedMarkers=markers.filter(m=>!m.removed);assert.equal(failedMarkers.length,2);
+  assert.ok(failedMarkers.some(m=>m.options.element.textContent==='1A'&&m.point[0]===origin.longitude&&m.point[1]===origin.latitude));
+  assert.ok(failedMarkers.some(m=>m.options.element.textContent==='1B'&&m.point[0]===destination.longitude&&m.point[1]===destination.latitude));
+  assert.ok(fitted.some(p=>p[0]===origin.longitude)&&fitted.some(p=>p[0]===destination.longitude));
+  cleanupFailed();
+
   unmount();
 });
 
@@ -386,4 +400,31 @@ test('summary API sends only the simulation ID and selected mode, with the exist
   assert.equal(request.url, 'https://backend.example/api/v1/management/what-if/simulation-fixture/summary');
   assert.deepEqual(JSON.parse(request.options.body), { route_mode: 'accessible' });
   assert.equal(request.options.headers.get('Authorization'), 'Bearer session-fixture');
+});
+
+test('failed route diagnostics retain selected endpoints and distinguish access, restrictions and accessibility',()=>{
+ const failed={state:'not_assessable',reason:'no_fixed_reference_endpoints',details:'No walking access within 20 m.'};
+ const input=[{...baseline[0],requested_origin:{longitude:101.7234,latitude:3.2197},requested_destination:{longitude:101.7268,latitude:3.2244},current:failed}];
+ const rows=view.repairPathViews(input,[{...paths[0],after:failed}]);const mapped=view.repairMapPaths(rows)[0];
+ assert.equal(JSON.stringify(mapped.origin),'[101.7234,3.2197]');assert.equal(JSON.stringify(mapped.destination),'[101.7268,3.2244]');
+ assert.equal(mapped.beforePoints.length,0);assert.equal(mapped.afterPoints.length,0);
+ assert.match(view.routeFailureReason(rows[0].before),/all damage restrictions removed/);
+ assert.match(view.routeFailureReason(rows[0].before),/20 m/);
+ assert.match(view.routeFailureReason({state:'no_route',reason:'blocked_endpoint'}),/inside an unrepaired restriction/);
+ assert.match(view.routeFailureReason({state:'not_assessable',reason:'no_verified_accessible_reference'}),/verified step-free/);
+ assert.equal(view.routeFailureReason({state:'available'}),null);
+});
+test('selected markers keep the requested pins rather than moving to snapped route endpoints',()=>{
+ const original={longitude:101.73,latitude:3.225},target={longitude:101.731,latitude:3.226};
+ const rows=view.repairPathViews([{...baseline[0],requested_origin:original,requested_destination:target,comparison_origin:{longitude:101.73001,latitude:3.22501}}],[paths[0]]);
+ const map=view.repairMapPaths(rows)[0];assert.equal(map.origin[0],original.longitude);assert.equal(map.destination[0],target.longitude);
+ const bounds=view.repairMapBoundsPoints([],[],[],[map.origin,map.destination]);assert.equal(bounds.length,2);
+});
+test('compare transport retains endpoints from the submitted request when an older backend has no metadata',async()=>{
+ const api=load('src/lib/api.ts',{'@/lib/auth-session':{getValidAccessToken:async()=> 'fixture',clearAuthSession(){}}},
+ {Headers,FormData,URLSearchParams,fetch:async()=>new Response(JSON.stringify({baseline:[{path_id:'p',current:{state:'no_route'}}]}),{status:200}),process:{env:{NEXT_PUBLIC_API_BASE_URL:'https://api.invalid'}}});
+ const origin={latitude:3.2197,longitude:101.7234},destination={latitude:3.2244,longitude:101.7268};
+ const pending=api.compareRepairPlans({paths:[{id:'p',name:'Journey',origin,destination}],plans:[],route_modes:['avoid_damage'],include_geometry:true});
+ const original={...origin};origin.longitude+=.001;const result=await pending;
+ assert.equal(JSON.stringify(result.baseline[0].requested_origin),JSON.stringify(original));assert.equal(JSON.stringify(result.baseline[0].requested_destination),JSON.stringify(destination));
 });
