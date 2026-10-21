@@ -21,7 +21,7 @@ type Field = 'origin' | 'destination';
 type Props = { areaId?: string; data?: Dataset; onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
 type Choice = { label: string; coordinate: Coordinate; snap?: Selection['snap']; resolveName?: boolean };
 const transports: { id: Transport; name: string; icon: 'car-outline' | 'walk' | 'wheelchair-accessibility' }[] = [
-  { id: 'driving', name: 'Car', icon: 'car-outline' }, { id: 'walking', name: 'Walking', icon: 'walk' }, { id: 'wheelchair', name: 'Wheelchair', icon: 'wheelchair-accessibility' },
+  { id: 'driving', name: 'Car', icon: 'car-outline' }, { id: 'walking', name: 'Walking', icon: 'walk' }, { id: 'wheelchair', name: 'Accessible', icon: 'wheelchair-accessibility' },
 ];
 const routeColors: Record<Mode, string> = { shortest: '#8147B4', avoid_damage: '#BD6509', accessible: '#247A80' };
 const symbols: Record<string, string> = { stairs: 'ST', crossing: 'ZX', footbridge: 'FB', ramp: 'RP', path_surface: 'P', step_free_path: 'SF' };
@@ -176,6 +176,15 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   function edit(value: string, which: Field) {
     setField(which); setInputMode('search'); setSearching(true); clearRoute();
     if (which === 'origin') { setStartText(value); setOrigin(null); setOriginalOrigin(null); } else { setEndText(value); setDestination(null); }
+  }
+  function setMapField(which: Field) {
+    setField(which); setInputMode('map'); setSearching(false); Keyboard.dismiss();
+  }
+  function swapEndpoints() {
+    const previousOrigin = origin;
+    setOrigin(destination); setDestination(previousOrigin);
+    setStartText(endText); setEndText(startText);
+    setOriginalOrigin(null); clearRoute();
   }
   function choose(coordinate: Coordinate, label: string, which: Field = field, resolveName = false) {
     try {
@@ -366,66 +375,101 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   }
 
   return <View style={styles.container}>
-    <Text style={styles.title}>Around your neighbourhood.</Text>
-    <Text style={styles.subtitle}>Facilities and community-reported issues, at a glance.</Text>
     <Text style={styles.demoBadge}>Demo · {dataset.name}</Text>
-    <View style={styles.transportRow} accessibilityRole="tablist">
-      {transports.map(item => <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.name}
+    <View style={styles.transportSwitcher} accessibilityRole="tablist">
+      {transports.map(item => <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.id === 'wheelchair' ? 'Wheelchair accessible travel' : item.name}
         accessibilityState={{ selected: transport === item.id }} onPress={() => changeTransport(item.id)}
-        style={[styles.transportButton, transport === item.id && styles.selectedCard]}>
-        <MaterialCommunityIcons name={item.icon} size={24} color={colors.navy} />
-        <Text style={styles.transportLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{item.name}</Text>
+        style={[styles.transportButton, transport === item.id && styles.transportSelected]}>
+        <MaterialCommunityIcons name={item.icon} size={19} color={transport === item.id ? colors.navy : colors.muted} />
+        <Text style={[styles.transportLabel, transport === item.id && styles.transportLabelSelected]} numberOfLines={1}>{item.name}</Text>
       </Pressable>)}
     </View>
-    {transport === 'driving' ? <Text style={styles.hint}>Car navigation opens Google Maps with your selected locations. Demo facility restrictions are not sent to Google Maps.</Text> :
-      transport === 'wheelchair' ? <Text style={styles.hint}>Wheelchair travel uses step-free paths and avoids reported damage. Demo access conditions are not field verified.</Text> :
-        <Text style={styles.hint}>Walking: shortest, avoid damaged facilities, or a demo step-free route with simulated accessible facilities.</Text>}
+    <View style={styles.infoBanner}>
+      <MaterialCommunityIcons name="information-outline" size={17} color="#2675D8" />
+      <Text style={styles.infoText}>{transport === 'driving'
+        ? 'Driving directions open in Google Maps. Demo facility restrictions are not sent to Google Maps.'
+        : transport === 'wheelchair'
+          ? 'Accessible routes use step-free paths. Demo access conditions are not field verified.'
+          : 'Walking routes use mapped paths. Damage and step-free access details are demo data.'}</Text>
+    </View>
     <View style={styles.endpoints}>
-      <View style={styles.endpoint}>
-        <Text style={styles.fieldLabel}>Starting point</Text>
-        <Text style={styles.hint}>Tap the map to choose, or search by address or place name.</Text>
-        <TextInput accessibilityLabel="Starting point" value={startName} onChangeText={value => edit(value, 'origin')}
-          onFocus={() => { setField('origin'); setInputMode('search'); setSearching(true); }} placeholder="Search address or place name"
-          placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
-        <SavedPlacesControl field="starting point" current={origin ? { ...origin, label: startName } : null} disabled={navigating} onPickMapPoint={onPicked => {
-          setSavedPlacePicker(() => onPicked); setInputMode('map'); setSearching(false); Keyboard.dismiss();
-        }}
-          onChoose={point => { choose(point.coordinate, point.label, 'origin'); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
-        {originalOrigin && origin ? <Text style={styles.hint}>Updated {formatDistance(meters(originalOrigin.coordinate, origin.coordinate))} from your original start</Text> : transport !== 'driving' && origin?.snap && <Text style={styles.hint}>Mapped access {Math.round(origin.snap.distance)} m from selection</Text>}
+      <View style={styles.endpointRow}>
+        <View style={styles.markerRail}><View style={styles.originDot} /></View>
+        <View style={styles.endpointContent}>
+          <Text style={styles.fieldLabel}>STARTING POINT</Text>
+          <View style={styles.searchInput}>
+            <MaterialCommunityIcons name="magnify" size={17} color={colors.muted} />
+            <TextInput accessibilityLabel="Starting point" value={startName} onChangeText={value => edit(value, 'origin')}
+              onFocus={() => { setField('origin'); setInputMode('search'); setSearching(true); }} placeholder="Search address or place name"
+              placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
+          </View>
+        </View>
       </View>
-      <View style={styles.divider} />
-      <View style={styles.endpoint}>
-        <Text style={styles.fieldLabel}>End point</Text>
-        <Text style={styles.hint}>Tap the map to choose, or search by address or place name.</Text>
-        <TextInput accessibilityLabel="End point" value={endName} onChangeText={value => edit(value, 'destination')}
-          onFocus={() => { setField('destination'); setInputMode('search'); setSearching(true); }} placeholder="Search address or place name"
-          placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
-        <SavedPlacesControl field="end point" current={destination ? { ...destination, label: endName } : null} disabled={navigating} showHelp={false} onPickMapPoint={onPicked => {
-          setSavedPlacePicker(() => onPicked); setInputMode('map'); setSearching(false); Keyboard.dismiss();
-        }}
-          onChoose={point => { choose(point.coordinate, point.label, 'destination'); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
-        {transport !== 'driving' && destination?.snap && <Text style={styles.hint}>Road access {Math.round(destination.snap.distance)} m from selection</Text>}
+      <View style={styles.endpointDividerRow}>
+        <View style={styles.markerRail}><View style={styles.routeConnector} /></View>
+        <View style={styles.divider} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Swap start and destination" disabled={navigating}
+          onPress={swapEndpoints} style={[styles.swapButton, navigating && styles.disabled]}>
+          <MaterialCommunityIcons name="swap-vertical" size={18} color={colors.brand} />
+        </Pressable>
       </View>
+      <View style={styles.endpointRow}>
+        <View style={styles.markerRail}><View style={styles.destinationDot} /></View>
+        <View style={styles.endpointContent}>
+          <Text style={styles.fieldLabel}>DESTINATION POINT</Text>
+          <View style={styles.searchInput}>
+            <MaterialCommunityIcons name="magnify" size={17} color={colors.muted} />
+            <TextInput accessibilityLabel="End point" value={endName} onChangeText={value => edit(value, 'destination')}
+              onFocus={() => { setField('destination'); setInputMode('search'); setSearching(true); }} placeholder="Search address or place name"
+              placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
+          </View>
+        </View>
+      </View>
+      <View style={styles.savedSection}>
+        <Text style={styles.savedHeading}>QUICK SELECT SAVED</Text>
+        <SavedPlacesControl compact field={field === 'origin' ? 'starting point' : 'end point'}
+          current={field === 'origin' ? origin ? { ...origin, label: startName } : null : destination ? { ...destination, label: endName } : null}
+          disabled={navigating} showHelp={false} onPickMapPoint={onPicked => {
+            setSavedPlacePicker(() => onPicked); setInputMode('map'); setSearching(false); Keyboard.dismiss();
+          }}
+          onChoose={point => { choose(point.coordinate, point.label, field); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
+      </View>
+      {(originalOrigin && origin || transport !== 'driving' && (origin?.snap || destination?.snap)) &&
+        <Text style={styles.accessHint}>{originalOrigin && origin ? `Updated ${formatDistance(meters(originalOrigin.coordinate, origin.coordinate))} from your original start` :
+          `Mapped access ${Math.round((origin?.snap ?? destination?.snap)?.distance ?? 0)} m from selection`}</Text>}
+      {(transport === 'driving' || (results.length === 0 && !adjustmentVisible)) && <Pressable accessibilityRole="button"
+        disabled={calculating} onPress={transport === 'driving' ? () => void openDriving() : showRoutes} style={styles.findRouteButton}>
+        <MaterialCommunityIcons name={transport === 'driving' ? 'navigation-variant-outline' : 'navigation-variant'} size={18} color={colors.white} />
+        <Text style={styles.chooseButtonText}>{transport === 'driving' ? 'Open driving navigation' : calculating ? 'Calculating route…' : 'Find Best Route'}</Text>
+      </Pressable>}
     </View>
     {savedPlacePicker && <Text accessibilityRole="alert" style={styles.hint}>Tap the map to set the new position, then save your changes.</Text>}
     {inputMode === 'search' && searching && <PlaceSearch areaId={areaId} query={field === 'origin' ? startName : endName}
       field={field === 'origin' ? 'starting point' : 'end point'}
       local={suggestions.map(p => ({ id: p.id, label: p.name, coordinate: p.coordinate, address: '', basis: p.positionBasis }))}
       onChoose={p => { choose(p.coordinate, p.label); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} />}
-    <View style={styles.pointButtons}>
-      {(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="button"
-        accessibilityLabel={which === 'origin' ? 'Pick starting point on map' : 'Pick end point on map'}
-        accessibilityState={{ selected: inputMode === 'map' && field === which }}
-        onPress={() => { setField(which); setInputMode('map'); setSearching(false); Keyboard.dismiss(); }} style={[styles.pointButton, inputMode === 'map' && field === which && styles.selectedCard]}>
-        <Text style={styles.cardTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{which === 'origin' ? '1. Starting point' : '2. End point'}</Text>
-        <Text style={[styles.body, styles.pointName]} numberOfLines={2}>{which === 'origin' && origin ? startName : which === 'destination' && destination ? endName : inputMode === 'map' && field === which ? 'Tap map to choose' : 'Tap to select'}</Text>
-      </Pressable>)}
+    <View style={styles.mapHeading}>
+      <View style={styles.mapHeadingCopy}>
+        <Text style={styles.cardTitle}>Choose journey points</Text>
+        <Text style={styles.mapHint}>Tap map to set {field === 'origin' ? 'starting point' : 'destination'}.</Text>
+      </View>
+      <View style={styles.mapFieldSelector} accessibilityRole="tablist">
+        {(['origin', 'destination'] as Field[]).map(which => <Pressable key={which} accessibilityRole="tab"
+          accessibilityLabel={which === 'origin' ? 'Set map selection as start' : 'Set map selection as destination'}
+          accessibilityState={{ selected: field === which }} onPress={() => setMapField(which)}
+          style={[styles.mapFieldButton, field === which && styles.mapFieldButtonSelected]}>
+          <Text style={[styles.mapFieldButtonText, field === which && styles.mapFieldButtonTextSelected]}>{which === 'origin' ? 'Start' : 'End'}</Text>
+        </Pressable>)}
+      </View>
     </View>
-    <View style={styles.row}>
-      <Pressable accessibilityRole="button" disabled={locating || navigating} onPress={() => void locate(true)} style={styles.textButton}>
-        <Text style={styles.link}>{locating ? 'Locating…' : 'Use current location as start'}</Text>
+    <View style={styles.mapActions}>
+      <Pressable accessibilityRole="button" disabled={locating || navigating} onPress={() => void locate(true)} style={styles.mapAction}>
+        <MaterialCommunityIcons name="crosshairs-gps" size={16} color={colors.brand} />
+        <Text style={styles.mapActionText}>{locating ? 'Locating…' : 'Use current location'}</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" disabled={locating} onPress={recentre} style={styles.textButton}><Text style={styles.link}>Recentre</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={locating} onPress={recentre} style={styles.mapAction}>
+        <MaterialCommunityIcons name="crosshairs" size={16} color={colors.brand} /><Text style={styles.mapActionText}>Recentre</Text>
+      </Pressable>
     </View>
     {locationStatus ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{locationStatus}</Text> : null}
     <View style={styles.mapContainer} onTouchStart={() => { followCamera.current = false; onMapTouchChange?.(true); }}
@@ -531,9 +575,6 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={styles.textButton}><Text style={styles.link}>Close</Text></Pressable></View>
     </View>}
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-    {(transport === 'driving' || (results.length === 0 && !adjustmentVisible)) && <Pressable accessibilityRole="button"
-      disabled={calculating} onPress={transport === 'driving' ? () => void openDriving() : showRoutes} style={styles.chooseButton}>
-      <Text style={styles.chooseButtonText}>{transport === 'driving' ? 'Open driving navigation' : calculating ? 'Calculating routes…' : 'Choose route'}</Text></Pressable>}
     {originalOrigin && <View style={styles.selectedPanel}><Text style={styles.cardTitle}>Starting point updated</Text><Text style={styles.body}>Original point O stays on the map as a reference. The route now starts from S, the connected point you accepted.</Text><Text style={styles.hint}>The transfer between O and S is not a mapped or verified path.</Text></View>}
     {route && origin && destination && <>
       <Pressable accessibilityRole="button" onPress={toggleGuidance} style={styles.chooseButton}><Text style={styles.chooseButtonText}>{navigating ? 'Close route guidance' : waitForAdjustedStart ? 'Go to adjusted starting point' : 'Start Enclave guidance'}</Text></Pressable>
@@ -578,16 +619,34 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 10 }, title: { fontSize: 24, lineHeight: 34, fontWeight: '700', color: colors.navy },
-  subtitle: { fontSize: 14, lineHeight: 20, color: colors.muted }, demoBadge: { fontSize: 11, color: colors.navy, alignSelf: 'flex-start', backgroundColor: colors.lavender, padding: 6, borderRadius: 6 },
-  endpoints: { backgroundColor: colors.white, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, gap: 12 }, endpoint: { gap: 4 },
-  fieldLabel: { fontSize: 11, lineHeight: 16, color: colors.muted }, locationInput: { padding: 0, margin: 0, fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.navy, includeFontPadding: false },
-  divider: { height: 1, backgroundColor: colors.border }, suggestion: { padding: 12, gap: 3, backgroundColor: colors.white, borderRadius: 12 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }, pointButtons: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'stretch', gap: 8 }, pointName: { minHeight: 40 }, pointButton: { flex: 1, flexBasis: 0, minWidth: 0, minHeight: 88, padding: 10, gap: 4, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
-  transportRow: { flexDirection: 'row', gap: 8 },
-  transportButton: { flex: 1, minWidth: 0, height: 78, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 4, backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.border },
-  transportLabel: { color: colors.navy, fontSize: 12, fontWeight: '600' },
-  mapContainer: { width: '100%', height: 320, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.lavender }, map: { flex: 1 },
+  container: { gap: 12 }, title: { fontSize: 24, lineHeight: 34, fontWeight: '700', color: colors.navy },
+  subtitle: { fontSize: 14, lineHeight: 20, color: colors.muted }, demoBadge: { fontSize: 11, color: colors.navy, alignSelf: 'flex-start', backgroundColor: colors.lavender, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6 },
+  endpoints: { backgroundColor: colors.white, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 14, gap: 0, borderWidth: 1, borderColor: '#E6EAF0' },
+  endpointRow: { flexDirection: 'row', alignItems: 'center', gap: 10 }, markerRail: { width: 16, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  originDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#12B886', borderWidth: 2, borderColor: '#D8F5EB', zIndex: 1 },
+  destinationDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#F0445E', borderWidth: 2, borderColor: '#FCE0E5', zIndex: 1 },
+  endpointContent: { flex: 1, gap: 4 }, fieldLabel: { fontSize: 10, lineHeight: 14, letterSpacing: 0.5, fontWeight: '700', color: '#8996AA' },
+  searchInput: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F7F9FC', borderWidth: 1, borderColor: '#E0E7F0', borderRadius: 12, paddingHorizontal: 10 },
+  locationInput: { flex: 1, padding: 0, margin: 0, fontSize: 13, lineHeight: 18, color: colors.navy, includeFontPadding: false },
+  endpointDividerRow: { height: 34, flexDirection: 'row', alignItems: 'center', gap: 10 }, routeConnector: { height: 26, width: 2, backgroundColor: '#D8E0EA' },
+  divider: { flex: 1, height: 1, backgroundColor: colors.border }, swapButton: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.white, borderWidth: 1, borderColor: '#DFE6EF', alignItems: 'center', justifyContent: 'center', marginRight: 4 },
+  disabled: { opacity: 0.45 }, savedSection: { paddingTop: 13, gap: 6 }, savedHeading: { fontSize: 11, color: colors.muted, fontWeight: '600' },
+  accessHint: { marginTop: 7, fontSize: 10, lineHeight: 15, color: colors.muted },
+  findRouteButton: { minHeight: 48, marginTop: 13, paddingHorizontal: 14, borderRadius: 13, backgroundColor: '#101729', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  suggestion: { padding: 12, gap: 3, backgroundColor: colors.white, borderRadius: 12 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  transportSwitcher: { flexDirection: 'row', gap: 4, padding: 4, backgroundColor: '#EAF0F5', borderRadius: 14 },
+  transportButton: { flex: 1, minWidth: 0, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 4, backgroundColor: 'transparent', borderRadius: 11, borderWidth: 1, borderColor: 'transparent' },
+  transportSelected: { backgroundColor: colors.white, borderColor: '#E2E8F0' },
+  transportLabel: { color: colors.muted, fontSize: 11, fontWeight: '600' }, transportLabelSelected: { color: colors.navy },
+  infoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 11, borderRadius: 12, borderWidth: 1, borderColor: '#D5E7FF', backgroundColor: '#F0F6FF' },
+  infoText: { flex: 1, color: '#285EA8', fontSize: 11, lineHeight: 16 },
+  mapHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 }, mapHeadingCopy: { flex: 1, gap: 2 },
+  mapHint: { color: colors.muted, fontSize: 10, lineHeight: 14 }, mapFieldSelector: { flexDirection: 'row', padding: 3, backgroundColor: '#EAF0F5', borderRadius: 10 },
+  mapFieldButton: { minWidth: 48, minHeight: 30, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, borderRadius: 8 },
+  mapFieldButtonSelected: { backgroundColor: colors.brand }, mapFieldButtonText: { color: colors.muted, fontSize: 11, fontWeight: '600' }, mapFieldButtonTextSelected: { color: colors.white },
+  mapActions: { flexDirection: 'row', alignItems: 'center', gap: 16 }, mapAction: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 5 }, mapActionText: { color: colors.brand, fontSize: 11, fontWeight: '600' },
+  mapContainer: { width: '100%', height: 250, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.lavender }, map: { flex: 1 },
   marker: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.navy, borderWidth: 2, borderColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   endpointFrame: { padding: 3, borderRadius: 9, borderWidth: 3, borderColor: 'transparent' },
   activeEndpointFrame: { borderColor: '#D99A13', backgroundColor: '#FFF3D0' },

@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { demoAreasApi, type ResidentServiceArea } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
-import { SkeletonMap, SkeletonBlock } from '../components/DataSkeleton';
 import DemoMapScreen from './DemoMapScreen';
+import DemoMapSkeleton from './DemoMapSkeleton';
 import { dataset as builtInSnapshot, validateDataset, type Dataset } from './network';
 
 type Props = { onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
@@ -88,31 +88,32 @@ export default function ServiceAreaDemoScreen(props: Props) {
   }, [loadAreas]);
 
   return <View style={styles.container}>
-    <Text style={styles.label}>Service area</Text>
-    <View style={styles.areas}>
-      {areas.map(area => <Pressable key={area.id} accessibilityRole="button" accessibilityLabel={`Service area: ${area.name}`}
-        accessibilityState={{ selected: current?.id === area.id, disabled: loading }} disabled={loading}
-        onPress={() => void selectArea(area)} style={[styles.area, current?.id === area.id && styles.selected]}>
-        <Text style={styles.name}>{area.name}</Text>
-      </Pressable>)}
-    </View>
-    {areas.length > 1 && <Text style={styles.hint}>Changing service area clears the current route.</Text>}
+    {!loading && areas.length > 1 && <View style={styles.areaPicker}>
+      <Text style={styles.label}>Service area</Text>
+      <View style={styles.areas}>
+        {areas.map(area => <Pressable key={area.id} accessibilityRole="button" accessibilityLabel={`Service area: ${area.name}`}
+          accessibilityState={{ selected: current?.id === area.id, disabled: loading }} disabled={loading}
+          onPress={() => void selectArea(area)} style={[styles.area, current?.id === area.id && styles.selected]}>
+          <Text style={styles.name}>{area.name}</Text>
+        </Pressable>)}
+      </View>
+      <Text style={styles.hint}>Changing service area clears the current route.</Text>
+    </View>}
     {error ? <View style={styles.notice}>
       <Text accessibilityRole="alert" style={styles.hint}>{error}</Text>
       {current?.id === 'built-in-snapshot' && <Text style={styles.hint}>Using the built-in demo snapshot. Server service areas are unavailable.</Text>}
       <Pressable accessibilityRole="button" disabled={loading} onPress={retryAreas} style={styles.retry}><Text style={styles.name}>Retry service areas</Text></Pressable>
     </View> : null}
-    {loading ? <View style={styles.loading}><SkeletonBlock width="60%" height={14} /><SkeletonMap /></View>
+    {loading ? <DemoMapSkeleton />
       : current && <DemoMapScreen key={current.id} {...props} areaId={current.id} data={current.dataset} />}
   </View>;
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 10 }, label: { color: colors.muted, fontSize: 13 },
+  container: { gap: 10 }, areaPicker: { gap: 6 }, label: { color: colors.muted, fontSize: 11, fontWeight: '600' },
   areas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  area: { minHeight: 44, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white },
+  area: { minHeight: 34, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white },
   selected: { backgroundColor: colors.lavender, borderColor: colors.navy },
-  name: { color: colors.navy, fontWeight: '700' }, hint: { color: colors.muted, fontSize: 13, lineHeight: 20 },
+  name: { color: colors.navy, fontWeight: '700', fontSize: 11 }, hint: { color: colors.muted, fontSize: 11, lineHeight: 16 },
   notice: { padding: 12, borderRadius: 12, backgroundColor: colors.lavender }, retry: { minHeight: 44, justifyContent: 'center' },
-  loading: { padding: 24, gap: 12, alignItems: 'center' },
 });

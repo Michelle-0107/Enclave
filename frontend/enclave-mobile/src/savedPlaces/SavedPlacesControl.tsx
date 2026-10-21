@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import { createSavedPlacesStore, type PlacePoint, type SavedPlace } from './store';
-import { SkeletonList } from '../components/DataSkeleton';
+import { SkeletonBlock, SkeletonList } from '../components/DataSkeleton';
 
 const store = createSavedPlacesStore(supabase);
 type Props = {
@@ -13,11 +13,12 @@ type Props = {
   onChoose: (point: SavedPlace) => void;
   onPickMapPoint?: (onPicked: (coordinate: PlacePoint['coordinate']) => void) => void;
   showHelp?: boolean;
+  compact?: boolean;
   disabled?: boolean;
 };
 type Draft = PlacePoint & { id?: string };
 
-export default function SavedPlacesControl({ field, current, onChoose, onPickMapPoint, showHelp = true, disabled = false }: Props) {
+export default function SavedPlacesControl({ field, current, onChoose, onPickMapPoint, showHelp = true, compact = false, disabled = false }: Props) {
   const [visible, setVisible] = useState(false);
   const [items, setItems] = useState<SavedPlace[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -44,7 +45,7 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
     if (lock.current) return;
     request.current += 1; setVisible(false); setDraft(null); setError('');
   }
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (lock.current) return;
     const version = ++request.current;
     lock.current = true; setBusy(true); setLoadingItems(true); setError(''); setItems([]);
@@ -56,7 +57,8 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
     } finally {
       if (request.current === version) { lock.current = false; setBusy(false); setLoadingItems(false); }
     }
-  }
+  }, []);
+  useEffect(() => { if (compact) void refresh(); }, [compact, refresh]);
   function open(save: boolean) {
     Keyboard.dismiss(); setNotice(''); setError('');
     setDraft(save && current ? { label: '', coordinate: [...current.coordinate] } : null);
@@ -111,13 +113,29 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
   }
 
   return <View style={styles.controls}>
-    <View style={styles.actions}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Choose a saved place for ${field}`} disabled={disabled} onPress={() => open(false)} style={[styles.button, styles.actionButton, disabled && styles.disabled]}>
-        <Text style={[styles.link, styles.actionLabel]}>Use saved place</Text>
-      </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Save selected ${field}`} disabled={disabled || !current} onPress={() => open(true)} style={[styles.button, styles.actionButton, (disabled || !current) && styles.disabled]}>
-        <Text style={[styles.link, styles.actionLabel]}>Save selected point</Text>
-      </Pressable>
+    <View style={[styles.actions, compact && styles.compactActions]}>
+      {compact ? <>
+        {loadingItems ? <SkeletonBlock width={78} height={30} style={styles.savedChip} /> : items.slice(0, 3).map(item =>
+          <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Use ${item.label} as ${field}`} disabled={disabled}
+            onPress={() => { onChoose(item); close(); }} style={[styles.compactButton, styles.savedChip, disabled && styles.disabled]}>
+            <Text numberOfLines={1} style={styles.compactLabel}>{item.label}</Text>
+          </Pressable>)}
+        <Pressable accessibilityRole="button" accessibilityLabel={`Manage saved places for ${field}`} disabled={disabled} onPress={() => open(false)}
+          style={[styles.compactButton, styles.savedChip, disabled && styles.disabled]}>
+          <Text style={styles.compactLabel}>{items.length > 3 ? 'More' : items.length ? 'Manage' : 'Saved places'}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Save selected ${field}`} disabled={disabled || !current} onPress={() => open(true)}
+          style={[styles.compactButton, styles.savedChip, (disabled || !current) && styles.disabled]}>
+          <Text style={styles.compactLabel}>Save current</Text>
+        </Pressable>
+      </> : <>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Choose a saved place for ${field}`} disabled={disabled} onPress={() => open(false)} style={[styles.button, styles.actionButton, disabled && styles.disabled]}>
+          <Text style={[styles.link, styles.actionLabel]}>Use saved place</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Save selected ${field}`} disabled={disabled || !current} onPress={() => open(true)} style={[styles.button, styles.actionButton, (disabled || !current) && styles.disabled]}>
+          <Text style={[styles.link, styles.actionLabel]}>Save selected point</Text>
+        </Pressable>
+      </>}
     </View>
     {showHelp && <Text style={styles.hint}>Save places like Home or Work once, then reuse them for either point. You can rename or adjust a saved place later.</Text>}
     {notice ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{notice}</Text> : null}
@@ -161,7 +179,8 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
 }
 
 const styles = StyleSheet.create({
-  controls: { gap: 6 }, actions: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'stretch', gap: 8 }, actionButton: { flex: 1, minWidth: 0, justifyContent: 'center', alignItems: 'center' }, actionLabel: { textAlign: 'center' },
+  controls: { gap: 6 }, actions: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'stretch', gap: 8 }, compactActions: { flexWrap: 'wrap', alignItems: 'center', gap: 7 }, actionButton: { flex: 1, minWidth: 0, justifyContent: 'center', alignItems: 'center' }, actionLabel: { textAlign: 'center' },
+  compactButton: { minHeight: 30, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 18, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' }, savedChip: { maxWidth: 112 }, compactLabel: { maxWidth: 92, fontSize: 11, lineHeight: 16, color: colors.brand },
   button: { paddingVertical: 12, paddingHorizontal: 10, minHeight: 44 },
   link: { color: colors.navy, fontWeight: '700' }, disabled: { opacity: 0.45 },
   hint: { color: colors.muted, fontSize: 13, lineHeight: 20 },
