@@ -1,5 +1,6 @@
 """Actual-coordinate comparison, damage isolation and live/verified-mode boundaries."""
 import asyncio
+from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timezone
 import json
@@ -38,6 +39,26 @@ class SharedSimulationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertFalse(self.case.engine_requests)
         return response.json()
+
+    def test_maximum_comparison_keeps_all_ten_journeys_and_five_plans_on_the_shared_graph(self):
+        path = self.payload['paths'][0]
+        plan = self.payload['plans'][0]
+        self.payload['paths'] = [dict(deepcopy(path), id=f'journey_{i}', name=f'Journey {i}',
+            origin={**path['origin'], 'latitude': path['origin']['latitude'] + i * .0000001}) for i in range(10)]
+        choices = [[self.ids[0]], [self.ids[1]], self.ids, [self.ids[0]], [self.ids[1]]]
+        self.payload['plans'] = [dict(deepcopy(plan), id=f'plan_{i}', name=f'Plan {i}',
+            repairs=[{'facility_id': facility} for facility in repairs]) for i, repairs in enumerate(choices)]
+        self.payload['route_modes'] = ['avoid_damage', 'accessible']
+        data = self.compare()
+        self.assertEqual(len(data['baseline']), 20)
+        self.assertEqual(len(data['plans']), 5)
+        for row in data['baseline']:
+            if row['route_mode'] == 'avoid_damage': self.assertEqual(row['current']['state'], 'available')
+        for result in data['plans']:
+            self.assertEqual(len(result['paths']), 20)
+            self.assertEqual(len({row['path_id'] for row in result['paths']}), 10)
+            for row in result['paths']:
+                if row['route_mode'] == 'avoid_damage': self.assertEqual(row['after']['state'], 'available')
 
     def assert_avoids(self, outcome, restrictions):
         self.assertEqual(outcome['state'], 'available')

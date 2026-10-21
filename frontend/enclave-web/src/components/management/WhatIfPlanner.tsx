@@ -7,6 +7,7 @@ import {
   compareRepairPlans,
   getRepairCandidates,
   resolveMapLocationName,
+  WHAT_IF_LIMITS,
   type FacilityIssue,
   type MapLocationName,
   type WhatIfPath,
@@ -75,8 +76,7 @@ function comparisonNotes(warnings: string[]) {
   ))];
 }
 
-const MAX_PATHS = 10;
-const MAX_PLANS = 5;
+const { paths: MAX_PATHS, plans: MAX_PLANS, repairs: MAX_REPAIRS } = WHAT_IF_LIMITS;
 
 function locationLookupKey(index: number, latitude: string, longitude: string) {
   return `${index}:${latitude.trim()}:${longitude.trim()}`;
@@ -213,8 +213,8 @@ export default function WhatIfPlanner() {
   ) {
     const plan = plans[planIndex];
     if (!plan) return;
-    if (checked && plan.facilities.length >= 20) {
-      setError("A repair plan can include at most 20 facilities.");
+    if (checked && plan.facilities.length >= MAX_REPAIRS) {
+      setError(`A repair plan can include at most ${MAX_REPAIRS} facilities.`);
       return;
     }
     patchPlan(planIndex, {
@@ -226,7 +226,7 @@ export default function WhatIfPlanner() {
   }
 
   function validatePaths(): string {
-    if (journeys.length < 1 || journeys.length > MAX_PATHS) return 'Add between 1 and 10 paths.';
+    if (journeys.length < 1 || journeys.length > MAX_PATHS) return `Add between 1 and ${MAX_PATHS} paths.`;
     for (const path of journeys) {
       if (!path.name.trim()) return 'Give every path a name.';
       if ([path.fromLat, path.fromLng, path.toLat, path.toLng].some(value => value.trim() === '' || !Number.isFinite(Number(value)))) return 'Choose a starting point and destination for every path.';
@@ -256,7 +256,7 @@ export default function WhatIfPlanner() {
     }
     const pathError = validatePaths();
     if (pathError) { setError(pathError); setStep(1); return; }
-    if (!plans.length || plans.length > MAX_PLANS) { setError('Add between 1 and 5 repair plans.'); return; }
+    if (!plans.length || plans.length > MAX_PLANS) { setError(`Add between 1 and ${MAX_PLANS} repair plans.`); return; }
     if (plans.some((plan) => plan.facilities.length === 0)) {
       setError("Select at least one candidate facility in every repair plan.");
       return;
@@ -395,7 +395,7 @@ export default function WhatIfPlanner() {
           Repair what-if.
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          Define major journeys and compare up to five independent
+          Define up to {MAX_PATHS} major journeys and compare up to {MAX_PLANS} independent
           multi-facility repair plans. Estimated costs and routes are simulation
           inputs; nothing is saved or changed in resident navigation.
         </p>

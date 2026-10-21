@@ -43,7 +43,7 @@ for this MVP. A facility removed from the current snapshot causes compare to ret
 
 ## POST /api/v1/management/what-if/compare
 
-Up to five named major paths, three independent repair plans, twenty facilities per
+Up to ten named major paths, five independent repair plans, twenty facilities per
 plan, and both supported comparison modes. Major paths are management-defined
 origin/destination pairs inside the KL East pilot, at least 5 m apart. IDs must be
 unique in their lists; duplicate ordered coordinate pairs, modes, and plan facilities
@@ -170,11 +170,12 @@ use the same routing provider and assumptions. Repairs remove only selected
 facilities' incident restrictions; other obstacles stay active. Structural stairs and
 unknown/inaccessible links are never converted into accessible ones by a repair.
 
-Requests are bounded to at most 50 unique route calculations, four in flight and
+Requests are bounded to at most 140 unique route calculations, four in flight and
 45 seconds of calculation after the snapshot read. Equivalent route cases are reused.
 One comparison runs per API process at a time; another receives 429. This is a local
 process bound, not a distributed quota. Failure/timeout cancels outstanding work and
 returns no misleading partial improvement. Engine/database failures are 503.
+Returned route geometries retain the existing combined 50,000-coordinate limit.
 
 The private engine receives coordinates and exclusions, never JWTs, admin keys,
 management identity, names, cost, budget, or path labels. The application performs no

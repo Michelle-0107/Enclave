@@ -496,13 +496,25 @@ export function resolveMapLocationName(point: { latitude: number; longitude: num
   );
 }
 
-export function compareRepairPlans(input: {
+// Match CompareRequest/RepairPlan in the backend's bounded routing contract.
+export const WHAT_IF_LIMITS = { paths: 10, plans: 5, repairs: 20 } as const;
+
+export async function compareRepairPlans(input: {
   paths: WhatIfPath[];
   plans: WhatIfPlan[];
   route_modes: Array<'avoid_damage' | 'accessible'>;
   budget_myr: string | null;
   include_geometry: boolean;
 }) {
+  if (input.paths.length < 1 || input.paths.length > WHAT_IF_LIMITS.paths) {
+    throw new ApiError(`Compare between 1 and ${WHAT_IF_LIMITS.paths} paths at a time.`, 422);
+  }
+  if (input.plans.length < 1 || input.plans.length > WHAT_IF_LIMITS.plans) {
+    throw new ApiError(`Compare between 1 and ${WHAT_IF_LIMITS.plans} repair plans at a time. Remove extra plans and try again.`, 422);
+  }
+  if (input.plans.some(plan => plan.repairs.length < 1 || plan.repairs.length > WHAT_IF_LIMITS.repairs)) {
+    throw new ApiError(`Select between 1 and ${WHAT_IF_LIMITS.repairs} facilities in each repair plan.`, 422);
+  }
   const submittedPaths = input.paths.map(path => ({ ...path, origin: { ...path.origin }, destination: { ...path.destination } }));
   return apiRequest<WhatIfResult>('/api/v1/management/what-if/compare', {
     method: 'POST',

@@ -15,6 +15,8 @@ from .candidates import ReviewIssue
 
 Money = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
 SimulationMode = Literal['avoid_damage', 'accessible']
+MAX_COMPARISON_PATHS = 10
+MAX_COMPARISON_PLANS = 5
 
 
 class Input(BaseModel):
@@ -61,8 +63,8 @@ class RepairPlan(Input):
 
 
 class CompareRequest(Input):
-    paths: list[MajorPath] = Field(min_length=1, max_length=5)
-    plans: list[RepairPlan] = Field(min_length=1, max_length=3)
+    paths: list[MajorPath] = Field(min_length=1, max_length=MAX_COMPARISON_PATHS)
+    plans: list[RepairPlan] = Field(min_length=1, max_length=MAX_COMPARISON_PLANS)
     route_modes: list[SimulationMode] = Field(default_factory=lambda: ['avoid_damage', 'accessible'],
                                               min_length=1, max_length=2)
     budget_myr: Money | None = None
