@@ -1,7 +1,7 @@
 {
   "acceptance": {
     "passed": true,
-    "shortest": 476,
+    "shortest": 477,
     "accessible": 470,
     "total": 480,
     "ordering_failures": 0,
@@ -64,7 +64,7 @@
           "area": "kl-east-pilot",
           "category": "long_distance",
           "total": 30,
-          "shortest": 29,
+          "shortest": 30,
           "accessible": 29,
           "ordering_failures": 0
         },
@@ -78,7 +78,7 @@
         }
       ],
       "sample_sha256": "c741d589985b40954a484b03a69fedc291c71619eb68f2245942da016cb43ef8",
-      "algorithm_sha256": "c5771281e3efacc4c4bfe76ffd6b678c85fcc7e11dbbb3b7c4bfcf880869e5c0"
+      "algorithm_sha256": "acc16f917c270faebe9b045c041ebdbc515ccbac0b4a5414107b4579484b3766"
     },
     "walking-holdout": {
       "seed": 20261023,
@@ -149,7 +149,7 @@
         }
       ],
       "sample_sha256": "df1e904cf559171f1e2c9837950314ff3e7f862238890e8b0af7f2d3222a2f2e",
-      "algorithm_sha256": "c5771281e3efacc4c4bfe76ffd6b678c85fcc7e11dbbb3b7c4bfcf880869e5c0"
+      "algorithm_sha256": "acc16f917c270faebe9b045c041ebdbc515ccbac0b4a5414107b4579484b3766"
     }
   }
 }

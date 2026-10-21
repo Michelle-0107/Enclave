@@ -7,6 +7,7 @@ from .demo_network import demo_walking_graph,refresh_index
 from .graph_cache import shared_graph_cache
 from .roadside import Edge,distance,RoadsideGraph
 from .land_access import intersection
+from .provider import NavigationRejected
 
 VERSION='demo-step-free-v1'
 SPECIAL={'unmarked_crossing','demo_crossing','demo_footbridge','crossing'}
@@ -126,11 +127,18 @@ class SharedWalkingGraph(RoadsideGraph):
     """
     def snap_candidates(self, point):
         buildings=self.land_access.buildings_at(point)
-        if buildings and not any(b in self.demo_building_entrances for b in buildings):
+        if not buildings:
+            return super().snap_candidates(point)
+        try:
+            return super().snap_candidates(point)
+        except NavigationRejected:
+            # A registered ramp may be unreachable from this part of a building
+            # (e.g. a concave footprint or an intervening wall). Ordinary walking
+            # still has its own nearest usable road access; registration must
+            # not remove it. The step-free graph keeps its entrance-only policy.
             view=copy(self)
             del view.demo_building_entrances
             return RoadsideGraph.snap_candidates(view,point)
-        return super().snap_candidates(point)
 
 def accessible_graph(base,facilities,dataset,*,include_ordinary=False):
     # Validate the checked-in manifest against its geographic generator. No
