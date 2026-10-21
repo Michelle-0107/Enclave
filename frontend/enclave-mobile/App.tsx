@@ -442,11 +442,16 @@ function ResidentApp({
       edges={['top', 'left', 'right']}
     >
       <View style={styles.header}>
-        <Text style={styles.brand}>ENCLAVE</Text>
-
-        <Text style={styles.tagline}>
-          Your community, connected.
-        </Text>
+        <View style={styles.brandRow}>
+          <View style={styles.brandCopy}>
+            <Text style={styles.brand}>ENCLAVE</Text>
+            <Text style={styles.tagline}>Your community, connected.</Text>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Settings and account"
+            onPress={() => openAccountPage({ page: 'account' })} style={styles.settingsButton}>
+            <Ionicons name="settings-outline" size={20} color={colors.brand} />
+          </Pressable>
+        </View>
       </View>
 
       {activeTab === 'My Account' && accountFlow.page === 'details' && (
@@ -616,9 +621,11 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 16,
     paddingHorizontal: 24,
-    paddingBottom: 28,
-    gap: 6,
+    paddingBottom: 18,
   },
+  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brandCopy: { gap: 5 },
+  settingsButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EEF2F7' },
   detailsBackBar: {
     paddingHorizontal: 24,
     paddingBottom: 8,
