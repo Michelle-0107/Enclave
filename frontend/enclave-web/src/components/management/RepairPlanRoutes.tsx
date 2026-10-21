@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type * as MapLibre from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { addFixedFacilityLayer } from '@/lib/fixedFacilityLayer';
 import type { WhatIfResult, RoutingRestriction, FacilityIssue } from '@/lib/api';
 import {
   repairPathViews, routeChange, repairMapPaths, routeDistance, formatRouteSeconds, routeTimeChange, repairMapFacilities, repairMapBoundsPoints,
@@ -20,7 +21,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
 }) {
   const repaired = useMemo(() => new Set(plan.facility_impacts?.map(item => item.facility_id) ?? []), [plan.facility_impacts]);
   const facilities = useMemo(()=>repairMapFacilities(plan,candidates,restrictions),[plan,candidates,restrictions]);
-  const facilityMarkers = useRef(new Map<string,MapLibre.Marker>());
+  const facilityLayer = useRef<ReturnType<typeof addFixedFacilityLayer> | null>(null);
   const views = useMemo(() => repairPathViews(baseline, plan.paths), [baseline, plan.paths]);
   const [selected, setSelected] = useState('');
   const requested = selectedKey ?? selected;
@@ -66,7 +67,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     const instance = map.current;
     if (!M || !instance || !loaded) return;
     const markers: MapLibre.Marker[] = [];
-    const markerIndex = facilityMarkers.current;
+
     const layers: string[] = [];
     const sources: string[] = [];
     function draw(id: string, points: [number, number][], color: string, before: boolean) {
@@ -105,17 +106,11 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
         layers.push('facility-segment-line');
       }
     }
-    for (const item of facilities) {
-      if (!item.coordinate) continue;
-      const el=document.createElement('button');
-      el.type='button'; el.textContent=item.label;
-      const label=`${item.label} · ${item.name}: ${item.selected?'selected for this simulated repair plan':'not selected for repair'}${item.hasRestrictionGeometry?'':'; facility location only, affected road area unavailable'}`;
-      el.title=label; el.setAttribute('aria-label',label);
-      Object.assign(el.style,{background:item.selected?'#199366':'#d42b35',color:'#fff',border:'3px solid white',borderRadius:'50%',width:item.selected?'32px':'36px',height:item.selected?'32px':'36px',fontWeight:'700',fontSize:item.selected?'12px':'18px',boxShadow:item.selected?'0 1px 5px #0005':'0 0 0 5px #d42b3533, 0 2px 8px #0006'});
-      const marker=new M.Marker({element:el}).setLngLat(item.coordinate)
-        .setPopup(new M.Popup({offset:18}).setText(label)).addTo(instance);
-      markerIndex.set(item.id,marker); markers.push(marker);
-    }
+    const fixedFacilities = addFixedFacilityLayer(instance, M, 'repair-facilities', facilities.flatMap(item => item.coordinate ? [{
+      id: item.id, coordinate: item.coordinate, label: item.label, color: item.selected ? '#199366' : '#d42b35',
+      description: `${item.label} - ${item.name}: ${item.selected ? 'selected for this simulated repair plan' : 'not selected for repair'}${item.hasRestrictionGeometry ? '' : '; facility location only, affected road area unavailable'}`,
+    }] : []));
+    facilityLayer.current = fixedFacilities;
     // Only the selected journey is drawn; cleanup removes its previous layers and markers.
     for (const phase of ['before', 'after'] as const) for (const path of mapPaths) {
       const before = phase === 'before';
@@ -142,8 +137,9 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
     }
     return () => {
       markers.forEach(marker => marker.remove());
-      markerIndex.clear();
+      if (facilityLayer.current === fixedFacilities) facilityLayer.current = null;
       if (map.current !== instance) return;
+      fixedFacilities.remove();
       for (const id of layers.reverse()) if (instance.getLayer(id)) instance.removeLayer(id);
       for (const id of sources) if (instance.getSource(id)) instance.removeSource(id);
     };
@@ -173,17 +169,17 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       No verified accessible route is available for one or both cases. The map shows an Avoid damage walking reference instead. It may include stairs and is not verified for wheelchair use. Accessible availability counts are unchanged.
     </p>}
     {restrictions.length>0 && <div className="text-xs text-muted-foreground">
-      <p>Red areas: restrictions remaining after repairs. Green areas: cleared in this simulation. Purple: authored facility road segment. R: simulated repair; !: remaining restriction.</p>
+      <p>Red areas: restrictions remaining after repairs. Green areas: cleared in this simulation. Purple: mapped facility road segment. R: simulated repair; !: reported issue.</p>
       {restrictions.some(item=>item.binding_source==='point_only') && <p className="mt-1 text-amber-800">Some facilities have only point locations, without a confirmed affected road segment. Their zones are approximations; nearby roads are not automatically blocked.</p>}
     </div>}
     {baseline.some(row=>row.comparison_origin) && <p className="text-xs text-muted-foreground">Before and after use the same matched start and destination. An endpoint change beyond 1 m is treated as not assessable, not as an improvement.</p>}
     <div className="rounded-xl border border-border p-3 text-sm" aria-label="Selected repairs on this map">
       <p className="font-semibold text-primary">Selected repairs · {facilities.filter(item=>item.selected).length}</p>
-      <p className="mt-1 text-xs text-muted-foreground">Green R1, R2… markers identify this plan&apos;s repairs. Red ! markers identify other candidate facilities. All repairs here are hypothetical.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Green R1, R2… markers identify this plan&apos;s repairs. Red ! markers identify other reported facilities. Only shaded restriction zones block routes. All repairs here are hypothetical.</p>
       <ul className="mt-2 flex flex-wrap gap-2">
         {facilities.filter(item=>item.selected).map(item=><li key={item.id}>
           <button type="button" disabled={!item.coordinate} className="min-h-10 rounded-lg border border-emerald-700 px-3 text-emerald-800 disabled:opacity-60"
-            onClick={()=>{if(item.coordinate){map.current?.flyTo({center:item.coordinate,zoom:18});const marker=facilityMarkers.current.get(item.id);if(marker && !marker.getPopup()?.isOpen())marker.togglePopup();}}}>
+            onClick={()=>{if(item.coordinate){map.current?.flyTo({center:item.coordinate,zoom:18});facilityLayer.current?.showPopup(item.id);}}}>
             {item.label} · {item.name}{!item.coordinate?' · Location unavailable':''}
           </button>
         </li>)}

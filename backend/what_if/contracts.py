@@ -124,7 +124,7 @@ class RoutingRestriction(BaseModel):
     facility_name: str
     latitude: float
     longitude: float
-    binding_source: Literal['mapped_demo_segment', 'point_only']
+    binding_source: Literal['mapped_demo_segment', 'mapped_road_section', 'mapped_road_reference', 'point_only']
     affected_segment: RouteGeometry | None = None
     exclusion_rings: list[list[tuple[float,float]]]
 

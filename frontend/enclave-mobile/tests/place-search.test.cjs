@@ -76,7 +76,17 @@ void (async () => {
     const pending = button(tree()).props.onPress(); await new Promise(setImmediate);
     cleanups.forEach(fn => fn?.());
     release({ area_id: 'kl-east-pilot', items: [], storage: 'database' }); await pending;
-    assert.equal(states[3], null);
+    assert.ok(!text(tree()).includes('No matching address or place'));
+  });
+  await test('Location search initially shows three results and expands or collapses without changing the selection', async () => {
+    responder = async () => ({ area_id:'kl-east-pilot', storage:'database', items:Array.from({length:7},(_,i)=>({id:String(i),name:'Place '+i,longitude:101.73,latitude:3.225,address:'',position_basis:'Mapped point'})) });
+    await button(tree()).props.onPress();
+    const choices=t=>all(t).filter(n=>n.props?.accessibilityLabel?.startsWith('Choose place:'));
+    assert.equal(choices(tree()).length,3);
+    all(tree()).find(n=>text(n)==='Show more locations (4)'&&n.type==='Pressable').props.onPress();
+    assert.equal(choices(tree()).length,7);assert.equal(chosen,null);
+    choices(tree())[6].props.onPress();assert.equal(chosen.label,'Place 6');
+    assert.equal(choices(tree('Different query')).length,0);
   });
   console.log(JSON.stringify(results, null, 2)); process.exitCode = results.some(row => !row.passed) ? 1 : 0;
 })();

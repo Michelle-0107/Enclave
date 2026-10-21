@@ -8,7 +8,7 @@ import { demoAreasApi, reportsApi, type MapIssueFeature, type DemoRouteResponse 
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
-import NamedMapPoint from '../navigation/NamedMapPoint';
+import { useMapPointName } from '../navigation/NamedMapPoint';
 import PlaceSearch from '../navigation/PlaceSearch';
 import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, nearbyAccessPoints, searchPlaces, selectLocation,
   type Coordinate, type Dataset, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
@@ -19,7 +19,7 @@ import { geometryDistances } from './navigationProgress';
 
 type Field = 'origin' | 'destination';
 type Props = { areaId?: string; data?: Dataset; onShowLiveMap: () => void; onReportPress?: () => void; onMapTouchChange?: (active: boolean) => void };
-type Choice = { label: string; coordinate: Coordinate; snap?: Selection['snap'] };
+type Choice = { label: string; coordinate: Coordinate; snap?: Selection['snap']; resolveName?: boolean };
 const transports: { id: Transport; name: string; icon: 'car-outline' | 'walk' | 'wheelchair-accessibility' }[] = [
   { id: 'driving', name: 'Car', icon: 'car-outline' }, { id: 'walking', name: 'Walking', icon: 'walk' }, { id: 'wheelchair', name: 'Wheelchair', icon: 'wheelchair-accessibility' },
 ];
@@ -74,6 +74,8 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const [destination, setDestination] = useState<Choice | null>(null);
   const [startText, setStartText] = useState('');
   const [endText, setEndText] = useState('');
+  const startName = useMapPointName(origin?.resolveName ? origin.coordinate : null, areaId) ?? startText;
+  const endName = useMapPointName(destination?.resolveName ? destination.coordinate : null, areaId) ?? endText;
   const [field, setField] = useState<Field>('origin');
   const [searching, setSearching] = useState(false);
   const [showFacilityMarkers, setShowFacilityMarkers] = useState(false);
@@ -106,7 +108,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   useEffect(() => () => { locationRequest.current += 1; routeRequest.current += 1; guidanceActive.current = false; onMapTouchChange?.(false); }, [onMapTouchChange]);
   const approachCameraCentered = useRef(false);
   const camera = useRef<CameraRef>(null);
-  const suggestions = searching ? searchPlaces(field === 'origin' ? startText : endText, dataset) : [];
+  const suggestions = searching ? searchPlaces(field === 'origin' ? startName : endName, dataset) : [];
   const route = results.find(item => item.mode === mode)?.route;
   const facility = selected?.type === 'facility' ? dataset.facilities.find(f => f.id === selected.id) : undefined;
   const place = selected?.type === 'place' ? dataset.landmarks.find(p => p.id === selected.id) : undefined;
@@ -175,11 +177,12 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
     setField(which); setInputMode('search'); setSearching(true); clearRoute();
     if (which === 'origin') { setStartText(value); setOrigin(null); setOriginalOrigin(null); } else { setEndText(value); setDestination(null); }
   }
-  function choose(coordinate: Coordinate, label: string, which: Field = field) {
+  function choose(coordinate: Coordinate, label: string, which: Field = field, resolveName = false) {
     try {
       if (!insidePilot(coordinate, dataset)) throw new Error('Select a point inside the current service area.');
       let selection: Choice = { label, coordinate };
       if (transport !== 'driving') { try { selection = selectLocation(label, coordinate, dataset); } catch { /* Keep the raw pin for explicit nearby-access planning. */ } }
+      selection = { ...selection, resolveName };
       clearRoute(); setSearching(false); Keyboard.dismiss();
       if (which === 'origin') { setOrigin(selection); setOriginalOrigin(null); setStartText(label); setField('destination'); }
       else { setDestination(selection); setEndText(label); }
@@ -381,10 +384,10 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <View style={styles.endpoint}>
         <Text style={styles.fieldLabel}>Starting point</Text>
         <Text style={styles.hint}>Tap the map to choose, or search by address or place name.</Text>
-        <TextInput accessibilityLabel="Starting point" value={startText} onChangeText={value => edit(value, 'origin')}
+        <TextInput accessibilityLabel="Starting point" value={startName} onChangeText={value => edit(value, 'origin')}
           onFocus={() => { setField('origin'); setInputMode('search'); setSearching(true); }} placeholder="Search address or place name"
           placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
-        <SavedPlacesControl field="starting point" current={origin} disabled={navigating} onPickMapPoint={onPicked => {
+        <SavedPlacesControl field="starting point" current={origin ? { ...origin, label: startName } : null} disabled={navigating} onPickMapPoint={onPicked => {
           setSavedPlacePicker(() => onPicked); setInputMode('map'); setSearching(false); Keyboard.dismiss();
         }}
           onChoose={point => { choose(point.coordinate, point.label, 'origin'); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
@@ -394,22 +397,18 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <View style={styles.endpoint}>
         <Text style={styles.fieldLabel}>End point</Text>
         <Text style={styles.hint}>Tap the map to choose, or search by address or place name.</Text>
-        <TextInput accessibilityLabel="End point" value={endText} onChangeText={value => edit(value, 'destination')}
+        <TextInput accessibilityLabel="End point" value={endName} onChangeText={value => edit(value, 'destination')}
           onFocus={() => { setField('destination'); setInputMode('search'); setSearching(true); }} placeholder="Search address or place name"
           placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
-        <SavedPlacesControl field="end point" current={destination} disabled={navigating} showHelp={false} onPickMapPoint={onPicked => {
+        <SavedPlacesControl field="end point" current={destination ? { ...destination, label: endName } : null} disabled={navigating} showHelp={false} onPickMapPoint={onPicked => {
           setSavedPlacePicker(() => onPicked); setInputMode('map'); setSearching(false); Keyboard.dismiss();
         }}
           onChoose={point => { choose(point.coordinate, point.label, 'destination'); camera.current?.easeTo({ center: point.coordinate, zoom: 16, duration: 400 }); }} />
         {transport !== 'driving' && destination?.snap && <Text style={styles.hint}>Road access {Math.round(destination.snap.distance)} m from selection</Text>}
       </View>
     </View>
-    {!navigating && <View style={{ gap: 4 }}>
-      <NamedMapPoint coordinate={origin?.coordinate} areaId={areaId} label="Starting place" />
-      <NamedMapPoint coordinate={destination?.coordinate} areaId={areaId} label="Destination" />
-    </View>}
     {savedPlacePicker && <Text accessibilityRole="alert" style={styles.hint}>Tap the map to set the new position, then save your changes.</Text>}
-    {inputMode === 'search' && searching && <PlaceSearch areaId={areaId} query={field === 'origin' ? startText : endText}
+    {inputMode === 'search' && searching && <PlaceSearch areaId={areaId} query={field === 'origin' ? startName : endName}
       field={field === 'origin' ? 'starting point' : 'end point'}
       local={suggestions.map(p => ({ id: p.id, label: p.name, coordinate: p.coordinate, address: '', basis: p.positionBasis }))}
       onChoose={p => { choose(p.coordinate, p.label); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} />}
@@ -419,7 +418,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         accessibilityState={{ selected: inputMode === 'map' && field === which }}
         onPress={() => { setField(which); setInputMode('map'); setSearching(false); Keyboard.dismiss(); }} style={[styles.pointButton, inputMode === 'map' && field === which && styles.selectedCard]}>
         <Text style={styles.cardTitle}>{which === 'origin' ? '1. Starting point' : '2. End point'}</Text>
-        <Text style={styles.body}>{inputMode === 'map' && field === which ? 'Tap map to choose' : 'Tap to select'}</Text>
+        <Text style={styles.body}>{which === 'origin' && origin ? startName : which === 'destination' && destination ? endName : inputMode === 'map' && field === which ? 'Tap map to choose' : 'Tap to select'}</Text>
       </Pressable>)}
     </View>
     <View style={styles.row}>
@@ -433,7 +432,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       onTouchEnd={event => { if (event.nativeEvent.touches.length === 0) onMapTouchChange?.(false); }}
       onTouchCancel={() => onMapTouchChange?.(false)}>
       <Map key={mapKey} style={styles.map} mapStyle={dataset.styleUrl} androidView="texture" compass attribution dragPan touchZoom doubleTapZoom
-        onPress={event => { Keyboard.dismiss(); const p = event.nativeEvent.lngLat; if (savedPlacePicker) { savedPlacePicker(p); setSavedPlacePicker(null); setInputMode('map'); setSearching(false); return; } setInputMode('map'); setSearching(false); choose(p, field === 'origin' ? 'Selected starting point' : 'Selected end point'); }}
+        onPress={event => { Keyboard.dismiss(); const p = event.nativeEvent.lngLat; if (savedPlacePicker) { savedPlacePicker(p); setSavedPlacePicker(null); setInputMode('map'); setSearching(false); return; } setInputMode('map'); setSearching(false); choose(p, field === 'origin' ? 'Selected starting point' : 'Selected end point', field, true); }}
         onDidFailLoadingMap={() => setMapError(true)} onDidFinishLoadingMap={() => setMapError(false)}>
         <Camera ref={camera} initialViewState={{ bounds, padding: { top: 15, right: 15, bottom: 15, left: 15 } }} />
         {alternative?.results[0]?.route && <GeoJSONSource id="demo-suggested-route" data={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: alternative.results[0].route.coordinates } }}>
@@ -503,7 +502,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
     </Pressable>
     {!!reportMapError && <View><Text accessibilityRole="alert" style={styles.error}>{reportMapError}</Text>
       <Pressable accessibilityRole="button" onPress={() => setReportRefresh(value => value + 1)} style={styles.textButton}><Text style={styles.link}>Retry reported issues</Text></Pressable></View>}
-    <View style={styles.legendCard} accessibilityLabel="Map legend">
+    {showFacilityMarkers && <View style={styles.legendCard} accessibilityLabel="Map legend">
       <Text style={styles.cardTitle}>Map legend</Text>
       <View style={styles.legendStatusRow}>
         <View style={styles.legendStatus}><View style={[styles.legendDot, { backgroundColor: '#A63E37' }]} /><Text style={styles.legendStatusText}>Reported issues</Text></View>
@@ -519,7 +518,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       <View style={styles.legendItem}><View style={styles.legendCode}><Text style={styles.legendCodeText}>S / D</Text></View>
         <View style={styles.legendCopy}><Text style={styles.legendName}>Start / end point</Text><Text style={styles.legendDescription}>Your selected route endpoints.</Text></View></View>
       <Text style={styles.legendFootnote}>A gold frame highlights your selection. Reported issues are grouped by facility and issue type.</Text>
-    </View>
+    </View>}
     <Text style={styles.hint}>{!showFacilityMarkers && 'Landmarks are shown by the basemap. Red markers show reported issues. '}{inputMode === 'map' ? `Tap the map to choose ${field === 'origin' ? 'your starting point' : 'your end point'}.` : 'Choose a search result above, or tap the map to choose a point.'} A gold frame marks your selection.</Text>
     {usingStepFree && <Text style={styles.hint}>SF: simulated dropped-kerb crossings, lift-access footbridges, ramp connectors and building entrances. Only facilities used by the chosen route appear by default; these are demo assumptions.</Text>}
     {showFacilityMarkers && !usingStepFree && Boolean(dataset.navigationFacilities?.length) && <Text style={styles.hint}>Purple SZX/SFB: simulated crossings/footbridges, demo only. Teal ZX/FB: mapped facilities. {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'simulation').length} simulated · {(dataset.navigationFacilities ?? []).filter(f => f.routingSource === 'openstreetmap').length} mapped.</Text>}

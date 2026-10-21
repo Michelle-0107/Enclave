@@ -157,6 +157,7 @@ export type RoadReportSection = {
 };
 
 export type FacilityRecord = {
+  report_target?: 'facility' | 'road_reference';
   id: string;
   name: string;
   facility_type: FacilityType;
@@ -876,7 +877,7 @@ export const demoAreasApi = {
 };
 
 export type SharedLocation = MapPlace & {
-  kind: 'place' | 'road_section' | 'facility'; distance_meters: number | null;
+  kind: 'place' | 'road_section' | 'facility'; metadata?: Record<string, unknown>; distance_meters: number | null;
 };
 export const locationsApi = {
   lookup(accessToken: string, areaId: string, options: { q?: string; latitude?: number; longitude?: number; limit?: number; offset?: number }): Promise<{

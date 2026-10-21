@@ -195,7 +195,7 @@ export type RouteOutcome = RouteDetails & {
 export type RoutingRestriction = {
   issue_id: string; facility_id: string; facility_name: string;
   latitude: number; longitude: number;
-  binding_source: 'mapped_demo_segment' | 'point_only';
+  binding_source: 'mapped_demo_segment' | 'mapped_road_section' | 'mapped_road_reference' | 'point_only';
   affected_segment: RouteDetails['geometry'];
   exclusion_rings: [number, number][][];
 };

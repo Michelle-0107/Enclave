@@ -14,7 +14,7 @@ function load(relative, dependencies = {}, globals = {}) {
   } }).outputText;
   const mod = { exports: {} };
   vm.runInNewContext(output, { ...globals, module: mod, exports: mod.exports,
-    require(name) { return name in dependencies ? dependencies[name] : fromWeb(name); },
+    require(name) { if (name === '@/lib/fixedFacilityLayer') return load('src/lib/fixedFacilityLayer.ts'); return name in dependencies ? dependencies[name] : fromWeb(name); },
   }, { filename });
   return mod.exports;
 }

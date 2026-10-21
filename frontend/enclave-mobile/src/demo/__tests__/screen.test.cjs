@@ -2,12 +2,12 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict'),ts=require('typescript');
 const root=path.join(__dirname,'..');const raw=JSON.parse(fs.readFileSync(path.join(root,'kl-east-demo.json'),'utf8'));
 function compile(name,requires){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,name),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:requires,fetch:()=>{throw Error('Resident demo must not call live APIs');},console,Error});return m.exports;}
-const network=compile('network.ts',()=>raw);const driving=compile('driving.ts',()=>network);const access=compile('access.ts',()=>network);const progress=compile('navigationProgress.ts',()=>network);let states=[],cursor=0,exited=false,reported=false,cameraCalls=[],openedUrls=[],serverCalls=[],responder=null;
+const network=compile('network.ts',()=>raw);const driving=compile('driving.ts',()=>network);const access=compile('access.ts',()=>network);const progress=compile('navigationProgress.ts',()=>network);let pointNameResolver=()=>null;let states=[],cursor=0,exited=false,reported=false,cameraCalls=[],openedUrls=[],serverCalls=[],responder=null;
 function serverResponse(payload){const adjusted=Math.abs(payload.origin.longitude-101.7310841)<1e-7;const selected=adjusted?(payload.start_candidates[0]||payload.origin):payload.origin;const modes=payload.profile==='wheelchair'?['accessible']:['shortest','avoid_damage','accessible'];return{area_id:'kl-east-pilot',requested_origin:payload.origin,selected_origin:selected,start_adjustment_meters:adjusted?35:0,adjusted_start:adjusted,options:modes.map((mode,i)=>({mode,unavailable_reason:null,route:{route_id:`demo-${serverCalls.length}-${mode}`,generated_at:new Date().toISOString(),area:'kl-east-pilot',routing_engine:'osm_roadside',road_fallback_used:true,crossing_policy:'mapped_facilities_only',mapped_crossing_count:0,route_mode:mode,geometry:{type:'LineString',coordinates:[[selected.longitude,selected.latitude],[payload.destination.longitude,payload.destination.latitude]]},distance_meters:160+i*25,duration_seconds:160,origin_snap_distance_meters:0,destination_snap_distance_meters:0,maneuvers:[],community_issue_avoidance:'not_applied',obstacle_count:0,obstacle_snapshot_at:null,obstacle_source:null,confirmation_threshold:2,data_source:'openstreetmap_unverified',field_verified:false,accessibility_status:mode==='accessible'?'synthetic_network':'not_requested',warnings:['Demo-only route'],attribution:'OpenStreetMap contributors',attribution_url:'https://www.openstreetmap.org/copyright',demo_facility_ids:[raw.facilities[0].id]}}))};}
 let collectEffects=false,queuedEffects=[],communityResponder=null,communityCalls=[];
 const react={useEffect:fn=>{if(collectEffects)queuedEffects.push(fn);},useCallback:fn=>fn,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return[states[i],next=>states[i]=typeof next==='function'?next(states[i]):next];},useMemo:fn=>fn(),useRef(initial){const i=cursor++;if(!(i in states))states[i]={current:initial===null?{fitBounds:(bounds,options)=>{assert.ok(Array.isArray(bounds)&&bounds.length===4&&bounds.every(Number.isFinite));assert.ok(options.padding);cameraCalls.push(bounds);},easeTo:x=>cameraCalls.push(x)}:initial};return states[i];}};
 const Screen=compile('DemoMapScreen.tsx',name=>{
- if(name==='../navigation/NamedMapPoint')return{__esModule:true,default:'NamedMapPoint'};
+ if(name==='../navigation/NamedMapPoint')return{__esModule:true,default:'NamedMapPoint',useMapPointName:(coordinate,area)=>pointNameResolver(coordinate,area)};
  if(name==='../navigation/PlaceSearch')return{__esModule:true,default:'PlaceSearch'};
  if(name==='../savedPlaces/SavedPlacesControl')return{__esModule:true,default:'SavedPlacesControl'};
  if(name==='../lib/api')return{reportsApi:{getCommunityIssues:async(...args)=>{communityCalls.push(args);return communityResponder(...args);}},demoAreasApi:{getRoutes:async(token,areaId,payload)=>{serverCalls.push({token,areaId,payload});return responder?responder(payload):serverResponse(payload);}}};
@@ -17,7 +17,7 @@ const Screen=compile('DemoMapScreen.tsx',name=>{
  if(name==='react/jsx-runtime')return{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
  if(name==='react-native')return{Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',Keyboard:{dismiss:()=>{}},Linking:{openURL:async url=>openedUrls.push(url)},StyleSheet:{create:x=>x}};
  if(name==='../navigation/NativeMap')return{NativeMap:'Map'};
- if(name==='../navigation/NamedMapPoint')return{__esModule:true,default:'NamedMapPoint'};
+ if(name==='../navigation/NamedMapPoint')return{__esModule:true,default:'NamedMapPoint',useMapPointName:(coordinate,area)=>pointNameResolver(coordinate,area)};
  if(name==='@maplibre/maplibre-react-native')return{Camera:'Camera',GeoJSONSource:'GeoJSONSource',Layer:'Layer',Map:'Map',Marker:'Marker'};
  if(name==='@expo/vector-icons')return{MaterialCommunityIcons:'MaterialCommunityIcons'};
  if(name==='./access')return access;if(name==='./JourneyGuidance')return{__esModule:true,default:'JourneyGuidance'};
@@ -31,7 +31,7 @@ function find(t,predicate){const item=all(t).find(predicate);assert.ok(item,'UI 
 function button(t,label){return find(t,n=>n.type==='Pressable'&&(n.props.accessibilityLabel===label||text(n)===label));}
 function mapTap(t,coordinate){find(t,n=>n.type==='Map').props.onPress({nativeEvent:{lngLat:coordinate}});}
 async function chooseJourney(){let t=tree();mapTap(t,[101.7307337,3.2254158]);t=tree();mapTap(t,[101.732159,3.2277914]);t=tree();await button(t,'Choose route').props.onPress();return tree();}
-const cases=[],pending=[];function test(name,fn){pending.push(async()=>{states=[];cursor=0;exited=false;reported=false;cameraCalls=[];openedUrls=[];serverCalls=[];responder=null;try{await fn();cases.push({name,passed:true});}catch(e){cases.push({name,passed:false,error:e.message});}});}
+const cases=[],pending=[];function test(name,fn){pending.push(async()=>{pointNameResolver=()=>null;states=[];cursor=0;exited=false;reported=false;cameraCalls=[];openedUrls=[];serverCalls=[];responder=null;try{await fn();cases.push({name,passed:true});}catch(e){cases.push({name,passed:false,error:e.message});}});}
 test('Resident screen starts with blank inputs, no route or predefined endpoints',()=>{
  const t=tree();const inputs=all(t).filter(n=>n.type==='TextInput');assert.equal(inputs.length,2);assert.ok(inputs.every(n=>n.props.value===''));
  assert.equal(all(t).filter(n=>n.type==='Marker').length,0);assert.ok(!all(t).some(n=>n.props?.id==='demo-selected-route'));
@@ -44,8 +44,8 @@ test('Default map shows reported damage only; optional overlays keep every facil
  let t=tree();const visible=find(t,n=>n.props?.id==='demo-facilities').props.data.features;
  assert.equal(visible.length,35);assert.ok(visible.every(f=>f.properties.blocked));
  assert.ok(!all(t).some(n=>n.props?.id==='demo-places'||n.props?.id==='demo-navigation-facilities'||n.props?.id==='demo-navigation-lines'));
- assert.ok(text(t).includes('Map legend'));assert.ok(text(t).includes('Stairs'));assert.ok(text(t).includes('Show facility markers'));
- button(t,'Show facility markers').props.onPress();t=tree();const f=find(t,n=>n.props?.id==='demo-facilities');const p=find(t,n=>n.props?.id==='demo-places');
+ assert.ok(!text(t).includes('Map legend'));assert.ok(!text(t).includes('Stairs'));assert.ok(text(t).includes('Show facility markers'));
+ button(t,'Show facility markers').props.onPress();t=tree();assert.ok(text(t).includes('Map legend'));assert.ok(text(t).includes('Stairs'));const f=find(t,n=>n.props?.id==='demo-facilities');const p=find(t,n=>n.props?.id==='demo-places');
  assert.equal(f.props.data.features.length,138);assert.equal(p.props.data.features.length,249);assert.ok(text(t).includes('138'));assert.ok(text(t).includes('35'));
  assert.equal(find(t,n=>n.props?.id==='demo-facility-labels').props.layout['text-font'].join(','),'Noto Sans Regular');
 });
@@ -84,7 +84,7 @@ test('Facility selection stops event propagation and does not silently choose en
  button(t,'Use as start').props.onPress();t=tree();assert.equal(all(t).filter(n=>n.type==='Marker').length,1);
 });
 test('Simulated crossing selection shows its geometry and demo label; route facility reaches guidance',async()=>{
- let t=tree();button(t,'Show facility markers').props.onPress();t=tree();const f=raw.navigationFacilities.find(f=>f.routingSource==='simulation');let stopped=false;
+ let t=tree();button(t,'Show facility markers').props.onPress();t=tree();assert.ok(text(t).includes('Map legend'));assert.ok(text(t).includes('Stairs'));const f=raw.navigationFacilities.find(f=>f.routingSource==='simulation');let stopped=false;
  find(t,n=>n.props?.id==='demo-navigation-facilities').props.onPress({stopPropagation:()=>stopped=true,nativeEvent:{features:[{properties:{id:f.id}}]}});
  t=tree();assert.ok(stopped);assert.ok(text(t).includes('Simulated infrastructure'));
  assert.ok(find(t,n=>n.props?.id==='demo-navigation-lines').props.data.features.some(x=>x.id===f.id));
@@ -219,9 +219,18 @@ test('confirmed resident reports share the issue marker layer and labels, with a
  assert.equal(reports.length,2);assert.ok(reports.every(f=>f.properties.blocked));assert.equal(communityCalls.length,2);assert.equal(communityCalls[1][2],3);
  source.props.onPress({stopPropagation(){},nativeEvent:{features:[reports[0]]}});t=tree();
  assert.ok(text(t).includes('Taman Melati Station'));assert.ok(text(t).includes('2 residents reported'));assert.ok(!text(t).includes('Real damaged'));
- assert.ok(text(t).includes('Map legend'));assert.ok(text(t).includes('Reported issues'));assert.ok(!text(t).includes('reported conditions in this demo are simulated'));
+ assert.ok(!text(t).includes('Map legend'));assert.ok(!text(t).includes('reported conditions in this demo are simulated'));
  stop();
 });
+test('map-selected names live in endpoint inputs and tap cards with no duplicate outside labels',async()=>{
+ pointNameResolver=coordinate=>coordinate?(coordinate[0]<101.731?'Near North Entrance':'Community Hall'):null;
+ let t=tree();mapTap(t,[101.7307337,3.2254158]);t=tree();mapTap(t,[101.732159,3.2277914]);t=tree();
+ const inputs=all(t).filter(n=>n.type==='TextInput');assert.equal(inputs[0].props.value,'Near North Entrance');assert.equal(inputs[1].props.value,'Community Hall');
+ assert.ok(!text(t).includes('Starting place:'));assert.ok(!text(t).includes('Destination:'));
+ assert.ok(text(button(t,'Pick starting point on map')).includes('Near North Entrance'));assert.ok(text(button(t,'Pick end point on map')).includes('Community Hall'));
+ await button(t,'Choose route').props.onPress();assert.equal(serverCalls[0].payload.origin.longitude,101.7307337);assert.equal(serverCalls[0].payload.destination.longitude,101.732159);
+});
+
 test('leaving the map cancels a pending resident report response',async()=>{
  let finish;communityResponder=()=>new Promise(resolve=>finish=resolve);
  collectEffects=true;queuedEffects=[];tree();collectEffects=false;const stop=queuedEffects[0]();await new Promise(resolve=>setImmediate(resolve));stop();
