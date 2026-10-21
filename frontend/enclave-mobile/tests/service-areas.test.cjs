@@ -54,7 +54,7 @@ async function main(){let count=0;async function test(name,fn){await fn();count+
    '@expo/vector-icons':{MaterialCommunityIcons:'Icon'},'expo-location':{},'../theme':{colors:{}},'./network':network,'./access':access,'./driving':driving,
    '../lib/api':{demoAreasApi:{getRoutes}},'../lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{access_token:'fixture-token'}}})}}},
    './navigationProgress':compile('src/demo/navigationProgress.ts',{'./network':network}),
-   '../navigation/NamedMapPoint':{__esModule:true,default:'NamedMapPoint'},'../navigation/PlaceSearch':{__esModule:true,default:'PlaceSearch'},
+   '../navigation/NamedMapPoint':{__esModule:true,default:'NamedMapPoint',useMapPointName:()=>null},'../navigation/PlaceSearch':{__esModule:true,default:'PlaceSearch'},
    './JourneyGuidance':{__esModule:true,default:'JourneyGuidance'},'../savedPlaces/SavedPlacesControl':{__esModule:true,default:'SavedPlacesControl'},
   }).default;
   const render=()=>{hooks.reset();return Screen({areaId:'kajang-prima-saujana',data:kajang,onShowLiveMap(){}});};

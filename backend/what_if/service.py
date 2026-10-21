@@ -48,6 +48,12 @@ class WhatIfService:
                 raise WhatIfUnavailable() from None
 
     async def _compare_snapshot(self, snapshot, body):
+        from ..navigation.road_bindings import road_reference_bindings
+        for issue in snapshot.issues:
+            binding = road_reference_bindings().get(issue.facility_id)
+            if (binding and abs(binding['latitude']-issue.latitude)<1e-9 and abs(binding['longitude']-issue.longitude)<1e-9
+                    and issue.facility_type == 'other'):
+                raise WhatIfRejected(409, 'Road catalog update required before comparing road repairs')
         by_facility = {}
         for issue in snapshot.issues:
             if issue.review_ticket_id is not None:
@@ -141,6 +147,8 @@ class WhatIfService:
                     if not any(route_intersects_zone(coordinates, box) for box in bounds):
                         feasible.append(route)
                 if not feasible:
+                    if original.route is not None:
+                        return CalculatedRoute(None, 'no_route', 'remaining_damage_intersection')
                     return original
                 route = min(feasible, key=lambda item: (item.distance_meters, item.duration_seconds))
                 route = route.model_copy(update={

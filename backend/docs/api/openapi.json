@@ -4769,6 +4769,15 @@
                 "type": "null"
               }
             ]
+          },
+          "report_target": {
+            "type": "string",
+            "enum": [
+              "facility",
+              "road_reference"
+            ],
+            "title": "Report Target",
+            "default": "facility"
           }
         },
         "type": "object",
@@ -7520,6 +7529,8 @@
             "type": "string",
             "enum": [
               "mapped_demo_segment",
+              "mapped_road_section",
+              "mapped_road_reference",
               "point_only"
             ],
             "title": "Binding Source"

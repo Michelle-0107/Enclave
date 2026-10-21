@@ -41,7 +41,8 @@ class FacilitySegmentTests(unittest.IsolatedAsyncioTestCase):
             await service.close()
         expected = restriction_for(demo)['exclusion_rings']
         self.assertEqual([i.exclusion_ring for i in live.items],expected)
-        case = fixtures.WhatIfTests();case.setUp();case.issues=[demo.model_dump(mode='json')]
+        case = fixtures.WhatIfTests();case.setUp();self.addCleanup(case.doCleanups)
+        case.issues=[{**demo.model_dump(mode='json'), 'review_ticket_id':'SYNTHETIC-REVIEW'}]
         payload=body();payload['plans'][0]['repairs'][0]['facility_id']=str(demo.facility_id)
         # TestClient is synchronous and owns its own event loop.
         import asyncio

@@ -1,8 +1,8 @@
-"""Explicit demo source-road bindings; never guess a facility's nearest road.
+"""Canonical facility source-road bindings; never guess an unrelated nearest road.
 
-The input records remain community-reported/unverified. A source geometry is
-used only for the exact authored demo ID, type and coordinates. Other facilities
-retain a visibly labelled point restriction until a road binding is supplied.
+Input records remain community-reported/unverified. Geometry is used only for
+matching source identity, type and coordinates: authored demo facilities, canonical
+100m sections and legacy OSM road references. Other facilities retain point zones.
 """
 
 from functools import lru_cache
@@ -29,13 +29,21 @@ def authored_bindings():
 
 def restriction_for(issue):
     geometry = None
+    binding_source = 'point_only'
     binding = authored_bindings().get(str(issue.facility_id))
     if binding:
         item, candidate = binding
         if (item['facility_type']==issue.facility_type and
             abs(item['latitude']-issue.latitude)<1e-9 and abs(item['longitude']-issue.longitude)<1e-9):
             geometry = candidate
-    # Keep the original point coverage, plus cover the complete authored segment
+            binding_source = 'mapped_demo_segment'
+    if geometry is None and issue.facility_type == 'path_surface':
+        from .road_bindings import bound_road_section
+        section, source = bound_road_section(issue.facility_id, issue.latitude, issue.longitude)
+        if section is not None:
+            geometry = RouteGeometry(type='LineString', coordinates=section.geometry)
+            binding_source = source
+    # Keep the original point coverage, plus cover the complete bound segment
     # with tightly spaced local squares. Never extend to an adjacent road merely
     # to manufacture a simulated improvement.
     centers = [(issue.longitude,issue.latitude)]
@@ -51,5 +59,5 @@ def restriction_for(issue):
         if ring not in rings:
             rings.append(ring)
     return dict(issue_id=issue.id,facility_id=issue.facility_id,facility_name=issue.facility_name,
-        latitude=issue.latitude,longitude=issue.longitude,binding_source='mapped_demo_segment' if geometry else 'point_only',
+        latitude=issue.latitude,longitude=issue.longitude,binding_source=binding_source,
         affected_segment=geometry,exclusion_rings=rings)

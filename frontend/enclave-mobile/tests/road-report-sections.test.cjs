@@ -119,3 +119,13 @@ test('partial named-place pages are discarded when a later page belongs to anoth
  app.render();await tick();const tree=app.render(),choices=nodes(tree).filter(n=>n.props?.accessibilityRole==='radio');
  assert.equal(choices.length,2);assert.ok(!text(tree).includes(place.name));assert.ok(text(tree).includes('Named places are temporarily unavailable'));
 });
+
+test('whole-road references are excluded while independent sections and non-road buildings remain selectable',async()=>{
+ const roadReference={...first,id:'whole-road',name:'Road reference',report_target:'road_reference',road_section:null};
+ const roadPlace={id:'whole-road',name:'Road reference',kind:'place',latitude:3.225,longitude:101.73088,metadata:{report_target:'road_reference'}};
+ const station={id:'station',name:'Existing Station',kind:'place',latitude:3.225,longitude:101.73088,metadata:{}};
+ const app=harness({extraFacilities:[roadReference],places:[roadPlace,station]});app.render();await tick();const tree=app.render();
+ const choices=nodes(tree).filter(n=>n.props?.accessibilityRole==='radio');
+ assert.ok(!choices.some(n=>text(n).includes('Road reference')));assert.ok(choices.some(n=>text(n).includes('Existing Station')));
+ assert.ok(choices.some(n=>text(n).includes(first.name)));
+});

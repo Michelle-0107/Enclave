@@ -580,7 +580,7 @@ function IssueSelection({
             return;
           }
 
-          facilityItems.push(...page.items);
+          facilityItems.push(...page.items.filter(item => item.report_target !== 'road_reference'));
 
           if (!page.pagination.has_more) {
             break;
@@ -629,7 +629,7 @@ function IssueSelection({
               const page = await locationsApi.lookup(token, area.id, { latitude: reportLatitude, longitude: reportLongitude, limit: 100, offset });
               if (!mounted) return;
               if (page.area_id !== area.id || page.storage !== 'database') throw new Error('Location results do not match this area.');
-              for (const place of page.items) if (place.kind === 'place') namedPlaces.push({
+              for (const place of page.items.filter(item => item.metadata?.report_target !== 'road_reference')) if (place.kind === 'place') namedPlaces.push({
                 id: place.id, name: place.name, facility_type: 'other', latitude: place.latitude, longitude: place.longitude, created_at: '',
               });
               if (!page.has_more) break;

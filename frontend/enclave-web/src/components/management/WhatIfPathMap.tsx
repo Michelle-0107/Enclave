@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type * as MapLibre from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { addFixedFacilityLayer } from '@/lib/fixedFacilityLayer';
 import type { FacilityIssue } from "@/lib/api";
 
 type Point = { latitude: number; longitude: number };
@@ -110,6 +111,7 @@ export default function WhatIfPathMap({
           ],
           style: {
             version: 8,
+            glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
             sources: {
               osm: {
                 type: "raster",
@@ -130,6 +132,7 @@ export default function WhatIfPathMap({
           "top-right",
         );
         instance.on("click", (event) => {
+          if (instance?.getLayer("candidate-facilities-circle") && instance.queryRenderedFeatures(event.point, { layers: ["candidate-facilities-circle"] }).length) return;
           const point = {
             latitude: event.lngLat.lat,
             longitude: event.lngLat.lng,
@@ -181,40 +184,13 @@ export default function WhatIfPathMap({
     const instance = map.current;
     if (!M || !instance || !ready) return;
     const markers: MapLibre.Marker[] = [];
-    const popups: MapLibre.Popup[] = [];
     const seen = new Set<string>();
-    issues.forEach((issue) => {
-      if (seen.has(issue.facility_id) || !isPilotPoint(issue)) return;
-      seen.add(issue.facility_id);
-      const dot = document.createElement("button");
-      dot.type = "button";
-      dot.title = issue.facility_name;
-      dot.setAttribute("aria-label", issue.facility_name);
-      dot.textContent = "!";
-      Object.assign(dot.style, {
-        width: "30px",
-        height: "30px",
-        borderRadius: "50%",
-        border: "3px solid white",
-        background: "#d42b35",
-        color: "white",
-        fontSize: "18px",
-        fontWeight: "800",
-        boxShadow: "0 0 0 5px #d42b3533, 0 2px 8px #0006",
-        cursor: "pointer",
-      });
-      dot.addEventListener("click", (event) => event.stopPropagation());
-      const popup = new M.Popup({ offset: 22 }).setText(
-        `${issue.facility_name} · ${issue.facility_type}`,
-      );
-      popups.push(popup);
-      markers.push(
-        new M.Marker({ element: dot })
-          .setLngLat([issue.longitude, issue.latitude])
-          .setPopup(popup)
-          .addTo(instance),
-      );
-    });
+    const issuePins = issues.filter(issue => {
+      if (seen.has(issue.facility_id) || !isPilotPoint(issue)) return false;
+      seen.add(issue.facility_id); return true;
+    }).map(issue => ({ id: issue.facility_id, coordinate: [issue.longitude, issue.latitude] as [number, number],
+      label: '!', description: `${issue.facility_name} - ${issue.facility_type}`, color: '#d42b35' }));
+    const facilityLayer = addFixedFacilityLayer(instance, M, 'candidate-facilities', issuePins);
     const pin = (
       point: Point | null,
       label: string,
@@ -276,7 +252,7 @@ export default function WhatIfPathMap({
     });
     return () => {
       markers.forEach((marker) => marker.remove());
-      popups.forEach((popup) => popup.remove());
+      if (map.current === instance) facilityLayer.remove();
     };
   }, [origin, destination, issues, ready]);
   return (

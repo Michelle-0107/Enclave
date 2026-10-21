@@ -4,9 +4,7 @@ import { locationsApi } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 
-export default function NamedMapPoint({ coordinate, areaId, label }: {
-  coordinate?: readonly [number, number] | null; areaId: string; label: string;
-}) {
+export function useMapPointName(coordinate: readonly [number, number] | null | undefined, areaId: string) {
   const latitude = coordinate?.[1]; const longitude = coordinate?.[0];
   const key = `${areaId}:${latitude},${longitude}`;
   const [result, setResult] = useState<{ key: string; text: string } | null>(null);
@@ -25,6 +23,13 @@ export default function NamedMapPoint({ coordinate, areaId, label }: {
     })(); }, 300);
     return () => { current = false; clearTimeout(timer); };
   }, [latitude, longitude, areaId, key]);
+  return coordinate ? (result?.key === key ? result.text : null) : null;
+}
+
+export default function NamedMapPoint({ coordinate, areaId, label }: {
+  coordinate?: readonly [number, number] | null; areaId: string; label: string;
+}) {
+  const name = useMapPointName(coordinate, areaId);
   if (!coordinate) return null;
-  return <Text style={{ color: colors.navy, fontSize: 12 }}>{label}: {result?.key === key ? result.text : 'Looking up place…'}</Text>;
+  return <Text style={{ color: colors.navy, fontSize: 12 }}>{label}: {name ?? 'Looking up place...'}</Text>;
 }

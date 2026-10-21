@@ -1,7 +1,8 @@
 """Stable OSM road-section reporting points, independent of routing permissions.
 
-Sections group resident evidence; they do not declare a road safe or close its
-entire geometry. Navigation retains the existing point-zone obstacle policy.
+Sections independently group resident evidence and never declare a road safe.
+Qualified damage uses the canonical section geometry in resident and What-if
+restrictions; report-point visibility does not control routing.
 """
 from collections import Counter, defaultdict
 from datetime import datetime

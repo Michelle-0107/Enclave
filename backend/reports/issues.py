@@ -40,6 +40,15 @@ class Facility(FacilityCreate):
     id: UUID
     created_at: datetime
     road_section: RoadSection | None = None
+    report_target: Literal['facility','road_reference'] = 'facility'
+
+    @model_validator(mode='after')
+    def identify_road_reference(self):
+        from ..navigation.road_bindings import road_reference_bindings
+        reference = road_reference_bindings().get(self.id)
+        if reference and abs(reference['latitude']-self.latitude)<1e-9 and abs(reference['longitude']-self.longitude)<1e-9:
+            self.report_target = 'road_reference'
+        return self
 
 
 class OpenIssue(BaseModel):
@@ -199,6 +208,9 @@ class CommunityIssues:
                         selected=SharedLocation.model_validate(rows[0])
                         if selected.id!=body.facility_id:raise IssueUnavailable()
                         if selected.kind=='place':
+                            from ..navigation.road_bindings import road_reference_bindings
+                            if selected.id in road_reference_bindings():
+                                raise IssueRejected(422, 'Choose the road section at the actual issue pin instead of a whole-road reference')
                             action='open_place_issue'
                             point=None
                         if selected.kind=='road_section':

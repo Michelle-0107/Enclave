@@ -12,6 +12,7 @@ export default function PlaceSearch({ areaId, query, field, onChoose }: Props) {
   const scope = JSON.stringify([areaId, field, query]);
   const current = useRef(scope); current.current = scope;
   const version = useRef(0);
+  const [expandedScope, setExpandedScope] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [response, setResponse] = useState<{ scope: string; items: PlaceOption[]; bundled: boolean } | null>(null);
   const [failure, setFailure] = useState<{ scope: string; message: string } | null>(null);
@@ -25,7 +26,7 @@ export default function PlaceSearch({ areaId, query, field, onChoose }: Props) {
   async function search() {
     if (!valid || busy) return;
     const request = ++version.current;
-    setPending(scope); setFailure(null); Keyboard.dismiss();
+    setPending(scope); setFailure(null); setExpandedScope(null); Keyboard.dismiss();
     try {
       const { data, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !data.session) throw new Error('Sign in again to search places.');
@@ -50,12 +51,16 @@ export default function PlaceSearch({ areaId, query, field, onChoose }: Props) {
       <Text style={styles.searchText}>{busy ? 'Searching…' : 'Search addresses and places'}</Text>
     </Pressable>
     <Text style={styles.hint}>Search in this service area. Choose a result to set your {field}.</Text>
-    {items.map(point => <Pressable key={point.id} accessibilityRole="button" accessibilityLabel={`Choose place: ${point.label}`}
+    {(expandedScope === scope ? items : items.slice(0, 3)).map(point => <Pressable key={point.id} accessibilityRole="button" accessibilityLabel={`Choose place: ${point.label}`}
       onPress={() => { Keyboard.dismiss(); onChoose(point); }} style={styles.result}>
       <Text style={styles.name}>{point.label}</Text>
       {!!point.address && <Text style={styles.hint}>{point.address}</Text>}
       {!!point.basis && <Text style={styles.hint}>{point.basis}</Text>}
     </Pressable>)}
+    {items.length > 3 && <Pressable accessibilityRole="button" accessibilityState={{ expanded: expandedScope === scope }}
+      onPress={() => setExpandedScope(expandedScope === scope ? null : scope)} style={styles.result}>
+      <Text style={styles.name}>{expandedScope === scope ? 'Show fewer locations' : `Show more locations (${items.length - 3})`}</Text>
+    </Pressable>}
     {result && !items.length && <Text accessibilityLiveRegion="polite" style={styles.hint}>
       No matching address or place in this service area. Try another name or pick the location on the map.
     </Text>}

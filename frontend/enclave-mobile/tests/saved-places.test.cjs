@@ -71,7 +71,7 @@ function screen(file, extras = {}, props = {}) {
   const Screen = load(file, { react: runtime.react, 'react/jsx-runtime': jsx, 'react-native': native,
     '../lib/api': {}, '../lib/supabase': {}, './navigationProgress': {},
     '../navigation/NativeMap': { NativeMap: 'Map' }, '@maplibre/maplibre-react-native': native, '../theme': { colors: {} },
-    '../navigation/NamedMapPoint': { __esModule: true, default: 'NamedMapPoint' },
+    '../navigation/NamedMapPoint': { __esModule: true, default: 'NamedMapPoint', useMapPointName: () => null },
     '../savedPlaces/SavedPlacesControl': { __esModule: true, default: 'SavedPlacesControl' }, ...extras,
     '../navigation/PlaceSearch': { __esModule: true, default: 'PlaceSearch' },
   }).default;
