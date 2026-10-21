@@ -9,8 +9,8 @@ import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 import { useMapPointName } from '../navigation/NamedMapPoint';
-import PlaceSearch from '../navigation/PlaceSearch';
-import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, nearbyAccessPoints, searchPlaces, selectLocation,
+import PlaceSearch, { type PlaceSearchHandle } from '../navigation/PlaceSearch';
+import { dataset as builtInSnapshot, initialScenario, insidePilot, isBlocked, labels, meters, nearbyAccessPoints, selectLocation,
   type Coordinate, type Dataset, type Mode, type ModeResult, type Route, type Selection, type Transport } from './network';
 import { drivingDirectionsUrl } from './driving';
 import { MAX_START_ADJUSTMENT_METERS, type AccessPlan } from './access';
@@ -80,6 +80,9 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   const [searching, setSearching] = useState(false);
   const [showFacilityMarkers, setShowFacilityMarkers] = useState(false);
   const [inputMode, setInputMode] = useState<'search' | 'map'>('map');
+  const placeSearch = useRef<PlaceSearchHandle>(null);
+  const startInput = useRef<TextInput>(null);
+  const endInput = useRef<TextInput>(null);
   const [savedPlacePicker, setSavedPlacePicker] = useState<((point: Coordinate) => void) | null>(null);
   const [results, setResults] = useState<ModeResult[]>([]);
   const [mode, setMode] = useState<Mode>('shortest');
@@ -108,7 +111,6 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
   useEffect(() => () => { locationRequest.current += 1; routeRequest.current += 1; guidanceActive.current = false; onMapTouchChange?.(false); }, [onMapTouchChange]);
   const approachCameraCentered = useRef(false);
   const camera = useRef<CameraRef>(null);
-  const suggestions = searching ? searchPlaces(field === 'origin' ? startName : endName, dataset) : [];
   const route = results.find(item => item.mode === mode)?.route;
   const facility = selected?.type === 'facility' ? dataset.facilities.find(f => f.id === selected.id) : undefined;
   const place = selected?.type === 'place' ? dataset.landmarks.find(p => p.id === selected.id) : undefined;
@@ -397,12 +399,15 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         <View style={styles.markerRail}><View style={styles.originDot} /></View>
         <View style={styles.endpointContent}>
           <Text style={styles.fieldLabel}>STARTING POINT</Text>
-          <View style={styles.searchInput}>
+          <Pressable style={styles.searchInput} onPress={() => startInput.current?.focus()}>
             <MaterialCommunityIcons name="magnify" size={17} color={colors.muted} />
-            <TextInput accessibilityLabel="Starting point" value={startName} onChangeText={value => edit(value, 'origin')}
+            <TextInput ref={startInput} accessibilityLabel="Starting point" value={startName} onChangeText={value => edit(value, 'origin')}
               onFocus={() => { setField('origin'); setInputMode('search'); setSearching(true); }} placeholder="Search address or place name"
-              placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
-          </View>
+              placeholderTextColor={colors.muted} selectionColor={colors.navy} autoCorrect={false} maxLength={160} returnKeyType="search"
+              onSubmitEditing={() => { Keyboard.dismiss(); void placeSearch.current?.search(); }} style={styles.locationInput} />
+          </Pressable>
+          {inputMode === 'search' && searching && field === 'origin' && <PlaceSearch ref={placeSearch} areaId={areaId} query={startName}
+            field="starting point" onChoose={p => { choose(p.coordinate, p.label, 'origin'); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} />}
         </View>
       </View>
       <View style={styles.endpointDividerRow}>
@@ -417,12 +422,15 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         <View style={styles.markerRail}><View style={styles.destinationDot} /></View>
         <View style={styles.endpointContent}>
           <Text style={styles.fieldLabel}>DESTINATION POINT</Text>
-          <View style={styles.searchInput}>
+          <Pressable style={styles.searchInput} onPress={() => endInput.current?.focus()}>
             <MaterialCommunityIcons name="magnify" size={17} color={colors.muted} />
-            <TextInput accessibilityLabel="End point" value={endName} onChangeText={value => edit(value, 'destination')}
+            <TextInput ref={endInput} accessibilityLabel="End point" value={endName} onChangeText={value => edit(value, 'destination')}
               onFocus={() => { setField('destination'); setInputMode('search'); setSearching(true); }} placeholder="Search address or place name"
-              placeholderTextColor={colors.muted} autoCorrect={false} style={styles.locationInput} />
-          </View>
+              placeholderTextColor={colors.muted} selectionColor={colors.navy} autoCorrect={false} maxLength={160} returnKeyType="search"
+              onSubmitEditing={() => { Keyboard.dismiss(); void placeSearch.current?.search(); }} style={styles.locationInput} />
+          </Pressable>
+          {inputMode === 'search' && searching && field === 'destination' && <PlaceSearch ref={placeSearch} areaId={areaId} query={endName}
+            field="end point" onChoose={p => { choose(p.coordinate, p.label, 'destination'); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} />}
         </View>
       </View>
       <View style={styles.savedSection}>
@@ -444,10 +452,6 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       </Pressable>}
     </View>
     {savedPlacePicker && <Text accessibilityRole="alert" style={styles.hint}>Tap the map to set the new position, then save your changes.</Text>}
-    {inputMode === 'search' && searching && <PlaceSearch areaId={areaId} query={field === 'origin' ? startName : endName}
-      field={field === 'origin' ? 'starting point' : 'end point'}
-      local={suggestions.map(p => ({ id: p.id, label: p.name, coordinate: p.coordinate, address: '', basis: p.positionBasis }))}
-      onChoose={p => { choose(p.coordinate, p.label); camera.current?.easeTo({ center: p.coordinate, zoom: 16, duration: 400 }); }} />}
     <View style={styles.mapHeading}>
       <View style={styles.mapHeadingCopy}>
         <Text style={styles.cardTitle}>Choose journey points</Text>
@@ -626,8 +630,8 @@ const styles = StyleSheet.create({
   originDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#12B886', borderWidth: 2, borderColor: '#D8F5EB', zIndex: 1 },
   destinationDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#F0445E', borderWidth: 2, borderColor: '#FCE0E5', zIndex: 1 },
   endpointContent: { flex: 1, gap: 4 }, fieldLabel: { fontSize: 10, lineHeight: 14, letterSpacing: 0.5, fontWeight: '700', color: '#8996AA' },
-  searchInput: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F7F9FC', borderWidth: 1, borderColor: '#E0E7F0', borderRadius: 12, paddingHorizontal: 10 },
-  locationInput: { flex: 1, padding: 0, margin: 0, fontSize: 13, lineHeight: 18, color: colors.navy, includeFontPadding: false },
+  searchInput: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F7F9FC', borderWidth: 1, borderColor: '#E0E7F0', borderRadius: 12, paddingHorizontal: 10 },
+  locationInput: { flex: 1, minHeight: 44, padding: 0, margin: 0, fontSize: 13, lineHeight: 18, color: colors.navy, includeFontPadding: false },
   endpointDividerRow: { height: 34, flexDirection: 'row', alignItems: 'center', gap: 10 }, routeConnector: { height: 26, width: 2, backgroundColor: '#D8E0EA' },
   divider: { flex: 1, height: 1, backgroundColor: colors.border }, swapButton: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.white, borderWidth: 1, borderColor: '#DFE6EF', alignItems: 'center', justifyContent: 'center', marginRight: 4 },
   disabled: { opacity: 0.45 }, savedSection: { paddingTop: 13, gap: 6 }, savedHeading: { fontSize: 11, color: colors.muted, fontWeight: '600' },

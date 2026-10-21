@@ -26,7 +26,7 @@ import { colors } from '../theme';
 import { SkeletonBlock, SkeletonList } from '../components/DataSkeleton';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 import type { PlacePoint } from '../savedPlaces/store';
-import PlaceSearch from '../navigation/PlaceSearch';
+import PlaceSearch, { type PlaceSearchHandle } from '../navigation/PlaceSearch';
 
 export type MapEndpoints = { area?: NavigationArea; origin: { latitude: number; longitude: number } | null; destination: { latitude: number; longitude: number } | null };
 
@@ -77,6 +77,7 @@ export default function MapScreen({
   const [selecting, setSelecting] = useState<'origin' | 'destination'>('origin');
   const [inputMode, setInputMode] = useState<'search' | 'map'>('map');
   const [searching, setSearching] = useState(false);
+  const placeSearch = useRef<PlaceSearchHandle>(null);
   const camera = useRef<CameraRef>(null);
 
   const [issues, setIssues] =
@@ -286,9 +287,13 @@ export default function MapScreen({
             placeholder="Enter address or place name"
             placeholderTextColor={colors.muted}
             autoCorrect={false}
-            returnKeyType="next"
+            maxLength={160}
+            returnKeyType="search"
+            onSubmitEditing={() => { Keyboard.dismiss(); void placeSearch.current?.search(); }}
             style={styles.locationInput}
           />
+          {inputMode === 'search' && searching && selecting === 'origin' && area && <PlaceSearch ref={placeSearch} areaId={area.id}
+            query={start} field="starting point" onChoose={point => chooseLocation(point, 'origin')} />}
           <SavedPlacesControl field="starting point" current={startPlace} onChoose={point => chooseLocation(point, 'origin')} />
         </View>
 
@@ -307,16 +312,17 @@ export default function MapScreen({
             placeholder="Enter address or place name"
             placeholderTextColor={colors.muted}
             autoCorrect={false}
-            returnKeyType="done"
+            maxLength={160}
+            returnKeyType="search"
+            onSubmitEditing={() => { Keyboard.dismiss(); void placeSearch.current?.search(); }}
             style={styles.locationInput}
           />
+          {inputMode === 'search' && searching && selecting === 'destination' && area && <PlaceSearch ref={placeSearch} areaId={area.id}
+            query={destination} field="destination" onChoose={point => chooseLocation(point, 'destination')} />}
           <SavedPlacesControl field="destination" current={endPlace} onChoose={point => chooseLocation(point, 'destination')} />
         </View>
       </View>
 
-      {inputMode === 'search' && searching && area && <PlaceSearch areaId={area.id}
-        query={selecting === 'origin' ? start : destination} field={selecting === 'origin' ? 'starting point' : 'destination'}
-        onChoose={point => chooseLocation(point, selecting)} />}
       <View style={{ flexDirection: 'row', gap: 16 }}>
         <Pressable accessibilityRole="button" onPress={() => { setSelecting('origin'); setInputMode('map'); setSearching(false); Keyboard.dismiss(); }} style={{ padding: 12 }}><Text style={styles.fieldLabel}>Pick starting point{inputMode === 'map' && selecting === 'origin' ? ' ✓' : ''}</Text></Pressable>
         <Pressable accessibilityRole="button" onPress={() => { setSelecting('destination'); setInputMode('map'); setSearching(false); Keyboard.dismiss(); }} style={{ padding: 12 }}><Text style={styles.fieldLabel}>Pick destination{inputMode === 'map' && selecting === 'destination' ? ' ✓' : ''}</Text></Pressable>
