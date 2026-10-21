@@ -204,7 +204,7 @@ export default function ReportsList({
               <div className="report-row-main">
                 <div className="report-row-status"><ReportStatusBadge status={report.status} variant="text" /></div>
                 <div className="report-row-copy">
-                  <h2 className="text-lg font-semibold">{report.title}</h2>
+                  <h2 className="line-clamp-2 text-sm font-semibold sm:text-lg">{report.title}</h2>
                   <p className="text-xs text-muted-foreground">#{report.id} · {report.location} · {report.category}</p>
                 </div>
               </div>

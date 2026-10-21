@@ -391,7 +391,7 @@ export default function WhatIfPlanner() {
   }
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="what-if-planner flex flex-col gap-7">
       <div>
         <h1 className="text-[30px] font-semibold leading-[1.35] text-primary lg:text-[36px]">
           Repair what-if.
@@ -403,8 +403,8 @@ export default function WhatIfPlanner() {
         </p>
       </div>
 
-      <nav aria-label="Repair comparison steps" className="grid grid-cols-3 gap-2 rounded-2xl border bg-card p-2">
-        {([{ n: 1, label: 'Paths' }, { n: 2, label: 'Repair plans' }, { n: 3, label: 'Results' }] as const).map(item => <button key={item.n} type="button" aria-current={step === item.n ? 'step' : undefined} disabled={item.n === 3 && !result} onClick={() => { if (item.n === 2) continueToPlans(); else { setStep(item.n); setError(''); } }} className={`min-h-12 rounded-xl px-2 text-sm font-semibold disabled:opacity-40 ${step === item.n ? 'bg-brand text-primary-foreground' : 'text-muted-foreground'}`}>{item.n}. {item.label}</button>)}
+      <nav aria-label="Repair comparison progress" className="grid grid-cols-3 gap-2 rounded-2xl border bg-card p-2">
+        {([{ n: 1, label: 'Paths' }, { n: 2, label: 'Repair plans' }, { n: 3, label: 'Results' }] as const).map(item => <div key={item.n} aria-current={step === item.n ? 'step' : undefined} className={`flex min-h-12 items-center justify-center rounded-xl px-2 text-center text-sm font-semibold ${step === item.n ? 'what-if-progress-current' : item.n < step ? 'text-primary' : 'text-muted-foreground'} ${item.n === 3 && !result ? 'opacity-50' : ''}`}>{item.n}. {item.label}</div>)}
       </nav>
       <p role="status" className="text-sm text-muted-foreground">{step === 1 ? 'Step 1 · Name your paths and choose a start and destination for each.' : step === 2 ? 'Step 2 · Choose repairs, enter estimates, then compare plans.' : 'Step 3 · Review each plan on its own Before / After map.'}</p>
       <section hidden={step !== 2} className={step !== 2 ? 'hidden' : 'flex flex-col gap-3 rounded-3xl border bg-card p-5'}>
@@ -521,7 +521,7 @@ export default function WhatIfPlanner() {
                           [index]: target,
                         }))
                       }
-                      className={`min-h-11 rounded-xl border border-border px-4 text-xs font-semibold ${(pickTargets[index] ?? "origin") === target ? "bg-brand text-primary-foreground" : "bg-white text-primary"}`}
+                      className={`min-h-11 rounded-xl border border-border px-4 text-xs font-semibold ${(pickTargets[index] ?? "origin") === target ? "what-if-toggle-selected bg-brand text-primary-foreground" : "bg-white text-primary"}`}
                     >
                       {target === "origin"
                         ? "A · Set starting point"

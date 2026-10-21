@@ -112,7 +112,7 @@ export default function PortalLayout({ children }: Props) {
   const isReportDetail = pathname.startsWith('/management/reports/') && pathname !== '/management/reports';
 
   return (
-    <div className="portal-shell min-h-dvh bg-background text-foreground" data-role="management">
+    <div className="portal-shell min-h-dvh bg-background text-foreground lg:[zoom:1.25]" data-role="management">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] overflow-y-auto bg-card p-4 lg:block">
         <Link

@@ -308,7 +308,7 @@ export default function WhatIfPathMap({
                 type="button"
                 aria-pressed={target === point}
                 onClick={() => onTargetChange(point)}
-                className={`min-h-11 rounded-xl border border-border px-3 text-xs font-semibold ${target === point ? "bg-brand text-primary-foreground" : "bg-white text-primary"}`}
+                className={`min-h-11 rounded-xl border border-border px-3 text-xs font-semibold ${target === point ? "what-if-toggle-selected bg-brand text-primary-foreground" : "bg-white text-primary"}`}
               >
                 {point === "origin" ? "A · Starting point" : "B · Destination"}
               </button>

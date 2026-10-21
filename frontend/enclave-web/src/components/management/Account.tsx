@@ -1,7 +1,6 @@
 'use client';
 
 import AccountSettings from '@/components/account/AccountSettings';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useRouter } from 'next/navigation';
@@ -20,55 +19,35 @@ export default function Account() {
   }
 
   return (
-    <div className="flex flex-col gap-7">
-      <h1 className="text-[30px] font-semibold leading-[1.45] text-primary lg:text-[36px]">
-        My account.
-      </h1>
-
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        Your management workspace.
-      </p>
-
-      <section
-        aria-label="Staff profile"
-        className="flex flex-col gap-3.5 rounded-3xl bg-enclave-lavender p-5"
-      >
-        <h2 className="text-[22px] font-semibold text-primary">
-          Enclave management account
-        </h2>
-
-        <p className="text-sm text-muted-foreground">
-          Management access is verified by the backend for each protected action.
+    <div className="flex max-w-4xl flex-col gap-6">
+      <header>
+        <h1 className="text-3xl font-semibold leading-tight text-primary lg:text-4xl">My account</h1>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          Manage your profile, password, and security preferences.
         </p>
+      </header>
+
+      <section aria-label="Profile settings" className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <AccountSettings />
       </section>
 
-      <AccountSettings />
-      <dl className="flex flex-col gap-7 border-b border-border pb-7">
-        <dt className="text-sm font-semibold text-primary">
-          Work email
-        </dt>
+      <section aria-labelledby="work-email-heading" className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <h2 id="work-email-heading" className="text-base font-semibold text-primary">Work email</h2>
+        <p className="mt-2 break-words text-sm text-muted-foreground">{user?.email ?? 'Email unavailable'}</p>
+      </section>
 
-        <dd className="break-words text-sm text-muted-foreground">
-          {user?.email ?? 'Email unavailable'}
-        </dd>
-      </dl>
-
-      <Link href="/management/activity-logs" className="flex min-h-12 items-center justify-between rounded-2xl border bg-white px-5 font-semibold">Activity logs <span aria-hidden="true">→</span></Link>
-      <section className="flex flex-col gap-7">
-        <h2 className="text-base font-semibold text-primary">
-          Help &amp; support
-        </h2>
-
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Contact your workspace administrator for access or
-          account changes.
+      <section aria-labelledby="support-heading" className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <h2 id="support-heading" className="text-base font-semibold text-primary">Help &amp; support</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Contact your workspace administrator for access or account changes.
         </p>
       </section>
 
       <Button
         type="button"
+        variant="destructive"
         onClick={() => setConfirmSignOut(true)}
-        className="min-h-[52px] w-full rounded-2xl bg-enclave-lavender px-6 text-sm font-semibold text-primary hover:bg-enclave-lavender hover:opacity-80"
+        className="min-h-11 w-fit rounded-xl px-5 lg:hidden"
       >
         Log out
       </Button>

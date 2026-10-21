@@ -1,4 +1,5 @@
 "use client";
+
 import AccountSettings from '@/components/account/AccountSettings';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -6,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useMaintenance } from "./MaintenanceProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { action, Heading } from "./Common";
+
 export default function Account() {
-  const { onSignOut, displayName } = useMaintenance();
+  const { onSignOut } = useMaintenance();
   const { user } = useAuth();
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const router = useRouter();
+
   async function logout() {
     setBusy(true);
     try {
@@ -25,40 +27,41 @@ export default function Account() {
       setBusy(false);
     }
   }
+
   return (
-    <section className="flex flex-col gap-7">
-      <Heading
-        title="My account."
-        subtitle="Your maintenance workspace."
-        back={null}
-      />
-      <div className="flex flex-col gap-[14px] rounded-3xl bg-secondary p-5">
-        <h2 className="text-[22px] font-semibold">{displayName}</h2>
-        <p className="text-sm text-muted-foreground">Maintenance staff account</p>
-      </div>
-      <AccountSettings />
-      <h2 className="text-sm font-semibold">Work email</h2>
-      <p className="text-sm text-muted-foreground">
-        {user?.email ?? "Email unavailable"}
-      </p>
-      <hr />
-      <h2 className="font-semibold">Help &amp; support</h2>
-      <p className="text-sm text-muted-foreground">
-        Contact management for task reassignment or account support.
-      </p>
+    <div className="flex max-w-4xl flex-col gap-6">
+      <header>
+        <h1 className="text-3xl font-semibold leading-tight text-primary lg:text-4xl">My account</h1>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          Manage your profile, password, and security preferences.
+        </p>
+      </header>
+
+      <section aria-label="Profile settings" className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <AccountSettings />
+      </section>
+
+      <section aria-labelledby="work-email-heading" className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <h2 id="work-email-heading" className="text-base font-semibold text-primary">Work email</h2>
+        <p className="mt-2 break-words text-sm text-muted-foreground">{user?.email ?? "Email unavailable"}</p>
+      </section>
+
+      <section aria-labelledby="support-heading" className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <h2 id="support-heading" className="text-base font-semibold text-primary">Help &amp; support</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Contact management for task reassignment or account support.
+        </p>
+      </section>
+
+      {notice && <p role="status" className="text-sm text-status-red">{notice}</p>}
       <Button
-        variant="secondary"
-        className={action}
+        variant="destructive"
         disabled={busy}
         onClick={() => setConfirmSignOut(true)}
+        className="min-h-11 w-fit rounded-xl px-5 lg:hidden"
       >
         {busy ? "Signing out…" : "Log out"}
       </Button>
-      {notice && (
-        <p role="status" className="text-sm text-muted-foreground">
-          {notice}
-        </p>
-      )}
       <ConfirmDialog
         open={confirmSignOut}
         title="Confirm log out"
@@ -68,6 +71,6 @@ export default function Account() {
         onCancel={() => setConfirmSignOut(false)}
         onConfirm={() => void logout()}
       />
-    </section>
+    </div>
   );
 }
