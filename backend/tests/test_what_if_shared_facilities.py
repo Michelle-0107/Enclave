@@ -55,8 +55,8 @@ class SharedSimulationTests(unittest.TestCase):
         self.assertEqual(before['requested_origin'], self.payload['paths'][0]['origin'])
         self.assertEqual(before['requested_destination'], self.payload['paths'][0]['destination'])
         for result in (before['current'], impact['after']):
-            self.assertGreater(result['distance_meters'], 400)
-            self.assertLess(result['distance_meters'], 600)
+            self.assertGreater(result['distance_meters'], 290)
+            self.assertLess(result['distance_meters'], 350)
             self.assertFalse(result['field_verified'])
         self.assert_avoids(before['current'], data['routing_restrictions'])
         remaining = [r for r in data['routing_restrictions'] if r['facility_id'] != self.ids[0]]
@@ -92,8 +92,56 @@ class SharedSimulationTests(unittest.TestCase):
             fallback = result['fallback']
             self.assertTrue(fallback['reference_only'])
             self.assertFalse(fallback['accessibility_verified'])
-            self.assertGreater(fallback['distance_meters'], 400)
-            self.assertLess(fallback['distance_meters'], 600)
+            self.assertGreater(fallback['distance_meters'], 290)
+            self.assertLess(fallback['distance_meters'], 350)
+
+    def test_adjacent_building_boundary_does_not_move_fixed_entrance_or_hide_before_detour(self):
+        self.payload['paths'][0].update(origin={'latitude':3.220461, 'longitude':101.723051},
+            destination={'latitude':3.220728, 'longitude':101.725674})
+        graph = shared_demo_walking_graph('kl-east-pilot')
+        selected = (101.725674,3.220728)
+        entrance = graph.snap_candidates(selected)[0][3]
+        # These adjoining footprints share an entrance boundary. Treating the
+        # returned boundary as a new selection associates it with the next home.
+        self.assertNotEqual(graph.land_access.buildings_at(selected), graph.land_access.buildings_at(entrance))
+        data = self.compare()
+        baseline = data['baseline'][0]
+        before = baseline['current']
+        after = data['plans'][0]['paths'][0]['after']
+        self.assert_avoids(before, data['routing_restrictions'])
+        self.assert_avoids(after, [r for r in data['routing_restrictions'] if r['facility_id']!=self.ids[0]])
+        self.assertGreaterEqual(before['distance_meters'], after['distance_meters'])
+        for route in (before, after):
+            self.assertLess(distance_meters(route['geometry']['coordinates'][-1], entrance), .01)
+            for key,index in (('comparison_origin',0),('comparison_destination',-1)):
+                point = baseline[key]
+                self.assertLess(distance_meters((point['longitude'],point['latitude']),route['geometry']['coordinates'][index]), 1)
+
+    def test_main_road_repair_restores_direct_corridor_and_side_street_keeps_before_detour(self):
+        from backend.reports.road_sections import catalog
+        from backend.navigation.road_bindings import distance_to_geometry
+        sections = [min([p for p in catalog().values() if p.road_section.osm_way_id==way],
+                        key=lambda p:distance_to_geometry(point,p.road_section.geometry))
+                    for way,point in (('1163780777',(101.7242,3.2206)), ('39921500',(101.7248,3.2202)))]
+        self.case.issues = [fixtures.issue(id=fixtures.I2 if i else fixtures.I1, facility_id=str(p.id),
+            facility_name=p.name, latitude=p.latitude, longitude=p.longitude) for i,p in enumerate(sections)]
+        selected = str(sections[0].id)
+        self.payload['plans'][0]['repairs'] = [{'facility_id':selected}]
+        self.payload['paths'].append(dict(id='side-street', name='Side-street journey',
+            origin={'latitude':3.220461,'longitude':101.723051},
+            destination={'latitude':3.220728,'longitude':101.725674}))
+        data = self.compare()
+        remaining = [r for r in data['routing_restrictions'] if r['facility_id']!=selected]
+        for baseline,impact in zip(data['baseline'],data['plans'][0]['paths']):
+            self.assert_avoids(baseline['current'],data['routing_restrictions'])
+            self.assert_avoids(impact['after'],remaining)
+            self.assertEqual(impact['effect'],'shortened')
+            self.assertGreater(baseline['current']['distance_meters'],impact['after']['distance_meters'])
+            for key,index in (('comparison_origin',0),('comparison_destination',-1)):
+                point = baseline[key]
+                for route in (baseline['current'],impact['after']):
+                    self.assertLess(distance_meters((point['longitude'],point['latitude']),route['geometry']['coordinates'][index]),1)
+        self.assertLess(data['plans'][0]['paths'][0]['after']['distance_meters'],350)
 
     def test_ordinary_building_access_works_through_the_actual_comparison_endpoint(self):
         places=json.loads((Path(__file__).resolve().parents[1]/'data/map_places.json').read_text(encoding='utf-8'))

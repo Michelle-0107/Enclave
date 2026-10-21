@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 from .core.auth import AuthUnavailable, InvalidCredentials, TokenVerifier, VerifiedUser
 from .accounts.profile import AccountProfileRepository
+from .activity_logs import ActivityLogsRepository, create_router as activity_logs_router
 from .accounts.routes import create_router as account_router
 from .core.config import ConfigurationError, Settings, load_settings
 from .reports.media import MediaServices, MediaUnavailable
@@ -99,6 +100,7 @@ def create_app(
     reports_transport: httpx.AsyncBaseTransport | None = None,
     residents_transport: httpx.AsyncBaseTransport | None = None, media_services: MediaServices | None = None,
     account_transport: httpx.AsyncBaseTransport | None = None,
+    activity_logs_transport: httpx.AsyncBaseTransport | None = None,
     map_transport: httpx.AsyncBaseTransport | None = None,
     workflow_transport: httpx.AsyncBaseTransport | None = None,
     navigation_settings: NavigationSettings | None = None,
@@ -123,6 +125,7 @@ def create_app(
         verifier = TokenVerifier(configured, transport=auth_transport)
         repository = ReportsRepository(configured, transport=reports_transport)
         application.state.account_profiles = AccountProfileRepository(configured, transport=account_transport)
+        application.state.activity_logs = ActivityLogsRepository(configured, transport=activity_logs_transport)
         residents = ResidentAccessRepository(configured, transport=residents_transport)
         notifications = NotificationsRepository(configured)
         application.state.verifier = verifier
@@ -157,6 +160,7 @@ def create_app(
             verifier.close()
             await repository.close()
             await application.state.account_profiles.close()
+            await application.state.activity_logs.close()
             await residents.close()
             await application.state.community_issues.close()
             await notifications.close()
@@ -212,6 +216,7 @@ def create_app(
     application.include_router(registration_router)
     application.include_router(account_router(current_user))
     application.include_router(maintenance_router(current_user))
+    application.include_router(activity_logs_router(current_user))
 
     @application.exception_handler(MaintenanceUnavailable)
     async def maintenance_unavailable(request, error):

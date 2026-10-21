@@ -278,6 +278,21 @@ route. The shared feasible-route pool also rejects candidates with different
 endpoints. Public resident navigation requests retain their existing correlation
 settings; this internal comparison option cannot be supplied by API callers.
 
+The server-owned hypothetical walking graph selects access independently of
+damage. Before/after searches therefore reuse the original selected coordinates
+to preserve the same graph entrance, and validate their returned endpoints against
+the frozen reference. Re-selecting a returned building-boundary coordinate can
+otherwise associate it with an adjoining building and incorrectly hide a valid
+detour as `comparison_endpoint_changed`. The provider-backed and surveyed modes
+retain their existing fixed-correlation policy.
+
+The hypothetical facility manifest also includes clear short public side-street
+junction crossings that the earlier 20 m minimum road-segment sampler omitted.
+They have explicit same-road anchors and simulated provenance; they do not enable
+unmarked crossings in Live. Existing facility IDs, recorded-road priority, the
+20 m outdoor-gap limit, and physical-obstacle checks are retained. Manifest updates
+are generated geographically for both areas without using audit endpoints/results.
+
 `baseline[].comparison_origin` and `comparison_destination` expose those anchors.
 `plans[].paths[].explanation` explains unchanged results. `routing_restrictions`
 contains the actual before-repair exclusion rings and facility IDs used in the

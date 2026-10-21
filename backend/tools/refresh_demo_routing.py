@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from backend.navigation.areas import service_areas
-from backend.navigation.demo_network import generate_facilities,overlay_graph
+from backend.navigation.demo_network import generate_facilities,generate_junction_facilities,overlay_graph
 from backend.navigation.road_cache import write_graph
 from backend.navigation.roadside import walking_graph,distance
 
@@ -45,12 +45,14 @@ def main():
         extra=[f for f in generate_facilities(area.id,include_buffer=True)
                if f['routingSource']=='simulation' and f['id'] not in existing
                and not graph.endpoint_inside(f['coordinate'])]
-        facilities.extend(extra);overlay_graph(graph,facilities)
+        facilities.extend(extra)
+        junctions=generate_junction_facilities(graph,facilities,source)
+        facilities.extend(junctions);overlay_graph(graph,facilities)
         dataset['navigationFacilities']=facilities
         manifest={'version':1,'area_id':area.id,'sourceXmlSha256':hashlib.sha256(source.read_bytes()).hexdigest(),
-                  'placement':'Stable existing facility IDs; same-way approach refresh <=20 m; uniform 75 m spacing per OSM way in extract buffer. No benchmark endpoints/results used.','facilities':facilities}
+                  'placement':'Stable existing facility IDs; same-way approach refresh <=20 m; uniform 75 m spacing per OSM way in extract buffer; explicit hypothetical crossings at clear short public side-street junctions omitted by 20 m segment sampling. No benchmark endpoints/results used.','facilities':facilities}
         prepared.append((area,source,graph,dataset,manifest))
-        print(area.id,'reanchored',changed,'max_anchor_shift_m',round(maximum,3),'new_buffer_demo_facilities',len(extra),flush=True)
+        print(area.id,'reanchored',changed,'max_anchor_shift_m',round(maximum,3),'new_buffer_demo_facilities',len(extra),'new_junction_crossings',len(junctions),flush=True)
     for area,source,graph,dataset,manifest in prepared:
         write_graph(folder/f'{area.id}-routing.json.gz',graph,source)
         (folder/f'{area.id}-crossings.json').write_text(json.dumps(manifest,ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf-8')

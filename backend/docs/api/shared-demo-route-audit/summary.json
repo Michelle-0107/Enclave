@@ -1,8 +1,9 @@
 {
   "acceptance": {
     "passed": true,
-    "shortest": 477,
-    "accessible": 470,
+    "shortest": 480,
+    "avoid_damage": 478,
+    "accessible": 477,
     "total": 480,
     "ordering_failures": 0,
     "walking_threshold": 0.95,
@@ -18,7 +19,8 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kajang-prima-saujana",
@@ -26,7 +28,8 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kajang-prima-saujana",
@@ -34,7 +37,8 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kajang-prima-saujana",
@@ -42,23 +46,26 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kl-east-pilot",
           "category": "cross_road",
           "total": 30,
-          "shortest": 29,
-          "accessible": 29,
-          "ordering_failures": 0
+          "shortest": 30,
+          "accessible": 30,
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kl-east-pilot",
           "category": "local_streets",
           "total": 30,
-          "shortest": 29,
-          "accessible": 29,
-          "ordering_failures": 0
+          "shortest": 30,
+          "accessible": 30,
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kl-east-pilot",
@@ -66,7 +73,8 @@
           "total": 30,
           "shortest": 30,
           "accessible": 29,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kl-east-pilot",
@@ -74,11 +82,16 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         }
       ],
       "sample_sha256": "c741d589985b40954a484b03a69fedc291c71619eb68f2245942da016cb43ef8",
-      "algorithm_sha256": "acc16f917c270faebe9b045c041ebdbc515ccbac0b4a5414107b4579484b3766"
+      "algorithm_sha256": "f06b6067945d17a177204cca339bf0c53381a16245c0ccdde8c415a5dbf0091b",
+      "dataset_sha256": {
+        "kl-east-pilot": "3502f1207bc3f844d3b8df91a2352332c601780ec9188e20e686f01cf26d499f",
+        "kajang-prima-saujana": "98af862af4fb622e72fc7f65a67cc330f1d664c58c05b7a42e0982578c6181af"
+      }
     },
     "walking-holdout": {
       "seed": 20261023,
@@ -89,7 +102,8 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kajang-prima-saujana",
@@ -97,7 +111,8 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kajang-prima-saujana",
@@ -105,7 +120,8 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kajang-prima-saujana",
@@ -113,31 +129,35 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kl-east-pilot",
           "category": "cross_road",
           "total": 30,
           "shortest": 30,
-          "accessible": 29,
-          "ordering_failures": 0
+          "accessible": 30,
+          "ordering_failures": 0,
+          "avoid_damage": 30
         },
         {
           "area": "kl-east-pilot",
           "category": "local_streets",
           "total": 30,
           "shortest": 30,
-          "accessible": 26,
-          "ordering_failures": 0
+          "accessible": 29,
+          "ordering_failures": 0,
+          "avoid_damage": 29
         },
         {
           "area": "kl-east-pilot",
           "category": "long_distance",
           "total": 30,
-          "shortest": 29,
-          "accessible": 28,
-          "ordering_failures": 0
+          "shortest": 30,
+          "accessible": 29,
+          "ordering_failures": 0,
+          "avoid_damage": 29
         },
         {
           "area": "kl-east-pilot",
@@ -145,11 +165,16 @@
           "total": 30,
           "shortest": 30,
           "accessible": 30,
-          "ordering_failures": 0
+          "ordering_failures": 0,
+          "avoid_damage": 30
         }
       ],
       "sample_sha256": "df1e904cf559171f1e2c9837950314ff3e7f862238890e8b0af7f2d3222a2f2e",
-      "algorithm_sha256": "acc16f917c270faebe9b045c041ebdbc515ccbac0b4a5414107b4579484b3766"
+      "algorithm_sha256": "f06b6067945d17a177204cca339bf0c53381a16245c0ccdde8c415a5dbf0091b",
+      "dataset_sha256": {
+        "kl-east-pilot": "3502f1207bc3f844d3b8df91a2352332c601780ec9188e20e686f01cf26d499f",
+        "kajang-prima-saujana": "98af862af4fb622e72fc7f65a67cc330f1d664c58c05b7a42e0982578c6181af"
+      }
     }
   }
 }

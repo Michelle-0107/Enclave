@@ -189,8 +189,8 @@ export default function PortalLayout({ children }: Props) {
         aria-label="Management mobile navigation"
         className="fixed inset-x-0 bottom-0 z-50 border-t bg-card px-3 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden"
       >
-        <div className="mx-auto grid max-w-2xl grid-cols-6 gap-2">
-          {navigation.filter(item => item.href !== '/management/activity-logs').map((item) => {
+        <div className="mx-auto grid max-w-2xl grid-cols-7 gap-2">
+          {navigation.map((item) => {
             const selected = isSelected(item.href);
             const Icon = item.icon;
 
