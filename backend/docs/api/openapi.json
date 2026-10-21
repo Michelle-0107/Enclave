@@ -3943,6 +3943,102 @@
           }
         }
       }
+    },
+    "/api/v1/account/profile": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Get the authenticated user's profile photo",
+        "operationId": "get_account_profile_api_v1_account_profile_get",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials"
+          },
+          "403": {
+            "description": "Profile access denied"
+          },
+          "503": {
+            "description": "Profile service unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/account/avatar": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Upload or replace the authenticated user's profile photo",
+        "operationId": "upload_account_avatar_api_v1_account_avatar_post",
+        "security": [
+          {
+            "SupabaseAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_account_avatar_api_v1_account_avatar_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials"
+          },
+          "403": {
+            "description": "Profile access denied"
+          },
+          "413": {
+            "description": "Photo exceeds size or dimension limits"
+          },
+          "415": {
+            "description": "Unsupported or invalid photo"
+          },
+          "503": {
+            "description": "Profile photo storage unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9165,6 +9261,41 @@
           "is_approved"
         ],
         "title": "WorkflowReport"
+      },
+      "AccountProfileResponse": {
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "avatar_url"
+        ],
+        "title": "AccountProfileResponse"
+      },
+      "Body_upload_account_avatar_api_v1_account_avatar_post": {
+        "properties": {
+          "photo": {
+            "type": "string",
+            "format": "binary",
+            "title": "Photo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "photo"
+        ],
+        "title": "Body_upload_account_avatar_api_v1_account_avatar_post"
       }
     },
     "securitySchemes": {
