@@ -298,12 +298,13 @@ test('planner passes the same route selection and change handler to every repair
       const index = stateIndex++;
       if (index === 0) return [3, () => {}];
       if (value === null) return [result, () => {}];
-      if (index === 10) return ['two:avoid_damage', select];
+      if (index === 9) return ['two:avoid_damage', select];
       return [value, () => {}];
     },
   };
   const Planner = load('src/components/management/WhatIfPlanner.tsx', {
-    react: hooks, '@/lib/api': { ApiError: class extends Error {} },
+    react: hooks, '@/lib/api': { ApiError: class extends Error {}, WHAT_IF_LIMITS: load('src/lib/api.ts', { '@/lib/auth-session': {} }).WHAT_IF_LIMITS },
+    '@/components/ui/DataSkeleton': { DataSkeleton: () => null },
     './SharedLocationPicker': { __esModule: true, default: () => null }, './RepairSummaryPanel': { __esModule: true, default: () => null }, './WhatIfPathMap': { __esModule: true, default: () => null, parseMapPoint: () => null, pathDistance: () => 0 }, './RepairPlanRoutes': { default: props => { captured.push(props); return null; }, __esModule: true },
   }).default;
   const { renderToStaticMarkup } = fromWeb('react-dom/server');
@@ -424,7 +425,7 @@ test('compare transport retains endpoints from the submitted request when an old
  const api=load('src/lib/api.ts',{'@/lib/auth-session':{getValidAccessToken:async()=> 'fixture',clearAuthSession(){}}},
  {Headers,FormData,URLSearchParams,fetch:async()=>new Response(JSON.stringify({baseline:[{path_id:'p',current:{state:'no_route'}}]}),{status:200}),process:{env:{NEXT_PUBLIC_API_BASE_URL:'https://api.invalid'}}});
  const origin={latitude:3.2197,longitude:101.7234},destination={latitude:3.2244,longitude:101.7268};
- const pending=api.compareRepairPlans({paths:[{id:'p',name:'Journey',origin,destination}],plans:[],route_modes:['avoid_damage'],include_geometry:true});
+ const pending=api.compareRepairPlans({paths:[{id:'p',name:'Journey',origin,destination}],plans:[{id:'repair',name:'Repair',repairs:[{facility_id:'10000000-0000-4000-8000-000000000001',estimated_cost_myr:null}]}],route_modes:['avoid_damage'],include_geometry:true});
  const original={...origin};origin.longitude+=.001;const result=await pending;
  assert.equal(JSON.stringify(result.baseline[0].requested_origin),JSON.stringify(original));assert.equal(JSON.stringify(result.baseline[0].requested_destination),JSON.stringify(destination));
 });

@@ -340,6 +340,41 @@ class WhatIfTests(unittest.TestCase):
             self.assertNotIn('"input"', response.text)
         self.assertEqual(self.rpc_requests, [])
 
+    def test_ten_paths_and_five_plans_are_calculated_without_truncation(self):
+        payload = body()
+        path = payload['paths'][0]
+        plan = payload['plans'][0]
+        payload['paths'] = [dict(deepcopy(path), id=f'path_{i}', name=f'Path {i}',
+            origin={**path['origin'], 'latitude': path['origin']['latitude'] + i * .0000001}) for i in range(10)]
+        payload['plans'] = [dict(deepcopy(plan), id=f'plan_{i}', name=f'Plan {i}') for i in range(5)]
+        payload['route_modes'] = ['avoid_damage', 'accessible']
+        payload['include_geometry'] = True
+        response = self.compare(self.client(), payload)
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()
+        self.assertEqual(len(result['baseline']), 20)
+        self.assertEqual({p['path_id'] for p in result['baseline']}, {p['id'] for p in payload['paths']})
+        self.assertEqual({p['id'] for p in result['plans']}, {p['id'] for p in payload['plans']})
+        for result_plan in result['plans']:
+            self.assertEqual(len(result_plan['paths']), 20)
+            for summary in result_plan['summaries']:
+                self.assertEqual(summary['designated_path_count'], 10)
+
+    def test_new_comparison_limits_are_exposed_and_excess_is_rejected_before_routing(self):
+        client = self.client()
+        schema = client.app.openapi()['components']['schemas']['CompareRequest']['properties']
+        self.assertEqual(schema['paths']['maxItems'], 10)
+        self.assertEqual(schema['plans']['maxItems'], 5)
+        for field, count in (('paths', 11), ('plans', 6)):
+            payload = body()
+            payload[field] = [dict(deepcopy(payload[field][0]), id=f'item_{i}') for i in range(count)]
+            response = self.compare(client, payload)
+            self.assertEqual(response.status_code, 422, response.text)
+            self.assertTrue(any(error['loc'] == ['body', field] and error['type'] == 'too_long'
+                                for error in response.json()['detail']))
+        self.assertEqual(self.rpc_requests, [])
+        self.assertEqual(self.engine_requests, [])
+
     def test_geometry_is_optional_and_snapshot_time_shared(self):
         payload = body(); payload['include_geometry'] = True
         data = self.compare(self.client(), payload).json()
