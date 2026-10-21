@@ -39,9 +39,10 @@ async def main():
             try:
                 route = await navigation.route_with_snapshot(request, snapshot)
                 a, b = route.geometry.coordinates[0], route.geometry.coordinates[-1]
-                anchored = request.model_copy(update={'origin': request.origin.model_copy(update={'longitude': a[0], 'latitude': a[1]}),
-                    'destination': request.destination.model_copy(update={'longitude': b[0], 'latitude': b[1]})})
-                repeated = await navigation.route_with_snapshot(anchored, snapshot)
+                # What-if preserves deterministic graph access by retaining the
+                # original selection, then checking the frozen output anchors.
+                # A returned building boundary is not a fresh selected building.
+                repeated = await navigation.route_with_snapshot(request, snapshot)
                 drift = max(distance_meters(a, repeated.geometry.coordinates[0]), distance_meters(b, repeated.geometry.coordinates[-1]))
                 row.update(whatif_available=drift <= 1, distance=route.distance_meters, anchor_drift=drift)
             except NavigationRejected as error:
@@ -80,7 +81,7 @@ async def main():
     result['catalog_sha256'] = hashlib.sha256((ROOT / 'backend/data/map_places.json').read_bytes().replace(b'\r\n', b'\n')).hexdigest()
     result['frozen_sample_sha256'] = FROZEN
     result['algorithm_sha256'] = hashlib.sha256(b''.join((ROOT / 'backend' / path).read_bytes().replace(b'\r\n', b'\n')
-        for path in ('navigation/roadside.py', 'navigation/demo_accessibility.py', 'navigation/demo_routes.py', 'what_if/routing.py'))).hexdigest()
+        for path in ('navigation/roadside.py', 'navigation/demo_network.py', 'navigation/demo_accessibility.py', 'navigation/demo_routes.py', 'what_if/routing.py', 'what_if/service.py'))).hexdigest()
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({'summary': summary, 'catalog_access': access_summary,

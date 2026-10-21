@@ -24,7 +24,7 @@ def evaluate(sample,*,progress=False):
         if response.adjusted_start or response.selected_origin!=body.origin:
             raise ValueError('Audit endpoints changed')
         options={item.mode:item.route for item in response.options}
-        row={**case,'shortest':options.get('shortest') is not None,'accessible':options.get('accessible') is not None,
+        row={**case,'shortest':options.get('shortest') is not None,'avoid_damage':options.get('avoid_damage') is not None,'accessible':options.get('accessible') is not None,
              'ordered':True,'options':[item.model_dump(mode='json') for item in response.options]}
         accessible=options.get('accessible')
         if accessible:
@@ -48,6 +48,7 @@ def evaluate(sample,*,progress=False):
     for row in rows:groups[row['area'],row['category']].append(row)
     return {'seed':sample['seed'],'cases':rows,'summary':[
         dict(area=area,category=category,total=len(cases),shortest=sum(r['shortest'] for r in cases),
+             avoid_damage=sum(r['avoid_damage'] for r in cases),
              accessible=sum(r['accessible'] for r in cases),ordering_failures=sum(not r['ordered'] for r in cases))
         for (area,category),cases in sorted(groups.items())]}
 
@@ -56,8 +57,8 @@ def acceptance(reports):
     expected={(batch,area.id,category) for batch in FROZEN for area in service_areas().items if area.resident_demo_supported for category in CATEGORIES}
     actual={(batch,row['area'],row['category']) for batch,report in reports.items() for row in report['summary']}
     valid=set(reports)==set(FROZEN) and actual==expected and len(groups)==len(expected) and all(r['total']==30 for r in groups)
-    return dict(passed=valid and all(r['shortest']>=29 and r['accessible']>=24 and not r['ordering_failures'] for r in groups),
-        shortest=sum(r['shortest'] for r in groups),accessible=sum(r['accessible'] for r in groups),total=sum(r['total'] for r in groups),
+    return dict(passed=valid and all(r['shortest']>=29 and r.get('avoid_damage',0)>=29 and r['accessible']>=24 and not r['ordering_failures'] for r in groups),
+        shortest=sum(r['shortest'] for r in groups),avoid_damage=sum(r.get('avoid_damage',0) for r in groups),accessible=sum(r['accessible'] for r in groups),total=sum(r['total'] for r in groups),
         ordering_failures=sum(r['ordering_failures'] for r in groups),walking_threshold=.95,step_free_threshold=.8)
 
 def main():
@@ -68,7 +69,9 @@ def main():
         if hashlib.sha256(raw.replace(b'\r\n',b'\n')).hexdigest()!=digest:raise ValueError('Frozen samples changed')
         result=evaluate(json.loads(raw),progress=True);result['sample_sha256']=digest
         result['algorithm_sha256']=hashlib.sha256(b''.join((ROOT/p).read_bytes().replace(b'\r\n',b'\n')
-            for p in ('navigation/roadside.py','navigation/demo_accessibility.py','navigation/demo_routes.py'))).hexdigest()
+            for p in ('navigation/roadside.py','navigation/demo_network.py','navigation/demo_accessibility.py','navigation/demo_routes.py'))).hexdigest()
+        result['dataset_sha256']={area.id:hashlib.sha256((ROOT/'data/demo_areas'/f'{area.id}.json').read_bytes().replace(b'\r\n',b'\n')).hexdigest()
+                                  for area in service_areas().items if area.resident_demo_supported}
         reports[name]=result
         (output/f'{name}.json.gz').write_bytes(gzip.compress(json.dumps(result,separators=(',',':')).encode(),mtime=0))
         print(name,json.dumps(result['summary']),flush=True)

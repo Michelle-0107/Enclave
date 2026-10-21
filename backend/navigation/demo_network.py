@@ -7,7 +7,7 @@ import heapq
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from .roadside import Edge, walking_graph, distance, xy, coordinate, level, ALL_ROADS
+from .roadside import Edge, walking_graph, distance, xy, coordinate, level, ALL_ROADS, LOCAL_ROADS, OFFSET, forbidden
 from .land_access import intersection
 from .zones import BoundsIndex
 
@@ -112,6 +112,95 @@ def generate_facilities(area_id,*,spacing=75,include_buffer=False,source=None):
                        'routingSource':'simulation','routingWayId':identifier,'fieldVerified':False,
                        'coordinate':[(qa[i]+qb[i])/2 for i in (0,1)],'geometry':[list(qa),list(qb)],'anchors':anchor_rows})
         placed.append((wid,center))
+    return result
+
+
+def generate_junction_facilities(base, facilities, source):
+    """Fill short public side-street mouths omitted by 20m segment sampling.
+
+    These are explicit hypothetical crossings, never new live walking rights.
+    Placement uses only OSM road identity/junction geometry and the existing
+    facility inventory. Both approaches must be on that road's ground graph;
+    buildings, water, walls, forbidden nodes and other carriageways stay blocked.
+    """
+    root = ET.parse(source).getroot()
+    points = {n.attrib['id']: (float(n.attrib['lon']), float(n.attrib['lat'])) for n in root.findall('node')}
+    node_tags = {n.attrib['id']: {t.attrib['k']: t.attrib['v'] for t in n.findall('tag')} for n in root.findall('node')}
+    ways = []
+    arms = defaultdict(set)
+    for way in root.findall('way'):
+        tags = {t.attrib['k']: t.attrib['v'] for t in way.findall('tag')}
+        if tags.get('highway') not in ALL_ROADS or level(tags) != ('0', False, False):
+            continue
+        refs = [n.attrib['ref'] for n in way.findall('nd')]
+        ways.append((way.attrib['id'], refs, tags))
+        for a, b in zip(refs, refs[1:]):
+            if a in points and b in points:
+                arms[a].add(b)
+                arms[b].add(a)
+    by_way = defaultdict(list)
+    for index, edge in enumerate(base.edges):
+        if edge.kind in {'sidewalk', 'road_fallback'} and edge.grade == ('0', False, False):
+            by_way[edge.way_id].append((index, edge))
+    existing = defaultdict(list)
+    for facility in facilities:
+        way_id = facility.get('sourceRoadWayId')
+        for prefix in ('simulated-crossing-', 'simulated-footbridge-'):
+            if facility['id'].startswith(prefix):
+                way_id = facility['id'][len(prefix):].split('-', 1)[0]
+        if way_id:
+            existing[way_id].append(facility['coordinate'])
+    placed = defaultdict(list)
+    result = []
+    for way_id, refs, tags in ways:
+        if (tags.get('highway') not in LOCAL_ROADS or tags.get('access') == 'private'
+                or tags.get('foot') == 'private' or forbidden(tags, resident_access=True)
+                or tags.get('crossing') == 'no'):
+            continue
+        for a, b in zip(refs, refs[1:]):
+            if a not in points or b not in points:
+                continue
+            length = distance(points[a], points[b])
+            if not 2 * OFFSET <= length < 20:
+                continue
+            if any(forbidden(node_tags[n], resident_access=True) or node_tags[n].get('crossing') == 'no' for n in (a,b)):
+                continue
+            for node, other in ((a, b), (b, a)):
+                if len(arms[node]) < 3:
+                    continue
+                fraction = min(8 / length, .5)
+                center = tuple(x + (y-x) * fraction for x,y in zip(points[node], points[other]))
+                if not base.endpoint_inside(center):
+                    continue
+                if (any(distance(center,p) < 25 for p in existing[way_id])
+                        or any(distance(center,p) < 20 for p in placed[way_id])):
+                    continue
+                ax,ay = xy(points[node]); bx,by = xy(points[other]); cx,cy = xy(center)
+                anchors = [None, None]
+                for index, edge in by_way[way_id]:
+                    gap, fraction, q = base.project(center, edge)
+                    if not 1 < gap < 8:
+                        continue
+                    qx,qy = xy(q)
+                    side = 0 if (bx-ax)*(qy-cy) - (by-ay)*(qx-cx) > 0 else 1
+                    if anchors[side] is None or gap < anchors[side][0]:
+                        anchors[side] = (gap,index,q)
+                if any(anchor is None for anchor in anchors):
+                    continue
+                qa,qb = [anchor[2] for anchor in anchors]
+                if not 3 < distance(qa,qb) < 15 or not base.land_access.clear(qa,qb):
+                    continue
+                if any(grade == ('0', False, False) and (c,d) not in ((points[a],points[b]),(points[b],points[a]))
+                       and intersection(qa,qb,c,d) is not None for c,d,grade in base.nearby(qa,qb)):
+                    continue
+                identifier = f'simulated-junction-crossing-{way_id}-{node}-{other}'
+                result.append(dict(id=identifier, kind='crossing', name='Simulated junction crossing',
+                    routingSource='simulation', routingWayId=identifier, sourceRoadWayId=way_id,
+                    junctionNodeId=node, fieldVerified=False,
+                    coordinate=[(qa[i]+qb[i])/2 for i in (0,1)], geometry=[list(qa),list(qb)],
+                    anchors=[dict(wayId=base.edges[index].way_id, kind=base.edges[index].kind,
+                                  grade=list(base.edges[index].grade), coordinate=list(q)) for _,index,q in anchors]))
+                placed[way_id].append(center)
     return result
 
 

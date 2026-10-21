@@ -91,7 +91,7 @@ class WhatIfService:
         semaphore = asyncio.Semaphore(4)
         tasks = {}
 
-        async def calculate(path, mode, selected_snapshot, anchored_request=None):
+        async def calculate(path, mode, selected_snapshot, anchored_request=None, expected_endpoints=None):
             key = (path.id, mode, tuple(sorted(str(i.issue_id) for i in selected_snapshot.items)))
             if key not in tasks:
                 async def run():
@@ -99,10 +99,9 @@ class WhatIfService:
                         request = anchored_request or WalkingRouteRequest(origin=path.origin, destination=path.destination, route_mode=mode)
                         try:
                             route = await navigation.route_with_snapshot(request, selected_snapshot)
-                            if anchored_request is not None:
+                            if expected_endpoints is not None:
                                 ends = (route.geometry.coordinates[0], route.geometry.coordinates[-1])
-                                targets = [(p.longitude,p.latitude) for p in (request.origin,request.destination)]
-                                if any(distance_meters(a,b)>1 for a,b in zip(ends,targets)):
+                                if any(distance_meters(a,b)>1 for a,b in zip(ends,expected_endpoints)):
                                     return CalculatedRoute(None, 'not_assessable', 'comparison_endpoint_changed', 'The route could not retain the same matched endpoints within one metre.')
                             return CalculatedRoute(route, 'available')
                         except NavigationRejected as error:
@@ -122,13 +121,21 @@ class WhatIfService:
                 unknown = CalculatedRoute(None, 'not_assessable', 'no_fixed_reference_endpoints', reference.details)
                 return path, mode, unknown, unknown, {p.id: unknown for p in body.plans}
             anchored_request = None
+            expected_endpoints = None
             if reference.route is not None:
                 a,b = reference.route.geometry.coordinates[0],reference.route.geometry.coordinates[-1]
+                expected_endpoints = (a,b)
                 anchored_request = WalkingRouteRequest(origin={'longitude':a[0],'latitude':a[1]},
                     destination={'longitude':b[0],'latitude':b[1]},route_mode=mode)
                 anchors[(path.id,mode)] = (anchored_request.origin,anchored_request.destination)
-            before = await calculate(path, mode, before_snapshot, anchored_request)
-            after = {p.id: await calculate(path, mode, plan_snapshots[p.id], anchored_request) for p in body.plans}
+                if mode == 'avoid_damage' and navigation.uses_resident_facilities:
+                    # This graph chooses access deterministically, independently
+                    # of damage. Repeat the original request to retain the SAME
+                    # graph anchors: a snapped building boundary can belong to a
+                    # neighbouring footprint when treated as a fresh selection.
+                    anchored_request = WalkingRouteRequest(origin=path.origin, destination=path.destination, route_mode=mode)
+            before = await calculate(path, mode, before_snapshot, anchored_request, expected_endpoints)
+            after = {p.id: await calculate(path, mode, plan_snapshots[p.id], anchored_request, expected_endpoints) for p in body.plans}
             # Every candidate was validated by NavigationService for this exact
             # origin/destination pair, mode, and frozen network. Revalidate its
             # whole geometry against each target's remaining damage zones.
@@ -139,9 +146,8 @@ class WhatIfService:
                 bounds = [zone_bounds_from_ring(i.exclusion_ring) for i in target_snapshot.items]
                 feasible = []
                 for route in pool:
-                    if anchored_request is not None:
-                        targets = [(p.longitude,p.latitude) for p in (anchored_request.origin,anchored_request.destination)]
-                        if any(distance_meters(a,b)>1 for a,b in zip((route.geometry.coordinates[0],route.geometry.coordinates[-1]),targets)):
+                    if expected_endpoints is not None:
+                        if any(distance_meters(a,b)>1 for a,b in zip((route.geometry.coordinates[0],route.geometry.coordinates[-1]),expected_endpoints)):
                             continue
                     coordinates = [(path.origin.longitude, path.origin.latitude),
                                    *route.geometry.coordinates,
