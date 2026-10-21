@@ -123,6 +123,7 @@ export default function WhatIfPathMap({
           "top-right",
         );
         instance.on("click", (event) => {
+          if (!instance) return;
           const point = {
             latitude: event.lngLat.lat,
             longitude: event.lngLat.lng,
