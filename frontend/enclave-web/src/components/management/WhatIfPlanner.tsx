@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DataSkeleton } from "@/components/ui/DataSkeleton";
 import {
   ApiError,
   compareRepairPlans,
@@ -19,7 +20,6 @@ import RepairSummaryPanel from "./RepairSummaryPanel";
 import WhatIfPathMap, {
   parseMapPoint,
   pathDistance,
-  type PickTarget,
 } from "./WhatIfPathMap";
 
 type JourneyForm = {
@@ -84,9 +84,6 @@ function locationLookupKey(index: number, latitude: string, longitude: string) {
 
 export default function WhatIfPlanner() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [pickTargets, setPickTargets] = useState<Record<number, PickTarget>>(
-    {},
-  );
   const [issues, setIssues] = useState<FacilityIssue[]>([]);
   const [journeys, setJourneys] = useState<JourneyForm[]>([blankJourney()]);
   const [locationLookups, setLocationLookups] = useState<Record<string, LocationLookup>>({});
@@ -363,7 +360,7 @@ export default function WhatIfPlanner() {
               type="button"
               aria-label={`Edit ${name.toLowerCase()} coordinates`}
               onClick={() => setCoordinateEditors((items) => ({ ...items, [key]: true }))}
-              className="min-h-10 shrink-0 px-2 text-xs font-semibold text-primary underline"
+              className="min-h-10 shrink-0 px-2 text-xs font-semibold text-primary underline transition-all duration-200 hover:-translate-y-0.5 hover:text-[#526B8A] hover:underline-offset-4 active:translate-y-0"
             >
               Edit coordinates
             </button>
@@ -381,7 +378,7 @@ export default function WhatIfPlanner() {
             <button
               type="button"
               onClick={() => setCoordinateEditors((items) => ({ ...items, [key]: false }))}
-              className="min-h-10 px-2 font-semibold text-primary underline"
+              className="min-h-10 px-2 font-semibold text-primary underline transition-all duration-200 hover:-translate-y-0.5 hover:text-[#526B8A] hover:underline-offset-4 active:translate-y-0"
             >
               Hide coordinates
             </button>
@@ -405,7 +402,7 @@ export default function WhatIfPlanner() {
       </div>
 
       <nav aria-label="Repair comparison progress" className="grid grid-cols-3 gap-2 rounded-2xl border bg-card p-2">
-        {([{ n: 1, label: 'Paths' }, { n: 2, label: 'Repair plans' }, { n: 3, label: 'Results' }] as const).map(item => <div key={item.n} aria-current={step === item.n ? 'step' : undefined} className={`flex min-h-12 items-center justify-center rounded-xl px-2 text-center text-sm font-semibold ${step === item.n ? 'what-if-progress-current' : item.n < step ? 'text-primary' : 'text-muted-foreground'} ${item.n === 3 && !result ? 'opacity-50' : ''}`}>{item.n}. {item.label}</div>)}
+        {([{ n: 1, label: 'Paths' }, { n: 2, label: 'Repair plans' }, { n: 3, label: 'Results' }] as const).map(item => <div key={item.n} aria-current={step === item.n ? 'step' : undefined} className={`flex min-h-12 items-center justify-center rounded-xl px-2 text-center text-sm font-semibold transition-colors duration-200 ${step === item.n ? 'bg-brand text-primary-foreground shadow-sm' : item.n < step ? 'text-primary' : 'text-muted-foreground'} ${item.n === 3 && !result ? 'opacity-50' : ''}`}>{item.n}. {item.label}</div>)}
       </nav>
       <p role="status" className="text-sm text-muted-foreground">{step === 1 ? 'Step 1 · Name your paths and choose a start and destination for each.' : step === 2 ? 'Step 2 · Choose repairs, enter estimates, then compare plans.' : 'Step 3 · Review each plan on its own Before / After map.'}</p>
       <section hidden={step !== 2} className={step !== 2 ? 'hidden' : 'flex flex-col gap-3 rounded-3xl border bg-card p-5'}>
@@ -423,15 +420,13 @@ export default function WhatIfPlanner() {
             type="button"
             onClick={() => void loadCandidates()}
             disabled={loadingCandidates}
-            className="min-h-10 rounded-xl border border-border bg-white px-4 text-xs font-semibold text-primary disabled:opacity-60"
+            className="min-h-10 rounded-xl border border-border bg-white px-4 text-xs font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border-[#9aadc2] hover:bg-[#dce6f0] hover:shadow-md active:translate-y-0 active:scale-95 disabled:opacity-60"
           >
             {loadingCandidates ? "Loading…" : "Refresh candidates"}
           </button>
         </div>
         {loadingCandidates ? (
-          <p className="py-3 text-sm text-muted-foreground">
-            Loading candidate facilities…
-          </p>
+          <DataSkeleton rows={3} variant="card" />
         ) : facilities.length === 0 ? (
           <p className="py-3 text-sm text-muted-foreground">
             There are no qualified open issues to simulate right now.
@@ -478,7 +473,7 @@ export default function WhatIfPlanner() {
               type="button"
               disabled={journeys.length >= MAX_PATHS}
               onClick={() => { setJourneys(items => items.length < MAX_PATHS ? [...items, blankJourney()] : items); setResult(null); }}
-              className="min-h-10 rounded-xl bg-card px-3 text-xs font-semibold text-primary disabled:opacity-50"
+              className="min-h-10 rounded-xl bg-card px-3 text-xs font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border hover:border-[#9aadc2] hover:bg-[#dce6f0] hover:shadow-md active:translate-y-0 active:scale-95 disabled:opacity-50"
             >
               Add path ({journeys.length}/{MAX_PATHS})
             </button>
@@ -505,30 +500,7 @@ export default function WhatIfPlanner() {
                 />
               </label>
               <div className="flex flex-col gap-3 sm:col-span-2">
-                <p className="text-xs text-muted-foreground">
-                  Select A, then click the starting point on the map. Select B
-                  and click the destination. You can drag either marker to
-                  adjust it.
-                </p>
                 <div className="flex flex-wrap gap-2">
-                  {(["origin", "destination"] as const).map((target) => (
-                    <button
-                      key={target}
-                      type="button"
-                      aria-pressed={(pickTargets[index] ?? "origin") === target}
-                      onClick={() =>
-                        setPickTargets((items) => ({
-                          ...items,
-                          [index]: target,
-                        }))
-                      }
-                      className={`min-h-11 rounded-xl border border-border px-4 text-xs font-semibold ${(pickTargets[index] ?? "origin") === target ? "what-if-toggle-selected bg-brand text-primary-foreground" : "bg-white text-primary"}`}
-                    >
-                      {target === "origin"
-                        ? "A · Set starting point"
-                        : "B · Set destination"}
-                    </button>
-                  ))}
                   <button
                     type="button"
                     onClick={() => {
@@ -538,12 +510,8 @@ export default function WhatIfPlanner() {
                         toLat: "",
                         toLng: "",
                       });
-                      setPickTargets((items) => ({
-                        ...items,
-                        [index]: "origin",
-                      }));
                     }}
-                    className="min-h-11 px-3 text-xs font-semibold text-status-red underline"
+                    className="min-h-11 px-3 text-xs font-semibold text-status-red underline transition-all duration-200 hover:-translate-y-0.5 hover:underline-offset-4 active:translate-y-0"
                   >
                     Clear points
                   </button>
@@ -551,10 +519,6 @@ export default function WhatIfPlanner() {
                 <WhatIfPathMap
                   origin={parseMapPoint(path.fromLat, path.fromLng)}
                   destination={parseMapPoint(path.toLat, path.toLng)}
-                  target={pickTargets[index] ?? "origin"}
-                  onTargetChange={(target) =>
-                    setPickTargets((items) => ({ ...items, [index]: target }))
-                  }
                   issues={issues}
                   onPick={(target, point) => {
                     patchJourney(
@@ -569,11 +533,6 @@ export default function WhatIfPlanner() {
                             toLng: point.longitude.toFixed(6),
                           },
                     );
-                    if (target === "origin")
-                      setPickTargets((items) => ({
-                        ...items,
-                        [index]: "destination",
-                      }));
                   }}
                 />
               </div>
@@ -603,17 +562,16 @@ export default function WhatIfPlanner() {
                   type="button"
                   onClick={() => {
                     setJourneys((items) => items.filter((_, i) => i !== index));
-                    setPickTargets({});
                     setResult(null);
                   }}
-                  className="w-fit text-xs font-semibold text-status-red underline sm:col-span-2"
+                  className="w-fit text-xs font-semibold text-status-red underline transition-all duration-200 hover:-translate-y-0.5 hover:underline-offset-4 active:translate-y-0 sm:col-span-2"
                 >
                   Remove this path
                 </button>
               )}
             </fieldset>
           ))}
-          <button type="button" onClick={continueToPlans} className="min-h-12 rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground">Continue to repair plans →</button>
+          <button type="button" onClick={continueToPlans} className="min-h-12 rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 hover:brightness-95 hover:shadow-md active:translate-y-0 active:scale-95">Continue to repair plans →</button>
         </section>
 
         <section className={step !== 2 ? "hidden" : "flex flex-col gap-4"}>
@@ -633,7 +591,7 @@ export default function WhatIfPlanner() {
                 setPlans(items => items.length < MAX_PLANS ? [...items, blankPlan(items.length + 1)] : items);
                 setResult(null);
               }}
-              className="min-h-10 rounded-xl bg-card px-3 text-xs font-semibold text-primary disabled:opacity-50"
+              className="min-h-10 rounded-xl bg-card px-3 text-xs font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border hover:border-[#9aadc2] hover:bg-[#dce6f0] hover:shadow-md active:translate-y-0 active:scale-95 disabled:opacity-50"
             >
               Add repair plan ({plans.length}/{MAX_PLANS})
             </button>
@@ -731,7 +689,7 @@ export default function WhatIfPlanner() {
                     );
                     setResult(null);
                   }}
-                  className="w-fit text-xs font-semibold text-status-red underline"
+                  className="w-fit text-xs font-semibold text-status-red underline transition-all duration-200 hover:-translate-y-0.5 hover:underline-offset-4 active:translate-y-0"
                 >
                   Remove this plan
                 </button>
@@ -785,11 +743,11 @@ export default function WhatIfPlanner() {
           <button
             type="submit"
             disabled={comparing || loadingCandidates || facilities.length === 0}
-            className="min-h-12 rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+            className="min-h-12 rounded-2xl bg-brand px-6 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 hover:brightness-95 hover:shadow-md active:translate-y-0 active:scale-95 disabled:opacity-60"
           >
             {comparing ? "Comparing routes…" : "Compare repair plans"}
           </button>
-          <button type="button" onClick={() => { setStep(1); setError(''); }} className="min-h-11 rounded-2xl border bg-card px-6 text-sm font-semibold">Back to paths</button>
+          <button type="button" onClick={() => { setStep(1); setError(''); }} className="min-h-11 rounded-2xl border bg-card px-6 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:border-[#9aadc2] hover:bg-[#dce6f0] hover:shadow-md active:translate-y-0 active:scale-95">Back to paths</button>
           <p className="text-xs leading-relaxed text-muted-foreground">
             Each comparison uses one frozen incident snapshot. It is a
             simulation only; selected repairs do not approve reports, create
@@ -808,7 +766,7 @@ export default function WhatIfPlanner() {
             <button
               type="button"
               onClick={() => void loadCandidates()}
-              className="mt-2 font-semibold underline"
+              className="mt-2 font-semibold underline transition-all duration-200 hover:-translate-y-0.5 hover:text-[#526B8A] hover:underline-offset-4 active:translate-y-0"
             >
               Refresh candidates
             </button>
@@ -896,7 +854,7 @@ export default function WhatIfPlanner() {
           </div>
           {(selectedRoute === 'all:avoid_damage' || selectedRoute === 'all:accessible') &&
             <RepairSummaryPanel plans={result.plans} simulationId={result.simulation_id} mode={selectedRoute === 'all:accessible' ? 'accessible' : 'avoid_damage'} />}
-          <button type="button" onClick={() => setStep(2)} className="min-h-12 rounded-2xl border bg-card px-6 text-sm font-semibold">Edit repair plans</button>
+          <button type="button" onClick={() => setStep(2)} className="min-h-12 rounded-2xl border bg-card px-6 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:border-[#9aadc2] hover:bg-[#dce6f0] hover:shadow-md active:translate-y-0 active:scale-95">Edit repair plans</button>
         </section>
       )}
     </div>

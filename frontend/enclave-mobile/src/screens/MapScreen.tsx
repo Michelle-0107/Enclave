@@ -1,7 +1,6 @@
 import { NativeMap as Map } from '../navigation/NativeMap';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Keyboard,
   Pressable,
@@ -24,6 +23,7 @@ import {
 } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import { SkeletonBlock, SkeletonList } from '../components/DataSkeleton';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 import type { PlacePoint } from '../savedPlaces/store';
 import PlaceSearch from '../navigation/PlaceSearch';
@@ -410,15 +410,13 @@ export default function MapScreen({
       </View>
 
       <View style={styles.mapToolbar}>
-        <Text style={styles.mapCount}>
-          {isLoading
-            ? 'Loading community issues…'
-            : error
+        {isLoading ? <SkeletonBlock width="58%" height={13} /> : <Text style={styles.mapCount}>
+          {error
               ? 'Community issues unavailable'
               : `${issues.length} community issue${
                   issues.length === 1 ? '' : 's'
                 } in this area`}
-        </Text>
+        </Text>}
 
         <Pressable
           accessibilityRole="button"
@@ -437,16 +435,7 @@ export default function MapScreen({
       </View>
 
       {isLoading ? (
-        <View style={styles.issueState}>
-          <ActivityIndicator
-            size="small"
-            color={colors.navy}
-          />
-
-          <Text style={styles.mapHint}>
-            Loading community issues…
-          </Text>
-        </View>
+        <SkeletonList rows={3} avatar />
       ) : error ? (
         <View style={styles.issueState}>
           <Text

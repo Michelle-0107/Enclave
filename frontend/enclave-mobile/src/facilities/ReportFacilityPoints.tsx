@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Marker } from '@maplibre/maplibre-react-native';
 import { facilitiesApi, type FacilityRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { SkeletonBlock } from '../components/DataSkeleton';
 
 /** Registered facilities; these are not confirmed damage or surveyed access. */
 export function useReportFacilityPoints() {
@@ -62,7 +63,7 @@ export function ReportFacilityMarkers({ facilities, onSelect }: {
 export function ReportFacilityHint({ loading, error, count, onRetry, markersVisible = true }: {
   loading: boolean; error: string; count: number; onRetry: () => void; markersVisible?: boolean;
 }) {
-  if (loading) return <Text style={styles.hint}>Loading registered facilities…</Text>;
+  if (loading) return <View style={{ gap: 8 }} accessibilityLabel="Loading facilities" accessibilityRole="progressbar"><SkeletonBlock width="70%" height={12} /><SkeletonBlock width="92%" height={12} /></View>;
   if (error) return <View>
     <Text style={styles.hint}>{error}</Text>
     <Pressable accessibilityRole="button" onPress={onRetry}>

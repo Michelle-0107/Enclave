@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DataSkeleton } from "@/components/ui/DataSkeleton";
 import { useMaintenance } from "./MaintenanceProvider";
 import {
   action,
@@ -49,7 +50,7 @@ export default function TaskScreen({
     },
     [],
   );
-  if (loading) return <p role="status">Loading task…</p>;
+  if (loading) return <DataSkeleton rows={4} variant="card" />;
   if (loadError) return <p role="alert">{loadError} <Link className="underline" href="/maintenance">Back to my tasks</Link></p>;
   if (!task)
     return (

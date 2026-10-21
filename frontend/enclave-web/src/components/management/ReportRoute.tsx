@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import ReportDetails from '@/components/management/ReportDetails';
 import { getManagementReport, type ManagementReport } from '@/lib/api';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 
 type Props = {
   reportId: string;
@@ -38,7 +39,7 @@ export default function ReportRoute({ reportId, unavailableFeature, reviewKey }:
     return () => { active = false; };
   }, [reportId]);
 
-  if (loading) return <p role="status" className="py-8 text-sm text-muted-foreground">Loading report from the backend…</p>;
+  if (loading) return <DataSkeleton rows={3} variant="card" className="py-2" />;
   if (error) {
     return (
       <div role="alert" className="flex flex-col gap-4 rounded-2xl bg-status-red-bg p-5 text-sm text-status-red">

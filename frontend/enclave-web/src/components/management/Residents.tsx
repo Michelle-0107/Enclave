@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import ResidentCreate from '@/components/management/ResidentCreate';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 import {
   deleteResident,
   getManagementResidents,
@@ -166,7 +167,7 @@ export default function Residents() {
 
         {notice && <p role="status" className="rounded-xl bg-status-green-bg p-3 text-sm text-status-green">{notice}</p>}
         {loading ? (
-          <p role="status" className="rounded-2xl bg-white p-5 text-sm text-muted-foreground">Loading resident records…</p>
+          <DataSkeleton rows={4} variant="card" />
         ) : loadError ? (
           <div className="flex flex-col gap-3 rounded-2xl bg-white p-5">
             <p role="alert" className="text-sm text-status-red">{loadError}</p>

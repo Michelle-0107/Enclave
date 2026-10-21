@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getManagementReports, type ManagementReport } from '@/lib/api';
 import { reportStatusLabels } from '@/lib/mock-reports';
 import { reportStatuses, reportTones, tones } from '@/lib/report-presentation';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 import { ReportStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
 import ReportThumbnail from '@/components/management/ReportThumbnail';
 
@@ -32,7 +33,7 @@ export default function ManagementDashboard() {
   }
   function reportRows(items: ManagementReport[], empty: string) {
     return <div className="report-list">
-      {loading ? <p role="status" className="py-6 text-sm text-muted-foreground">Loading reports…</p> : !items.length ? <p className="py-6 text-sm text-muted-foreground">{empty}</p> : items.map(item => <Link key={item.id} href={`/management/reports/${encodeURIComponent(item.id)}`} className="report-list-row">
+      {loading ? <DataSkeleton rows={3} variant="report" /> : !items.length ? <p className="py-6 text-sm text-muted-foreground">{empty}</p> : items.map(item => <Link key={item.id} href={`/management/reports/${encodeURIComponent(item.id)}`} className="report-list-row">
         <ReportThumbnail imageUrl={item.imageUrl} title={item.title} />
         <span className="report-row-main">
           <span className="report-row-status"><ReportStatusBadge status={item.status} variant="text" /></span>

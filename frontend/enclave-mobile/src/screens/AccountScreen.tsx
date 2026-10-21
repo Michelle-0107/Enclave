@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Image,
   Alert,
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { residencyApi, type ApiError, type ResidencyRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import { SkeletonBlock, SkeletonCard } from '../components/DataSkeleton';
 
 type Props = {
   onMyReportsPress: () => void;
@@ -123,7 +123,7 @@ export default function AccountScreen({
 
       <View style={styles.profileCard}>
         {isLoading ? (
-          <ActivityIndicator size="small" color={colors.navy} />
+          <View style={{ flex: 1, gap: 12, paddingVertical: 8 }}><SkeletonBlock width="58%" height={18} /><SkeletonBlock width="74%" height={13} /><SkeletonBlock width="34%" height={12} /></View>
         ) : residency ? (
           <>
             <View style={styles.avatar}>
@@ -162,6 +162,8 @@ export default function AccountScreen({
           </View>
         </View>
       ) : null}
+
+      {isLoading ? <SkeletonCard rows={2} /> : null}
 
       {!isLoading && error && residency === null ? (
         <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>

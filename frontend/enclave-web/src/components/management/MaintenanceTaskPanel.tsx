@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Photo, control } from '@/components/maintenance/Common';
 import { TaskStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 import { toMaintenanceTask } from '@/lib/maintenance/api';
 import WorkflowGuide from '@/components/ui/WorkflowGuide';
 import TaskHistory from '@/components/maintenance/TaskHistory';
@@ -86,7 +87,7 @@ export default function MaintenanceTaskPanel({ report, onChange }: { report: Man
   return <section className="flex flex-1 flex-col gap-5 rounded-3xl border border-border bg-white p-5" aria-label="Maintenance assignment and verification">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Maintenance task</h2>
       <button type="button" disabled={loading || busy} onClick={() => void load()} className="text-sm font-semibold underline">Refresh</button></div>
-    {loading && <p role="status">Loading maintenance task…</p>}
+    {loading && <DataSkeleton rows={3} variant="card" />}
     {error && <p role="alert" className="text-sm text-status-red">{error}</p>}
     {notice && <p role="status" className="text-sm text-status-green">{notice}</p>}
     {!loading && loaded && <WorkflowGuide

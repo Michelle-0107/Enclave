@@ -11,9 +11,7 @@ export type PickTarget = "origin" | "destination";
 type Props = {
   origin: Point | null;
   destination: Point | null;
-  target: PickTarget;
   issues: FacilityIssue[];
-  onTargetChange?: (target: PickTarget) => void;
   onPick: (target: PickTarget, point: Point) => void;
 };
 // Matches backend/navigation/config.py PILOT_BBOX; a development window, not a legal boundary.
@@ -46,10 +44,8 @@ export function pathDistance(a: Point, b: Point) {
 export default function WhatIfPathMap({
   origin,
   destination,
-  target,
   issues,
   onPick,
-  onTargetChange,
 }: Props) {
   const panel = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -81,13 +77,14 @@ export default function WhatIfPathMap({
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre.Map | null>(null);
   const api = useRef<typeof MapLibre | null>(null);
-  const latest = useRef({ target, onPick });
+  const latest = useRef({ onPick });
+  const selectionPopup = useRef<MapLibre.Popup | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [tileError, setTileError] = useState(false);
   useEffect(() => {
-    latest.current = { target, onPick };
-  }, [target, onPick]);
+    latest.current = { onPick };
+  }, [onPick]);
   useEffect(() => {
     let disposed = false;
     let instance: MapLibre.Map | undefined;
@@ -126,13 +123,41 @@ export default function WhatIfPathMap({
           "top-right",
         );
         instance.on("click", (event) => {
-          if (instance?.getLayer("candidate-facilities-circle") && instance.queryRenderedFeatures(event.point, { layers: ["candidate-facilities-circle"] }).length) return;
           const point = {
             latitude: event.lngLat.lat,
             longitude: event.lngLat.lng,
           };
-          if (isPilotPoint(point))
-            latest.current.onPick(latest.current.target, point);
+          if (!isPilotPoint(point)) return;
+
+          selectionPopup.current?.remove();
+          const content = document.createElement("div");
+          content.style.cssText = "display:flex;min-width:210px;flex-direction:column;gap:10px;padding:4px";
+          const title = document.createElement("p");
+          title.textContent = "Set this point as";
+          title.style.cssText = "margin:0;color:#202c46;font-size:13px;font-weight:700";
+          const choices = document.createElement("div");
+          choices.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:8px";
+          content.append(title, choices);
+
+          const addChoice = (target: PickTarget, label: string) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.className = "rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition hover:brightness-95 active:scale-95";
+            button.addEventListener("click", (clickEvent) => {
+              clickEvent.stopPropagation();
+              latest.current.onPick(target, point);
+              selectionPopup.current?.remove();
+              selectionPopup.current = null;
+            });
+            choices.append(button);
+          };
+          addChoice("origin", "Start · A");
+          addChoice("destination", "End · B");
+          selectionPopup.current = new M.Popup({ closeButton: true, closeOnClick: false, offset: 18, maxWidth: "none" })
+            .setLngLat([point.longitude, point.latitude])
+            .setDOMContent(content)
+            .addTo(instance);
         });
         instance.on("error", () => {
           if (!disposed) setTileError(true);
@@ -170,6 +195,8 @@ export default function WhatIfPathMap({
     return () => {
       disposed = true;
       observer?.disconnect();
+      selectionPopup.current?.remove();
+      selectionPopup.current = null;
       instance?.remove();
       map.current = null;
     };
@@ -222,8 +249,8 @@ export default function WhatIfPathMap({
       });
       markers.push(marker);
     };
-    pin(origin, "A", "#202c46", "origin");
-    pin(destination, "B", "#966114", "destination");
+    pin(origin, "A", "#139b74", "origin");
+    pin(destination, "B", "#e44861", "destination");
     const source = instance.getSource("endpoint-connector") as
       MapLibre.GeoJSONSource | undefined;
     source?.setData({
@@ -265,25 +292,11 @@ export default function WhatIfPathMap({
             Choose journey points
           </h3>
           <p className="text-xs text-muted-foreground">
-            Click to set{" "}
-            {target === "origin" ? "A · Starting point" : "B · Destination"}
-            {expanded ? " · Press Esc to exit fullscreen" : ""}
+            Click the map, then choose Start or End. Drag either marker to adjust it.
+            {expanded ? " Press Esc to exit fullscreen." : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {expanded &&
-            onTargetChange &&
-            (["origin", "destination"] as const).map((point) => (
-              <button
-                key={point}
-                type="button"
-                aria-pressed={target === point}
-                onClick={() => onTargetChange(point)}
-                className={`min-h-11 rounded-xl border border-border px-3 text-xs font-semibold ${target === point ? "what-if-toggle-selected bg-brand text-primary-foreground" : "bg-white text-primary"}`}
-              >
-                {point === "origin" ? "A · Starting point" : "B · Destination"}
-              </button>
-            ))}
           <button
             type="button"
             disabled={!ready}
@@ -291,7 +304,7 @@ export default function WhatIfPathMap({
             aria-label={
               expanded ? "Exit map fullscreen" : "Open map fullscreen"
             }
-            className="min-h-11 rounded-xl bg-brand px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+            className="min-h-11 rounded-xl bg-brand px-4 text-xs font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 hover:brightness-95 hover:shadow-md active:translate-y-0 active:scale-95 disabled:opacity-50"
           >
             {expanded ? "Exit fullscreen" : "Expand map ⤢"}
           </button>
@@ -305,13 +318,11 @@ export default function WhatIfPathMap({
       <div
         ref={host}
         role="region"
-        aria-label={`Journey map. Click to set ${target === "origin" ? "starting point A" : "destination B"}. Coordinate fields are available below.`}
+        aria-label="Journey map. Click a point, then choose Start or End. Draggable markers and coordinate fields are also available."
         className={`relative isolate z-0 w-full overflow-hidden rounded-2xl border border-border bg-muted ${expanded ? "min-h-[260px] flex-1" : "h-[420px] sm:h-[520px]"}`}
       />
       {!ready && !error && (
-        <p role="status" className="text-xs text-muted-foreground">
-          Loading map…
-        </p>
+        <div role="status" aria-label="Loading map" aria-busy="true" className="absolute inset-0 z-10 animate-pulse bg-slate-200/70"><span className="absolute left-1/4 top-1/3 h-3 w-1/3 rounded-full bg-white/80" /><span className="absolute bottom-1/4 right-1/4 h-3 w-1/4 rounded-full bg-white/80" /></div>
       )}
       {error && (
         <p role="alert" className="text-xs text-status-red">
@@ -334,7 +345,7 @@ export default function WhatIfPathMap({
           onClick={() =>
             map.current?.fitBounds([[west, south], [east, north]], { padding: 24, duration: 400 })
           }
-          className="min-h-10 px-2 font-semibold text-primary underline disabled:opacity-50"
+          className="min-h-10 px-2 font-semibold text-primary underline transition-all duration-200 hover:-translate-y-0.5 hover:text-[#526B8A] hover:underline-offset-4 active:translate-y-0 disabled:opacity-50"
         >
           Show service area
         </button>

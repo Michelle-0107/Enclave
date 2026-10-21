@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
 import { reportsApi, type ApiError, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors, reportStatusTone } from '../theme';
+import { SkeletonList } from '../components/DataSkeleton';
 
 export type ReportStatus =
   | 'Pending management review'
@@ -175,10 +175,7 @@ export default function MyReportsScreen({
         </View>
 
         {isLoading ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="small" color={colors.navy} />
-            <Text style={styles.subtitle}>Loading your reports...</Text>
-          </View>
+          <SkeletonList rows={4} />
         ) : error ? (
           <View style={styles.emptyState}>
             <Text accessibilityRole="alert" style={styles.errorText}>

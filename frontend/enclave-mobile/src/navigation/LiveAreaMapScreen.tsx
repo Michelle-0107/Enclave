@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { ApiError, demoAreasApi, navigationApi, type NavigationArea, type ResidentServiceArea } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import MapScreen from '../screens/MapScreen';
 import { colors } from '../theme';
+import { SkeletonMap, SkeletonBlock } from '../components/DataSkeleton';
 
 type Props = Omit<ComponentProps<typeof MapScreen>, 'navigationArea'>;
 
@@ -97,6 +98,6 @@ export default function LiveAreaMapScreen(props: Props) {
     {area?.temporary_live && <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>Temporary live coverage. Damage avoidance and verified step-free coverage are not enabled here.</Text>}
     {!!error && <Text accessibilityRole="alert" style={{ color: '#A63E37' }}>{error}</Text>}
     {!!error && <Pressable accessibilityRole="button" disabled={loading} onPress={() => void discover()} style={{ padding: 12 }}><Text>Retry service areas</Text></Pressable>}
-    {loading ? <ActivityIndicator color={colors.navy} /> : area && <MapScreen key={area.id} {...props} navigationArea={area} />}
+    {loading ? <><SkeletonBlock width="70%" height={14} /><SkeletonMap /></> : area && <MapScreen key={area.id} {...props} navigationArea={area} />}
   </View>;
 }

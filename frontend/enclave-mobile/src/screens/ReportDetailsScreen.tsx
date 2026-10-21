@@ -1,7 +1,6 @@
 import { NativeMap as Map } from '../navigation/NativeMap';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Linking,
@@ -17,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { reportsApi, type ApiError, type ReportHistoryEvent, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors, reportStatusTone } from '../theme';
+import { SkeletonList } from '../components/DataSkeleton';
 import type {
   ResidentReport,
 } from './MyReportsScreen';
@@ -196,10 +196,7 @@ export default function ReportDetailsScreen({
         <View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>Progress</Text><Text style={styles.sectionSubtitle}>Updates on your report</Text></View><View style={styles.progressIcon}><Ionicons name="time-outline" size={19} color={colors.navy} /></View></View>
 
         {isLoading ? (
-          <View style={styles.progressLoading}>
-            <ActivityIndicator size="small" color={colors.navy} />
-            <Text style={styles.meta}>Loading report history...</Text>
-          </View>
+          <SkeletonList rows={3} />
         ) : error ? (
           <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
         ) : progressItems.length > 0 ? (

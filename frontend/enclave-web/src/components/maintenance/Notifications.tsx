@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getStaffNotifications, markStaffNotificationRead, type StaffNotice } from '@/lib/maintenance/api';
 import { Heading } from './Common';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 
 export default function Notifications() {
   const [items, setItems] = useState<StaffNotice[]>([]);
@@ -38,7 +39,7 @@ export default function Notifications() {
   return <section className="flex flex-col gap-7">
     <Heading title="Notifications." subtitle="Assignments and management feedback." back={null} />
     <button type="button" disabled={loading} onClick={() => void load()} className="w-fit text-sm font-semibold underline">Refresh notifications</button>
-    {loading && <p role="status">Loading notifications…</p>}
+    {loading && <DataSkeleton rows={4} variant="card" />}
     {error && <p role="alert" className="text-status-red">{error}</p>}
     {!loading && !error && !items.length && <p>No notifications yet.</p>}
     <div className="divide-y">{items.map(notice => <button type="button" key={notice.id} disabled={opening !== null}

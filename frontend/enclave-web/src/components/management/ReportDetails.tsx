@@ -1,6 +1,7 @@
 'use client';
 
 import { ReportStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -150,7 +151,7 @@ export default function ReportDetails({ report: initialReport, reviewKey }: Prop
             <section aria-labelledby="saved-review-heading" className="min-w-0 border-t border-border pt-4">
               <h3 id="saved-review-heading" className="text-sm font-semibold text-primary">Management review</h3>
               {historyLoading ? (
-                <p role="status" className="mt-2 text-sm text-muted-foreground">Loading saved review…</p>
+                <DataSkeleton rows={1} variant="card" className="mt-3" />
               ) : historyError ? (
                 <div className="mt-2 text-sm text-status-red">
                   <p role="alert">Unable to load the saved review. {historyError}</p>
@@ -221,7 +222,7 @@ export default function ReportDetails({ report: initialReport, reviewKey }: Prop
       <section aria-labelledby="history-heading" className="flex flex-col gap-3">
         <h2 id="history-heading" className="text-lg font-semibold text-primary">Status history</h2>
         {historyLoading ? (
-          <p className="text-sm text-muted-foreground">Loading status history…</p>
+          <DataSkeleton rows={2} variant="card" />
         ) : historyError ? (
           <p role="alert" className="text-sm text-status-red">{historyError}</p>
         ) : history.length === 0 ? (

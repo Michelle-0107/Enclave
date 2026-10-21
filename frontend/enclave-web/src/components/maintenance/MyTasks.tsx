@@ -8,6 +8,7 @@ import { Bell, ClipboardList, Wrench, ArrowUpRight } from 'lucide-react';
 import ReportThumbnail from '@/components/management/ReportThumbnail';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 import { useMaintenance } from './MaintenanceProvider';
 import { Heading, control } from './Common';
 import { statusLabels, type MaintenanceTask } from '@/lib/maintenance/types';
@@ -51,7 +52,7 @@ export default function MyTasks() {
         <div className="mt-3 grid grid-cols-2 gap-3"><label className="text-xs text-muted-foreground">Status<select value={status} onChange={e => setStatus(e.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-card px-3 text-sm"><option value="">All statuses</option>{Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label><label className="text-xs text-muted-foreground">Priority<select value={priority} onChange={e => setPriority(e.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-card px-3 text-sm"><option value="">All priorities</option>{['High', 'Medium', 'Low'].map(p => <option key={p}>{p}</option>)}</select></label></div>
       </div>
       {error && <p role="alert" className="mb-4 text-sm text-status-red">{error}</p>}
-      <div className="report-list">{loading ? <p role="status" className="py-6 text-sm">Loading tasks…</p> : filtered.length ? (showAll ? filtered : filtered.slice(0, 3)).map(taskRow) : <p className="py-6 text-sm text-muted-foreground">No tasks match your search.</p>}</div>
+      <div className="report-list">{loading ? <DataSkeleton rows={4} variant="report" /> : filtered.length ? (showAll ? filtered : filtered.slice(0, 3)).map(taskRow) : <p className="py-6 text-sm text-muted-foreground">No tasks match your search.</p>}</div>
       <button type="button" disabled={loading} onClick={() => void refresh()} className="mt-3 min-h-11 text-sm font-semibold underline disabled:opacity-60">Refresh tasks</button>
     </section>
 

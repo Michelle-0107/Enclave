@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Plus } from 'lucide-react';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import {
@@ -324,12 +325,7 @@ function MessageCentreSession({ userId }: { userId: string }) {
           ))}
 
           {loading ? (
-            <p
-              role="status"
-              className="py-6 text-sm text-muted-foreground"
-            >
-              Loading messages…
-            </p>
+            <DataSkeleton rows={4} variant="card" />
           ) : received.length === 0 && !error ? (
             <div className="flex items-start gap-3 py-8">
               <Mail

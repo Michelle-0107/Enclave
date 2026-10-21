@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { locationsApi, type SharedLocation } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import { SkeletonBlock } from '../components/DataSkeleton';
 
 type Point = { latitude: number; longitude: number };
 export default function SharedLocationPicker({ point, onChoose, areaId = 'kl-east-pilot' }: {
@@ -56,8 +57,9 @@ export default function SharedLocationPicker({ point, onChoose, areaId = 'kl-eas
       onChangeText={value => { version.current += 1; setBusy(false); setExpanded(false); setError(''); setQuery(value); }} onSubmitEditing={() => { void search(); }}
       style={{ minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, backgroundColor: colors.white, color: colors.navy }} />
     <Pressable accessibilityRole="button" disabled={busy || query.trim().length < 2} onPress={search} style={{ minHeight: 44, justifyContent: 'center' }}>
-      <Text style={{ color: colors.navy }}>{busy ? 'Searching...' : 'Search locations'}</Text>
+      <Text style={{ color: colors.navy }}>Search locations</Text>
     </Pressable>
+    {busy && <View accessibilityLabel="Searching locations" accessibilityRole="progressbar" style={{ gap: 9, paddingVertical: 4 }}><SkeletonBlock width="74%" height={13} /><SkeletonBlock width="91%" height={12} /><SkeletonBlock width="58%" height={12} /></View>}
     {(expanded ? items : items?.slice(0, 3))?.map(item => <Pressable key={item.id} accessibilityRole="button" onPress={() => {
       version.current += 1; chosenPoint.current = `${areaId}:${item.latitude},${item.longitude}`;
       setQuery(item.name); setResult(null); setExpanded(false); onChoose(item);

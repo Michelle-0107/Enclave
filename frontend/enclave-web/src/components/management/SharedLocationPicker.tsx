@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 import { apiRequest } from '@/lib/api';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 
 type Point = { latitude: number; longitude: number };
 type Location = Point & { id: string; name: string; address: string; distance_meters: number | null };
@@ -51,12 +52,13 @@ export default function SharedLocationPicker({ label, point, onChoose }: {
       <input aria-label={`${label} place name`} value={query} onChange={event => { version.current += 1; setBusy(false); setQuery(event.target.value); }} maxLength={160}
         placeholder="Search a place, road or section" className="mt-1 min-h-11 w-full rounded-xl border border-border px-3 font-normal" />
     </label>
-    <button type="button" disabled={busy || query.trim().length < 2} onClick={search} className="min-h-11 rounded-xl bg-enclave-lavender px-3 text-xs font-semibold text-primary disabled:opacity-50">{busy ? 'Searching…' : 'Search locations'}</button>
+    <button type="button" disabled={busy || query.trim().length < 2} onClick={search} className="min-h-11 rounded-xl bg-enclave-lavender px-3 text-xs font-semibold text-primary disabled:opacity-50">Search locations</button>
+    {busy && <DataSkeleton rows={2} variant="line" />}
     {items.map(item => <button key={item.id} type="button" onClick={() => { onChoose(item); setQuery(item.name); setResult(null); }} className="min-h-11 rounded-xl border border-border p-2 text-left text-sm text-primary">
       {item.name}{item.address && <span className="block text-xs text-muted-foreground">{item.address}</span>}
     </button>)}
     {result?.scope === query.trim() && !items.length && <p className="text-xs text-muted-foreground">No matching location. Choose the exact point on the map.</p>}
-    {point && <p className="text-sm text-primary">{named?.key === key ? named.text : 'Looking up place…'}</p>}
+    {point && (named?.key === key ? <p className="text-sm text-primary">{named.text}</p> : <DataSkeleton rows={1} variant="line" />)}
     {failure && <p role="alert" className="text-xs text-status-red">{failure}</p>}
   </div>;
 }

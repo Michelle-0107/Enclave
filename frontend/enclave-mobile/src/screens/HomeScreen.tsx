@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
 import { reportsApi, residencyApi, type ApiError, type ReportRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors, reportStatusTone } from '../theme';
+import { SkeletonCard } from '../components/DataSkeleton';
 
 type Props = {
   onReportPress: () => void;
@@ -117,10 +117,7 @@ export default function HomeScreen({
       </View>
 
       {isLoading ? (
-        <View style={styles.updateCard}>
-          <ActivityIndicator size="small" color={colors.navy} />
-          <Text style={styles.description}>Loading your latest update...</Text>
-        </View>
+        <SkeletonCard rows={3} />
       ) : error ? (
         <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
       ) : latestReport ? (

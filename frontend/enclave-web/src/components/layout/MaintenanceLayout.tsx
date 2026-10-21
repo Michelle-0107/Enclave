@@ -9,6 +9,7 @@ import { Bell, ClipboardList, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import StaffProfile from './StaffProfile';
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import PortalSessionSkeleton from "./PortalSessionSkeleton";
 
 const navigation = [
   { label: "My tasks", href: "/maintenance", icon: ClipboardList },
@@ -49,11 +50,7 @@ export default function MaintenanceLayout({ children }: Props) {
   }
 
   if (!auth.ready || !auth.user || auth.role !== "maintenance") {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-background px-6 text-sm text-muted-foreground">
-        Checking your Enclave session…
-      </main>
-    );
+    return <PortalSessionSkeleton role="maintenance" pathname={pathname} />;
   }
 
   async function logout() {

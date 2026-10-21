@@ -16,6 +16,7 @@ import ReportLocationScreen, {
 } from './ReportLocationScreen';
 import ReportSuccessScreen from './ReportSuccessScreen';
 import type { ResidentReport } from './MyReportsScreen';
+import { SkeletonList } from '../components/DataSkeleton';
 
 import {
   ApiError,
@@ -771,7 +772,7 @@ function IssueSelection({
       {roadPointNotice ? <Text style={styles.body}>{roadPointNotice}</Text> : null}
 
       {loading ? (
-        <ActivityIndicator color={colors.navy} />
+        <SkeletonList rows={4} />
       ) : error ? (
         <View style={styles.panel}>
           <Text style={styles.error}>{error}</Text>

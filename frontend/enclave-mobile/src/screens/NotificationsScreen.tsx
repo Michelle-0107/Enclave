@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -13,6 +12,7 @@ import {
 import { notificationsApi, type ApiError, type NotificationRecord } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import { SkeletonList } from '../components/DataSkeleton';
 
 export type ResidentNotification = {
   id: string;
@@ -90,10 +90,7 @@ export default function NotificationsScreen({
       </Text>
 
       {isLoading ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator size="small" color={colors.navy} />
-          <Text style={styles.subtitle}>Loading your updates...</Text>
-        </View>
+        <SkeletonList rows={4} avatar />
       ) : error ? (
         <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
       ) : notifications.length === 0 ? (

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { locationsApi } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import { SkeletonBlock } from '../components/DataSkeleton';
 
 export function useMapPointName(coordinate: readonly [number, number] | null | undefined, areaId: string) {
   const latitude = coordinate?.[1]; const longitude = coordinate?.[0];
@@ -31,5 +32,5 @@ export default function NamedMapPoint({ coordinate, areaId, label }: {
 }) {
   const name = useMapPointName(coordinate, areaId);
   if (!coordinate) return null;
-  return <Text style={{ color: colors.navy, fontSize: 12 }}>{label}: {name ?? 'Looking up place...'}</Text>;
+  return name ? <Text style={{ color: colors.navy, fontSize: 12 }}>{label}: {name}</Text> : <View accessibilityLabel={`Loading ${label.toLowerCase()} place name`} accessibilityRole="progressbar" style={{ paddingVertical: 3 }}><SkeletonBlock width="64%" height={11} /></View>;
 }

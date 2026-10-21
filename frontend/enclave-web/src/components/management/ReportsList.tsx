@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ReportStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
 import ReportThumbnail from '@/components/management/ReportThumbnail';
 import { Label } from '@/components/ui/label';
+import { DataSkeleton } from '@/components/ui/DataSkeleton';
 import { getManagementReports, type ManagementReport } from '@/lib/api';
 
 import {
@@ -179,7 +180,7 @@ export default function ReportsList({
             <button type="button" onClick={() => void load()} className="mt-3 font-semibold underline">Try again</button>
           </div>
         ) : loading ? (
-          <p role="status" className="border-b py-8 text-sm text-muted-foreground">Loading reports…</p>
+          <DataSkeleton rows={4} variant="report" />
         ) : filteredReports.length === 0 ? (
           <div
             role="status"

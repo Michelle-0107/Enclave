@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { demoAreasApi, type ResidentServiceArea } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import { SkeletonMap, SkeletonBlock } from '../components/DataSkeleton';
 import DemoMapScreen from './DemoMapScreen';
 import { dataset as builtInSnapshot, validateDataset, type Dataset } from './network';
 
@@ -101,7 +102,7 @@ export default function ServiceAreaDemoScreen(props: Props) {
       {current?.id === 'built-in-snapshot' && <Text style={styles.hint}>Using the built-in demo snapshot. Server service areas are unavailable.</Text>}
       <Pressable accessibilityRole="button" disabled={loading} onPress={retryAreas} style={styles.retry}><Text style={styles.name}>Retry service areas</Text></Pressable>
     </View> : null}
-    {loading ? <View style={styles.loading}><ActivityIndicator color={colors.navy} /><Text style={styles.hint}>Loading service-area map…</Text></View>
+    {loading ? <View style={styles.loading}><SkeletonBlock width="60%" height={14} /><SkeletonMap /></View>
       : current && <DemoMapScreen key={current.id} {...props} areaId={current.id} data={current.dataset} />}
   </View>;
 }

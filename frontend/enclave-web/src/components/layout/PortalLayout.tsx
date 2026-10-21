@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import StaffProfile from './StaffProfile';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import PortalSessionSkeleton from './PortalSessionSkeleton';
 
 const navigation = [
   {
@@ -70,11 +71,7 @@ export default function PortalLayout({ children }: Props) {
   }, [ready, user, role, error, router]);
 
   if (!ready || (!user && !error) || (user && role !== 'management')) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center bg-background px-6 text-sm text-muted-foreground">
-        Checking your Enclave session…
-      </main>
-    );
+    return <PortalSessionSkeleton role="management" pathname={pathname} />;
   }
 
   if (error) {

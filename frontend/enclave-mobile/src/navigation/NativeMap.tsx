@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SkeletonMap } from '../components/DataSkeleton';
 import { Map as MapLibreMap, GeoJSONSource, Layer, type MapProps } from '@maplibre/maplibre-react-native';
 import { loadNativeMapStyle, normalizeNativeMapStyle, type NativeMapStyle } from './nativeMapStyle';
 
@@ -30,7 +31,7 @@ export function NativeMap({ mapStyle, style, children, serviceAreaBounds, ...pro
         <Pressable accessibilityRole="button" onPress={() => setAttempt(value => value + 1)} style={s.retry}>
           <Text style={s.retryText}>Retry map</Text>
         </Pressable>
-      </> : <ActivityIndicator accessibilityLabel="Loading map" color="#20304d" />}
+      </> : <SkeletonMap />}
     </View>;
   }
   if (!serviceAreaBounds) return <MapLibreMap {...props} style={style} mapStyle={current?.value ?? inlineStyle}>{children}</MapLibreMap>;

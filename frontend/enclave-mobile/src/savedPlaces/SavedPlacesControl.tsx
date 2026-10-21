@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import { createSavedPlacesStore, type PlacePoint, type SavedPlace } from './store';
+import { SkeletonList } from '../components/DataSkeleton';
 
 const store = createSavedPlacesStore(supabase);
 type Props = {
@@ -21,6 +22,7 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
   const [items, setItems] = useState<SavedPlace[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const request = useRef(0);
@@ -45,14 +47,14 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
   async function refresh() {
     if (lock.current) return;
     const version = ++request.current;
-    lock.current = true; setBusy(true); setError(''); setItems([]);
+    lock.current = true; setBusy(true); setLoadingItems(true); setError(''); setItems([]);
     try {
       const loaded = await store.list();
       if (request.current === version) setItems(loaded);
     } catch (failure) {
       if (request.current === version) setError(failure instanceof Error ? failure.message : 'Could not load saved places.');
     } finally {
-      if (request.current === version) { lock.current = false; setBusy(false); }
+      if (request.current === version) { lock.current = false; setBusy(false); setLoadingItems(false); }
     }
   }
   function open(save: boolean) {
@@ -137,7 +139,7 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
               {draft.id && current && <Pressable accessibilityRole="button" disabled={busy} onPress={() => setDraft({ ...draft, coordinate: [...current.coordinate] })} style={styles.button}><Text style={styles.link}>Use current point</Text></Pressable>}
               <Pressable accessibilityRole="button" disabled={busy || !draft.label.trim()} onPress={() => void save()} style={[styles.primary, (busy || !draft.label.trim()) && styles.disabled]}><Text style={styles.primaryText}>{draft.id ? 'Save changes' : 'Save place'}</Text></Pressable>
             </View> : <>
-              {items.map(item => <View key={item.id} style={styles.item}>
+              {loadingItems ? <SkeletonList rows={3} /> : items.map(item => <View key={item.id} style={styles.item}>
                 <Pressable accessibilityRole="button" accessibilityLabel={`Use ${item.label} as ${field}`} disabled={busy} style={styles.choice} onPress={() => { onChoose(item); close(); }}>
                   <Text style={styles.name}>{item.label}</Text><Text style={styles.hint}>{item.coordinate[1].toFixed(6)}, {item.coordinate[0].toFixed(6)}</Text>
                 </Pressable>
@@ -149,7 +151,7 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
               {!busy && !error && !items.length && <Text style={styles.hint}>No saved places yet. Choose a point, tap Save selected point, and give it a name such as Home or Work. You can reuse or edit it later.</Text>}
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => void refresh()} style={styles.button}><Text style={styles.link}>Refresh</Text></Pressable>
             </>}
-            {busy && <ActivityIndicator accessibilityLabel="Syncing saved places" color={colors.navy} />}
+            {busy && !loadingItems && <ActivityIndicator accessibilityLabel="Saving saved place" color={colors.navy} />}
             {error ? <Text accessibilityRole="alert" style={styles.danger}>{error}</Text> : null}
           </ScrollView>
         </KeyboardAvoidingView>

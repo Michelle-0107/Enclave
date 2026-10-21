@@ -59,7 +59,7 @@ export default function ReportLocationMap({ latitude, longitude, locationName }:
     <section aria-label="Report location map" className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="relative min-h-[260px] flex-1 overflow-hidden rounded-2xl bg-enclave-lavender">
         <div ref={host} className="absolute inset-0 h-full w-full" />
-        {!ready && !error && <p role="status" className="absolute inset-0 flex items-center justify-center bg-enclave-lavender text-sm text-muted-foreground">Loading location map…</p>}
+        {!ready && !error && <div role="status" aria-label="Loading map" aria-busy="true" className="absolute inset-0 animate-pulse bg-slate-200/70"><span className="absolute left-1/4 top-1/3 h-3 w-1/3 rounded-full bg-white/80" /><span className="absolute bottom-1/4 right-1/4 h-3 w-1/4 rounded-full bg-white/80" /><span className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-300" /></div>}
         {error && <p role="status" className="absolute inset-0 flex items-center justify-center bg-enclave-lavender p-4 text-center text-sm text-muted-foreground">Map preview could not load. Use the navigation link to view this location.</p>}
       </div>
       <p className="text-sm font-semibold text-primary">{locationName || 'Selected map point'}</p>

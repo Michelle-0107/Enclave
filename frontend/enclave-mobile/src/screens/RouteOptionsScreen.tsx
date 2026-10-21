@@ -1,7 +1,6 @@
 import { NativeMap as Map } from '../navigation/NativeMap';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -24,6 +23,7 @@ import {
 } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import { SkeletonCard } from '../components/DataSkeleton';
 import SavedPlacesControl from '../savedPlaces/SavedPlacesControl';
 
 export type RouteOption = {
@@ -516,13 +516,11 @@ export default function RouteOptionsScreen({
         ]}
       >
         <Text style={styles.buttonText}>
-          {loading ? 'Finding routes…' : 'Find routes'}
+          Find routes
         </Text>
       </Pressable>
 
-      {loading && (
-        <ActivityIndicator color={colors.navy} />
-      )}
+      {loading && <SkeletonCard rows={3} />}
 
       {results.map((result) => {
         const config = MODES.find(
