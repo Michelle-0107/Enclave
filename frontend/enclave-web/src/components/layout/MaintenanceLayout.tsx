@@ -5,7 +5,7 @@ import { useMaintenance } from "@/components/maintenance/MaintenanceProvider";
 import EnclaveLogo from '@/components/ui/EnclaveLogo';
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ClipboardList, LogOut, UserRound } from "lucide-react";
+import { Bell, ClipboardList, History, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import StaffProfile from './StaffProfile';
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -14,6 +14,7 @@ import PortalSessionSkeleton from "./PortalSessionSkeleton";
 const navigation = [
   { label: "My tasks", href: "/maintenance", icon: ClipboardList },
   { label: "Notifications", href: "/maintenance/notifications", icon: Bell },
+  { label: "Activity logs", href: "/maintenance/activity-logs", icon: History },
   { label: "Account", href: "/maintenance/account", icon: UserRound },
 ];
 
@@ -154,7 +155,7 @@ export default function MaintenanceLayout({ children }: Props) {
         aria-label="Maintenance mobile navigation"
         className="fixed inset-x-0 bottom-0 z-50 border-t bg-card px-3 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-3 gap-2">
+        <div className="mx-auto grid max-w-lg grid-cols-4 gap-2">
           {navigation.map((item) => {
             const selected = isSelected(item.href);
             const Icon = item.icon;

@@ -29,7 +29,7 @@ function PageContent({ role, pathname }: { role: PortalRole; pathname: string })
   const account = pathname.endsWith("/account");
   const notifications = pathname.endsWith("/notifications");
   const residents = pathname.startsWith("/management/residents");
-  const activity = pathname.startsWith("/management/activity-logs");
+  const activity = pathname.endsWith("/activity-logs");
   const reportDetail = management && pathname.startsWith("/management/reports/");
   const reports = management && pathname.startsWith("/management/reports");
   const taskDetail = role === "maintenance" && pathname.startsWith("/maintenance/tasks/");
@@ -86,8 +86,8 @@ function PageContent({ role, pathname }: { role: PortalRole; pathname: string })
 
 export default function PortalSessionSkeleton({ role, pathname }: { role: PortalRole; pathname: string }) {
   const management = role === "management";
-  const navigationCount = management ? 6 : 3;
-  const sidebarCount = management ? 7 : 3;
+  const navigationCount = management ? 7 : 4;
+  const sidebarCount = management ? 7 : 4;
 
   return (
     <div className="portal-shell min-h-dvh bg-background text-foreground" data-role={role} aria-busy="true">
@@ -107,7 +107,7 @@ export default function PortalSessionSkeleton({ role, pathname }: { role: Portal
         </main>
       </div>
       <nav aria-hidden="true" className="fixed inset-x-0 bottom-0 z-50 border-t bg-card px-3 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden">
-        <div className={`mx-auto grid max-w-2xl gap-2 ${management ? "grid-cols-6" : "grid-cols-3"}`}>
+        <div className={`mx-auto grid max-w-2xl gap-2 ${management ? "grid-cols-7" : "grid-cols-4"}`}>
           {Array.from({ length: navigationCount }, (_, i) => <Block key={i} className="mx-auto h-12 w-12 rounded-2xl" />)}
         </div>
       </nav>
