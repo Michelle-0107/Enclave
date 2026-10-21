@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ApiError, type ManagementReport } from '@/lib/api';
-import { assignMaintenance, getMaintenanceStaff, getMaintenanceTeams, getReportTask, reassignMaintenance, reviewMaintenance,
+import { assignMaintenance, getMaintenanceStaff, getMaintenanceTeams, getReportTask, reassignMaintenance, reviewMaintenance, respondToBlocker,
   type BackendTask, type Staff, type Team } from '@/lib/maintenance/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { TaskStatusBadge, PriorityBadge } from '@/components/ui/ReportBadges';
 import { toMaintenanceTask } from '@/lib/maintenance/api';
 import WorkflowGuide from '@/components/ui/WorkflowGuide';
 import TaskHistory from '@/components/maintenance/TaskHistory';
+import BlockerFeedbackForm from './BlockerFeedbackForm';
 
 export default function MaintenanceTaskPanel({ report, onChange }: { report: ManagementReport; onChange: (task: BackendTask) => void }) {
   const [task, setTask] = useState<BackendTask | null>(null);
@@ -107,6 +108,9 @@ export default function MaintenanceTaskPanel({ report, onChange }: { report: Man
       <div className="flex flex-wrap gap-2"><TaskStatusBadge status={toMaintenanceTask(task).status} /><PriorityBadge priority={toMaintenanceTask(task).priority} /></div>
       <p className="text-sm">{teams.find(team => team.id === task.assigned_team_id)?.name ?? staff.find(person => person.profile_id === task.assigned_staff_id)?.display_name ?? 'Previously assigned staff'} · Due {task.target_date}</p>
       <p className="whitespace-pre-wrap text-sm">{task.instructions}</p>
+      {task.pending_blocker && task.status !== 'resolved' && <BlockerFeedbackForm
+        key={`${task.id}:${task.version}:${task.pending_blocker.id}`} task={task} busy={busy}
+        onSubmit={(notes, newDate) => save(() => respondToBlocker(task, task.pending_blocker!.id, notes, newDate), 'Feedback sent to maintenance.')} />}
       {task.work_notes && <div><h3 className="font-semibold">Work notes</h3><p className="whitespace-pre-wrap text-sm">{task.work_notes}</p></div>}
       {['awaiting_verification', 'changes_requested', 'resolved'].includes(task.status) && <>
         <div className="grid gap-4 md:grid-cols-2"><Photo label="Before repair" url={task.before_photo_url ?? undefined} /><Photo label="After repair" url={task.after_photo_url ?? undefined} /></div>

@@ -14,7 +14,7 @@ const moduleResult = { exports: {} }, native = { ActivityIndicator: 'Spinner', P
 const deps = {
   react, 'react-native': native,
   'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
-  '@maplibre/maplibre-react-native': { Map: 'NativeMap' },
+  '@maplibre/maplibre-react-native': { Map: 'NativeMap', GeoJSONSource: 'GeoJSONSource', Layer: 'Layer' },
   './nativeMapStyle': {
     normalizeNativeMapStyle: style => ({ ...style, normalized: true }),
     loadNativeMapStyle: url => new Promise((resolve, reject) => requests.push({ url, resolve, reject })),
@@ -41,6 +41,16 @@ async function main() {
   const inline = render({ ...props, mapStyle: { version: 8, sources: {}, layers: [] } });
   assert.equal(inline.type, 'NativeMap'); assert.equal(inline.props.mapStyle.normalized, true);
   assert.equal(requests.length, 3, 'Inline styles need no request');
+  for(const bounds of [[101.721,3.217,101.741,3.235],[101.8,2.9,101.9,3.1]]){
+    const boundaryMap=render({...props,mapStyle:{version:8,sources:{},layers:[]},serviceAreaBounds:bounds});
+    assert.equal(boundaryMap.props.children[1],props.children);
+    const source=boundaryMap.props.children[0],line=source.props.children;
+    assert.equal(source.type,'GeoJSONSource');assert.equal(line.type,'Layer');
+    const [w,s,e,n]=bounds;
+    assert.equal(JSON.stringify(source.props.data.geometry.coordinates),JSON.stringify([[w,s],[e,s],[e,n],[w,n],[w,s]]));
+    assert.equal(JSON.stringify(line.props.paint['line-dasharray']),'[4,3]');
+    assert.equal(boundaryMap.props.serviceAreaBounds,undefined,'App-only bounds must not leak into native Map props');
+  }
   console.log('PASS: native map waits for correction, ignores stale responses, retries and forwards camera/route/ref/events');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

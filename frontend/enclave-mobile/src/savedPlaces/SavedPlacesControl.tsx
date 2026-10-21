@@ -110,11 +110,11 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
 
   return <View style={styles.controls}>
     <View style={styles.actions}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Choose a saved place for ${field}`} disabled={disabled} onPress={() => open(false)} style={[styles.button, disabled && styles.disabled]}>
-        <Text style={styles.link}>Use saved place</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Choose a saved place for ${field}`} disabled={disabled} onPress={() => open(false)} style={[styles.button, styles.actionButton, disabled && styles.disabled]}>
+        <Text style={[styles.link, styles.actionLabel]}>Use saved place</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Save selected ${field}`} disabled={disabled || !current} onPress={() => open(true)} style={[styles.button, (disabled || !current) && styles.disabled]}>
-        <Text style={styles.link}>Save selected point</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Save selected ${field}`} disabled={disabled || !current} onPress={() => open(true)} style={[styles.button, styles.actionButton, (disabled || !current) && styles.disabled]}>
+        <Text style={[styles.link, styles.actionLabel]}>Save selected point</Text>
       </Pressable>
     </View>
     {showHelp && <Text style={styles.hint}>Save places like Home or Work once, then reuse them for either point. You can rename or adjust a saved place later.</Text>}
@@ -159,7 +159,7 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
 }
 
 const styles = StyleSheet.create({
-  controls: { gap: 6 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  controls: { gap: 6 }, actions: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'stretch', gap: 8 }, actionButton: { flex: 1, minWidth: 0, justifyContent: 'center', alignItems: 'center' }, actionLabel: { textAlign: 'center' },
   button: { paddingVertical: 12, paddingHorizontal: 10, minHeight: 44 },
   link: { color: colors.navy, fontWeight: '700' }, disabled: { opacity: 0.45 },
   hint: { color: colors.muted, fontSize: 13, lineHeight: 20 },

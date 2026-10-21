@@ -1,6 +1,7 @@
 """Resident demo routes computed on the same server-side OSM road graph as live routing."""
 
 from typing import Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -102,13 +103,38 @@ def _options(area_id, dataset, graph, origin, destination, profile, *, modes=Non
                 min(10, max(1, item.get('restrictionRadiusMeters', 3)))))
         })
         result.append(DemoRouteOption(mode=mode, route=route))
+    if profile=='walking':_reuse_shared_facility_candidates(dataset,result)
     return result
+
+
+def _reuse_shared_facility_candidates(dataset,result):
+    # Endpoint matching can choose different nearby edges after stairs are
+    # filtered. Retain a complete valid step-free candidate in ordinary walking's
+    # candidate pool: all its registered facilities are now shared, and it has
+    # no inferred internal open-land gaps. Distances and maneuvers stay intact.
+    if dataset.get('accessibilityFacilities'):
+        accessible=next((item.route for item in result if item.mode=='accessible' and item.route is not None),None)
+        if accessible is not None:
+            for option in result:
+                if option.mode not in {'shortest','avoid_damage'}:continue
+                if option.route is not None and option.route.distance_meters<=accessible.distance_meters+1e-6:continue
+                boxes,_=_demo_constraints(dataset,option.mode)
+                if any(route_intersects_zone(accessible.geometry.coordinates,box) for box in boxes):continue
+                option.route=accessible.model_copy(update={
+                    'route_id':uuid4(),'route_mode':option.mode,'accessibility_status':'not_requested',
+                    'warnings':[*accessible.warnings,'This walking route uses the same simulated facilities as the step-free option.'],
+                })
+                option.unavailable_reason=None
+
 
 
 def calculate_demo_routes(area_id, bounds, request, dataset, graph):
     if dataset.get('navigationFacilities'):
         from .demo_network import demo_walking_graph
         graph=demo_walking_graph(area_id)
+    if request.profile=='walking' and dataset.get('accessibilityFacilities'):
+        from .demo_accessibility import shared_demo_walking_graph
+        graph=shared_demo_walking_graph(area_id)
     origin = (request.origin.longitude, request.origin.latitude)
     destination = (request.destination.longitude, request.destination.latitude)
     if not _inside(origin, bounds) or not _inside(destination, bounds):
@@ -140,6 +166,7 @@ def calculate_demo_routes(area_id, bounds, request, dataset, graph):
             if gap > 3 and request.profile == 'walking':
                 options.extend(_options(area_id, dataset, graph, selected, destination, request.profile,
                                         modes=('avoid_damage', 'accessible')))
+                _reuse_shared_facility_candidates(dataset,options)
             return DemoRouteResponse(
                 area_id=area_id,
                 requested_origin=request.origin,

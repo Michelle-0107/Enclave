@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError
 
-from .contracts import (Blocker, EvidenceInput, EventList, NotificationList, Progress, Review,
+from .contracts import (Blocker, BlockerFeedback, EvidenceInput, EventList, NotificationList, Progress, Review,
     Staff, StaffCreate, StaffIdentity, StaffList, StaffPatch, Task, TaskCreate, TaskList,
     TaskReassign, TaskStatus, Team, TeamCreate, TeamList, Versioned)
 from .repository import MaintenanceRejected, MaintenanceUnavailable
@@ -137,6 +137,10 @@ def create_router(authenticate):
     @router.post('/api/v1/maintenance/tasks/{task_id}/blockers', response_model=Task)
     async def blocker(task_id: UUID, body: Blocker, request: Request, response: Response, user=Depends(authenticate)):
         return await change('task_blocker', task_id, body, request, response, user)
+
+    @router.post('/api/v1/management/maintenance/tasks/{task_id}/blocker-feedback', response_model=Task)
+    async def blocker_feedback(task_id: UUID, body: BlockerFeedback, request: Request, response: Response, user=Depends(authenticate)):
+        return await change('task_blocker_feedback', task_id, body, request, response, user)
 
     @router.patch('/api/v1/management/maintenance/tasks/{task_id}/assignment', response_model=Task)
     async def reassign(task_id: UUID, body: TaskReassign, request: Request, response: Response, user=Depends(authenticate)):

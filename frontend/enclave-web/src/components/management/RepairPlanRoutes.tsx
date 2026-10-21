@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type * as MapLibre from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { addFixedFacilityLayer } from '@/lib/fixedFacilityLayer';
+import { addServiceAreaBoundary, PILOT_SERVICE_BOUNDS } from '@/lib/serviceAreaBoundary';
+import { restrictionZoneFeatures } from '@/lib/restrictionZones';
 import type { WhatIfResult, RoutingRestriction, FacilityIssue } from '@/lib/api';
 import {
   repairPathViews, routeChange, repairMapPaths, routeDistance, formatRouteSeconds, routeTimeChange, repairMapFacilities, repairMapBoundsPoints,
@@ -52,7 +54,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       map.current = instance;
       instance.addControl(new M.NavigationControl({ showCompass: false }), 'top-right');
       instance.scrollZoom.disable();
-      instance.on('load', () => { if (!disposed) setLoaded(value => value + 1); });
+      instance.on('load', () => { if (!disposed && instance) { addServiceAreaBoundary(instance); setLoaded(value => value + 1); } });
       instance.on('error', () => { if (!disposed) setError('Some map tiles could not load. The route distances remain available below.'); });
       observer = new ResizeObserver(() => instance?.resize());
       observer.observe(host.current);
@@ -85,17 +87,12 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       layers.push(id);
     }
     if (restrictions.length) {
-      const features = restrictions.flatMap(item => item.exclusion_rings.map(ring => ({
-        type: 'Feature' as const, properties: { repaired: repaired.has(item.facility_id) },
-        geometry: { type: 'Polygon' as const, coordinates: [ring] },
-      })));
+      const features = restrictionZoneFeatures(restrictions, repaired);
       instance.addSource('facility-zones', {type: 'geojson', data: {type: 'FeatureCollection', features}});
       sources.push('facility-zones');
       instance.addLayer({id: 'facility-zone-fill',source:'facility-zones',type:'fill',paint:{
         'fill-color':['case',['get','repaired'],'#199366','#d42b35'],'fill-opacity':0.25}});
-      instance.addLayer({id:'facility-zone-outline',source:'facility-zones',type:'line',paint:{
-        'line-color':['case',['get','repaired'],'#199366','#d42b35'],'line-width':2}});
-      layers.push('facility-zone-fill','facility-zone-outline');
+      layers.push('facility-zone-fill');
       const segmentFeatures = restrictions.filter(item=>item.affected_segment).map(item=>({
         type:'Feature' as const,properties:{},geometry:item.affected_segment!,
       }));
@@ -169,7 +166,7 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
       No verified accessible route is available for one or both cases. The map shows an Avoid damage walking reference instead. It may include stairs and is not verified for wheelchair use. Accessible availability counts are unchanged.
     </p>}
     {restrictions.length>0 && <div className="text-xs text-muted-foreground">
-      <p>Red areas: restrictions remaining after repairs. Green areas: cleared in this simulation. Purple: mapped facility road segment. R: simulated repair; !: reported issue.</p>
+      <p>Dashed outline: service area. Red areas: restrictions remaining after repairs. Green areas: cleared in this simulation. Shading shows the affected area as one continuous zone. Purple: mapped facility road segment. R: simulated repair; !: reported issue.</p>
       {restrictions.some(item=>item.binding_source==='point_only') && <p className="mt-1 text-amber-800">Some facilities have only point locations, without a confirmed affected road segment. Their zones are approximations; nearby roads are not automatically blocked.</p>}
     </div>}
     {baseline.some(row=>row.comparison_origin) && <p className="text-xs text-muted-foreground">Before and after use the same matched start and destination. An endpoint change beyond 1 m is treated as not assessable, not as an improvement.</p>}
@@ -188,6 +185,10 @@ export default function RepairPlanRoutes({ baseline, plan, restrictions = EMPTY_
         const M=api.current;const instance=map.current;const points=repairMapBoundsPoints(beforePoints,afterPoints,facilities);
         if(M && instance && points.length){const bounds=new M.LngLatBounds();points.forEach(point=>bounds.extend(point));instance.fitBounds(bounds,{padding:80,maxZoom:18,duration:0});}
       }}>Show route and selected repairs</button>
+      <button type="button" className="mt-2 min-h-9 px-3 underline text-primary" onClick={()=>{
+        const [w,s,e,n]=PILOT_SERVICE_BOUNDS;
+        map.current?.fitBounds([[w,s],[e,n]],{padding:24,duration:400});
+      }}>Show service area</button>
       {facilities.some(item=>item.selected && !item.hasRestrictionGeometry) && <p className="mt-1 text-xs text-amber-800">Affected road areas are unavailable for some selected facilities in this comparison. Those markers show facility locations only.</p>}
     </div>
     <div ref={host} className="h-[420px] min-h-[300px] w-full overflow-hidden rounded-2xl border border-border" aria-label="Map showing before and after repair routes" />

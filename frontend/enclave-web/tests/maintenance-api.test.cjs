@@ -160,3 +160,12 @@ test('related reports find the same shared task rather than offering a duplicate
   assert.equal(await api.getReportTask('UNRELATED'), null);
   assert.throws(() => api.validateTask({ ...shared, related_ticket_ids: 'RELATED-TICKET' }), { status: 503 });
 });
+
+test('management blocker feedback sends the exact task version, blocker and explicit date decision', async()=>{
+ const calls=[];const api=gateway(async(url,options)=>{calls.push({url,options});return task();});
+ await api.respondToBlocker(task(5),17,'Parts ordered');
+ await api.respondToBlocker(task(6),18,'Access arranged','2027-01-05');
+ assert.equal(calls[0].url,'/api/v1/management/maintenance/tasks/task-uuid/blocker-feedback');
+ assert.equal(JSON.stringify(calls[0].options.body),JSON.stringify({expected_version:5,blocker_event_id:17,notes:'Parts ordered',change_due_date:false}));
+ assert.equal(calls[1].options.body.expected_version,6);assert.equal(calls[1].options.body.change_due_date,true);assert.equal(calls[1].options.body.target_date,'2027-01-05');
+});

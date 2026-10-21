@@ -91,6 +91,24 @@ class Blocker(Progress):
     blocker_type: Literal['parts', 'access', 'safety', 'other']
 
 
+class BlockerFeedback(Progress):
+    blocker_event_id: int = Field(ge=1, strict=True)
+    change_due_date: bool = Field(strict=True)
+    target_date: date | None = None
+
+    @model_validator(mode='after')
+    def date_choice(self):
+        if self.change_due_date != (self.target_date is not None):
+            raise ValueError('Provide a new due date only when choosing to change it')
+        return self
+
+
+class PendingBlocker(BaseModel):
+    id: int = Field(ge=1)
+    note: str
+    created_at: datetime
+
+
 class Review(Versioned):
     decision: Literal['approve', 'rework']
     note: str = Field(min_length=1, max_length=2000, description='Internal staff review note.')
@@ -111,6 +129,8 @@ class EvidenceInput(Progress):
 
 
 class Task(BaseModel):
+    pending_blocker: PendingBlocker | None = None
+    pending_blocker_count: int = Field(default=0, ge=0)
     id: UUID
     ticket_id: str
     related_ticket_ids: list[str] = Field(default_factory=list)
