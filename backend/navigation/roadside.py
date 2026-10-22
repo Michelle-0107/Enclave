@@ -28,6 +28,7 @@ LOCAL_ROADS = {'residential', 'living_street', 'service', 'unclassified'}
 LOCAL_CROSSING_SPACING = 25.0
 OPEN_ACCESS_METERS = 20.0
 ENDPOINT_ACCESS_METERS = 20.0
+DEMO_ENDPOINT_ACCESS_METERS = 100.0
 OFFSET = 3.0
 SCALE = 111_195.08
 _ROUTE_TOPOLOGY_LOCK = RLock()
@@ -551,7 +552,10 @@ class RoadsideGraph:
                 raise NavigationRejected(422,'No simulated step-free entrance is registered for this building.')
             return sorted(candidates)[:1]
         if not buildings:
-            candidates=self._snap_candidates_within(point,buildings,ENDPOINT_ACCESS_METERS)
+            radius=getattr(self,'endpoint_access_meters',ENDPOINT_ACCESS_METERS)
+            candidates=self._snap_candidates_within(point,buildings,radius)
+            if not candidates and getattr(self,'enable_endpoint_detours',False):
+                candidates=self._detour_candidates_within(point,radius)
         else:
             # Building access has no arbitrary metre cap. Expand over the whole
             # declared routing area, stopping at the nearest usable mapped path.
@@ -567,8 +571,43 @@ class RoadsideGraph:
             # connected route to the other endpoint. Building access is nearest.
             candidates=candidates[:1]
         if not candidates:
-            raise NavigationRejected(422,'No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point.')
+            if not hasattr(self,'endpoint_access_meters'):
+                raise NavigationRejected(422,'No mapped walking access is reachable under the 20 m outdoor gap or nearest-building-road rules. Choose another access point.')
+            raise NavigationRejected(422,f'No obstacle-clear mapped walking access is reachable within {self.endpoint_access_meters:.0f} m. Choose a mapped entrance or another access point.')
         return candidates
+
+    def _detour_candidates_within(self,point,radius):
+        """Find short open-land approaches around mapped building corners.
+
+        A straight projection can pass through a building even when a nearby
+        ground-level path exists. Each leg is checked against buildings, walls,
+        water and road crossings; no connector is added to the walking graph.
+        """
+        delta=radius/SCALE;dx=delta/math.cos(math.radians(3))
+        nearby=self.land_access.polygon_index.candidates(
+            (point[0]-dx,point[1]-delta),(point[0]+dx,point[1]+delta))
+        corners={vertex for i in nearby if self.land_access.polygons[i][0]=='building'
+                 for ring in self.land_access.polygons[i][1] for vertex in ring
+                 if self.endpoint_inside(vertex) and distance(point,vertex)<radius}
+        corners=sorted(corners,key=lambda vertex:distance(point,vertex))[:48]
+        queue=[(0.0,point,())];best_at={point:0.0};best={}
+        while queue:
+            walked,current,path=heapq.heappop(queue)
+            if walked!=best_at[current]:continue
+            if current!=point:
+                for gap,index,fraction,snap in self._snap_candidates_within(current,frozenset(),radius-walked):
+                    if self.edges[index].grade!=('0',False,False):continue
+                    total=walked+gap;group=self.components[self.edges[index].a]
+                    candidate=(total,index,fraction,snap,(point,*path,snap))
+                    if group not in best or (total,index)<(best[group][0],best[group][1]):best[group]=candidate
+            for corner in corners:
+                if corner==current:continue
+                leg=distance(current,corner);total=walked+leg
+                if total>=radius or total>=best_at.get(corner,float('inf')):continue
+                if not self.access_clear(current,corner,allow_road_endpoint=True):continue
+                best_at[corner]=total
+                heapq.heappush(queue,(total,corner,(*path,corner)))
+        return sorted(best.values())
 
     def _snap_candidates_within(self,point,buildings,radius):
         delta=(radius+1e-6)/SCALE; dx=delta/math.cos(math.radians(3))
@@ -620,6 +659,21 @@ class RoadsideGraph:
         by_group={self.components[self.edges[e[1]].a]:e for e in ends}
         pairs=[(start,by_group[self.components[self.edges[start[1]].a]]) for start in starts
                if self.components[self.edges[start[1]].a] in by_group]
+        if not pairs and getattr(self,'enable_endpoint_detours',False):
+            # A close straight-line access may lead to an isolated component.
+            # Search obstacle-clear approaches to other components only then.
+            expanded=[]
+            for point,rows in ((origin,starts),(target,ends)):
+                by_component={self.components[self.edges[row[1]].a]:row for row in rows}
+                if not self.land_access.buildings_at(point):
+                    for row in self._detour_candidates_within(point,self.endpoint_access_meters):
+                        group=self.components[self.edges[row[1]].a]
+                        if group not in by_component or row[0]<by_component[group][0]:by_component[group]=row
+                expanded.append(list(by_component.values()))
+            starts,ends=expanded
+            by_group={self.components[self.edges[e[1]].a]:e for e in ends}
+            pairs=[(start,by_group[self.components[self.edges[start[1]].a]]) for start in starts
+                   if self.components[self.edges[start[1]].a] in by_group]
         if not pairs:
             raise NavigationRejected(422,'No connected walking route meets the road-crossing rules. Open-land access is allowed, but mapped barriers and roads without a permitted crossing still separate these locations.')
         # Select access independently of repairs and route mode. A damage zone
@@ -672,7 +726,7 @@ class RoadsideGraph:
         target_building=bool(self.land_access.buildings_at(target))
         buildings=origin_building or target_building
         demo_step_free=demo_mode and getattr(self,'demo_step_free_policy',None)=='demo-step-free-v1'
-        access_limit=ENDPOINT_ACCESS_METERS+1e-6 if demo_step_free else 5
+        access_limit=getattr(self,'endpoint_access_meters',ENDPOINT_ACCESS_METERS)+1e-6 if demo_step_free else 5
         if body.route_mode=='accessible' and ((buildings and not demo_step_free) or (not origin_building and start[0]>access_limit) or (not target_building and end[0]>access_limit)):
             raise NavigationRejected(422,'The building exit or open-land approach is assumed, not verified step-free access.')
         topology, edge_lengths = self.route_topology()
@@ -720,7 +774,9 @@ class RoadsideGraph:
                 yield from sorted((*base_neighbors(node),*split_adjacency[node]),key=lambda row:(row[0],row[1]))
             else:
                 yield from base_neighbors(node)
-        if zone_index.intersects(origin,start[3]) or zone_index.intersects(end[3],target):
+        start_path=start[4] if len(start)>4 else (origin,start[3])
+        end_path=end[4] if len(end)>4 else (target,end[3])
+        if any(zone_index.intersects(a,b) for path in (start_path,end_path) for a,b in zip(path,path[1:])):
             raise NavigationRejected(422,'A walking approach intersects a reported damaged area; choose another access point.')
         # Lexicographic cost: recorded roads/facilities first. Only when they
         # cannot connect the fixed endpoints do inferred <=20 m gaps participate.
@@ -747,9 +803,12 @@ class RoadsideGraph:
         start_approach=start[0]>5 and not origin_building
         end_approach=end[0]>5 and not target_building
         if start_approach:
-            selected.insert(0,(Edge('@origin','@start',(origin,start[3]),'outdoor approach','open_access',''),origin,start[3],start[0]))
+            selected[:0]=[(Edge('@origin','@start',(a,b),'outdoor approach','open_access',''),a,b,distance(a,b))
+                         for a,b in zip(start_path,start_path[1:])]
         if end_approach:
-            selected.append((Edge('@end','@target',(end[3],target),'outdoor approach','open_access',''),end[3],target,end[0]))
+            arrival_path=tuple(reversed(end_path))
+            selected.extend((Edge('@end','@target',(a,b),'outdoor approach','open_access',''),a,b,distance(a,b))
+                            for a,b in zip(arrival_path,arrival_path[1:]))
         geometry=[selected[0][1]]; maneuvers=[]; total=0.0
         kinds=set(); crossing_ids=set(); unmarked_ids=set(); simulated_ids=set(); facility_ids=set()
         for edge,pa,pb,length in selected:
@@ -820,7 +879,7 @@ class RoadsideGraph:
                 *(['Includes private residential ways under the app resident-access policy for verified residents of supported service areas.']
                   if any(edge.way_id in self.private_way_ids for edge,_,_,_ in selected) else []),
                 *(['Demo-only route: facility damage and step-free annotations are simulated and not field verified.'] if demo_mode else []),
-                *(['Hypothetical dropped kerbs, lift-access bridges, paved ramp connectors and permitted outdoor approaches up to 20m; registered building entrance ramps assume indoor step-free access for this demo. No surveyed accessibility is implied.'] if demo_step_free else []),
+                *([f'Hypothetical dropped kerbs, lift-access bridges, paved ramp connectors and obstacle-checked outdoor approaches up to {getattr(self,"endpoint_access_meters",ENDPOINT_ACCESS_METERS):.0f}m; registered building entrance ramps assume indoor step-free access for this demo. No surveyed accessibility is implied.'] if demo_step_free else []),
                 *(['Simulated bridges/crossings are fictional and must not be used as directions for a real road crossing.'] if simulated_ids else []),
                 *(['Community damage coverage is not enabled in this temporary area.'] if not community_supported else [] )])
 
