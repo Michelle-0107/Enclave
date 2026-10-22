@@ -285,7 +285,7 @@ def create_app(
     @application.exception_handler(WhatIfUnavailable)
     async def what_if_unavailable(request, error):
         if error.reason == 'timeout':
-            return JSONResponse(status_code=504, content={"detail": "Repair comparison timed out while calculating routes. Please retry; if it persists, check backend capacity."},
+            return JSONResponse(status_code=504, content={"detail": "Repair comparison timed out while calculating routes. Please retry."},
                                 headers={"Cache-Control": "no-store"})
         detail = ("Repair comparison routing is unavailable; check the routing service."
                   if error.reason == 'routing' else
