@@ -18,7 +18,6 @@ import {
 } from "@/lib/api";
 
 import RepairPlanRoutes from "./RepairPlanRoutes";
-import RepairSummaryPanel from "./RepairSummaryPanel";
 import CandidateReviewButton from "./CandidateReviewButton";
 import { formatRouteSeconds, repairPathViews, routeDistance, routeTimeChange } from "@/lib/repairRouteView";
 import { ArrowLeft, ArrowRight, Copy, Plus, RotateCcw, Trash2 } from "lucide-react";
@@ -70,6 +69,7 @@ const comparisonNoteLabels: Array<[string, string]> = [
   ["Accessible fallback routes", "Unverified walking references and unassessed links do not count as accessible."],
   ["Route modes are summarized", "Paths are management-defined journeys, counted once across route modes."],
   ["Costs are management-entered", "MYR costs are estimates; missing prices remain unknown."],
+  ["MYR estimates prefer", "Verified repair costs are used when available; provisional reference prices and manual overrides remain estimates."],
   ["Unknown, unassessed, or inaccessible", "Unverified walking references and unassessed links do not count as accessible."],
   ["Road geometry and damage zones", "Repair benefits are measured per plan within the KL East pilot."],
 ];
@@ -179,6 +179,8 @@ export default function WhatIfPlanner() {
   const [initialCandidatesLoaded, setInitialCandidatesLoaded] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [error, setError] = useState("");
+  const [summaryFailure, setSummaryFailure] = useState<{ key: string; message: string } | null>(null);
+  const [summaryAttempt, setSummaryAttempt] = useState(0);
   const comparisonInputs = JSON.stringify({ journeys, plans, modes, budget, issues });
   const comparisonInputsRef = useRef(comparisonInputs);
   useEffect(() => { comparisonInputsRef.current = comparisonInputs; }, [comparisonInputs]);
@@ -298,8 +300,7 @@ export default function WhatIfPlanner() {
       ? lookup.name : `${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}`;
   }
 
-  // The candidate API does not yet provide prices. This single fallback lets future
-  // backend estimates populate the UI while retaining management overrides.
+  // Keep the backend's source-backed suggestion visible until management edits it.
   function costFor(plan: PlanForm, facility: FacilityIssue) {
     return plan.costs[facility.facility_id] ?? facility.estimated_cost_myr ?? "";
   }
@@ -412,7 +413,8 @@ export default function WhatIfPlanner() {
       name: plan.name.trim() || `Repair plan ${index + 1}`,
       repairs: plan.facilities.map((facilityId) => ({
         facility_id: facilityId,
-        estimated_cost_myr: (plan.costs[facilityId] ?? facilities.find(item => item.id === facilityId)?.sample.estimated_cost_myr ?? "").trim() || null,
+        // Null requests a fresh backend estimate from the comparison snapshot.
+        estimated_cost_myr: plan.costs[facilityId]?.trim() || null,
       })),
     }));
 
@@ -430,6 +432,8 @@ export default function WhatIfPlanner() {
       setResult(comparison);
       setSelectedPlanIndex(0);
       setSummary(null);
+      setSummaryFailure(null);
+      setSummaryAttempt(0);
       const first = comparison.baseline[0];
       setSelectedRoute(first ? `${first.path_id}:${first.route_mode}` : "");
       setStep(3);
@@ -451,11 +455,12 @@ export default function WhatIfPlanner() {
   useEffect(() => {
     if (!result) return;
     let active = true;
+    const key = `${result.simulation_id}:${summaryMode}`;
     getRepairSummary(result.simulation_id, summaryMode)
-      .then(value => { if (active) setSummary(value); })
-      .catch(() => { if (active) setSummary(null); });
+      .then(value => { if (active) { setSummary(value); setSummaryFailure(null); } })
+      .catch(() => { if (active) { setSummary(null); setSummaryFailure({ key, message: "AI summary is unavailable. Route comparisons, entered repair prices and budget remain available above. If the comparison expired, run Compare again." }); } });
     return () => { active = false; };
-  }, [result, summaryMode]);
+  }, [result, summaryMode, summaryAttempt]);
 
   function numericInput(
     label: string,
@@ -539,6 +544,7 @@ export default function WhatIfPlanner() {
 
   const resultMode = summaryMode;
   const visibleSummary = summary?.facts.route_mode === resultMode ? summary : null;
+  const visibleSummaryFailure = result && summaryFailure?.key === `${result.simulation_id}:${resultMode}` ? summaryFailure.message : null;
   const planFact = visibleSummary?.facts.plans.find(item => item.id === selectedResultPlan?.id);
   const planModeSummary = selectedResultPlan?.summaries.find(item => item.route_mode === resultMode);
   const resultViews = selectedResultPlan ? repairPathViews(result?.baseline ?? [], selectedResultPlan.paths).filter(view => view.mode === resultMode) : [];
@@ -548,6 +554,8 @@ export default function WhatIfPlanner() {
     const after = view.after.route?.duration_seconds;
     return total + (!view.before.reference && !view.after.reference && before != null && after != null ? before - after : 0);
   }, 0);
+  const comparableTimeChange = planFact && visibleSummary?.facts.comparable_path_count
+    ? planFact.saved_seconds : comparableViews.length ? savedSeconds : null;
   const recommended = visibleSummary?.facts.recommended_plan_ids ?? [];
 
   return (
@@ -626,13 +634,13 @@ export default function WhatIfPlanner() {
             {selectedPlan && <>
               <div className="flex flex-wrap items-end gap-3"><label className="min-w-[210px] flex-1 text-xs font-semibold">Plan name<input required maxLength={120} value={selectedPlan.name} onChange={event => patchPlan(selectedPlanIndex, { name: event.target.value })} className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal" /></label>{plans.length > 1 && <button type="button" onClick={() => { setPlans(items => items.filter((_, i) => i !== selectedPlanIndex)); setSelectedPlanIndex(0); setResult(null); }} className="min-h-10 text-xs font-semibold text-red-600 underline">Remove plan</button>}</div>
               <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-bold">Qualified Candidates</h3><button type="button" disabled={loadingCandidates} onClick={() => void loadCandidates()} className="text-xs font-semibold text-blue-600 underline">{loadingCandidates ? "Refreshing…" : "Refresh candidates"}</button></div>
-              <p className="text-xs text-slate-500">Facilities are grouped from current qualified reports. Costs are management estimates until backend pricing is available.</p>
+              <p className="text-xs text-slate-500">Facilities are grouped from current qualified reports. Suggested costs use completed-repair history when available, otherwise clearly labelled provisional reference prices. Edit any amount to use a vendor quote.</p>
               {loadingCandidates ? <DataSkeleton rows={3} variant="card" /> : facilities.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No qualified open issues are available to simulate.</p> : <ul className="max-h-[520px] space-y-3 overflow-y-auto pr-1">{facilities.map(({ id, incidents, sample }) => {
                 const checked = selectedPlan.facilities.includes(id);
                 const cost = costFor(selectedPlan, sample);
                 const custom = Object.hasOwn(selectedPlan.costs, id);
                 return <li key={id} className={`rounded-xl border p-3 ${checked ? "border-blue-400 bg-blue-50/40" : "border-slate-200 bg-slate-50"}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3"><label className="flex min-w-0 flex-1 items-start gap-2 text-sm"><input type="checkbox" checked={checked} onChange={event => toggleFacility(selectedPlanIndex, id, event.target.checked)} className="mt-1 size-4 accent-blue-600" /><span className="min-w-0"><span className="block font-bold">{sample.facility_name}</span><span className="block text-xs text-slate-500">{sample.facility_type} · {incidents.length} qualified issue{incidents.length === 1 ? "" : "s"} · {sample.fault_kind}</span></span></label><div className="w-[150px]"><label className="block text-[10px] font-bold text-slate-500">Estimated cost · MYR<input type="number" min="0" step="0.01" placeholder="Unknown" value={cost} onChange={event => patchPlan(selectedPlanIndex, { costs: { ...selectedPlan.costs, [id]: event.target.value } })} className="mt-1 min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-right text-xs font-bold text-slate-900" /></label><div className="mt-1 flex items-center justify-end gap-2 text-[10px]"><span className={custom ? "font-bold text-amber-700" : "text-slate-500"}>{custom ? "Custom" : sample.estimated_cost_myr != null ? "Backend estimate" : "No default estimate"}</span>{custom && <button type="button" onClick={() => { const costs = { ...selectedPlan.costs }; delete costs[id]; patchPlan(selectedPlanIndex, { costs }); }} className="font-bold text-blue-600 underline">Reset</button>}</div></div></div>
+                  <div className="flex flex-wrap items-start justify-between gap-3"><label className="flex min-w-0 flex-1 items-start gap-2 text-sm"><input type="checkbox" checked={checked} onChange={event => toggleFacility(selectedPlanIndex, id, event.target.checked)} className="mt-1 size-4 accent-blue-600" /><span className="min-w-0"><span className="block font-bold">{sample.facility_name}</span><span className="block text-xs text-slate-500">{sample.facility_type} · {incidents.length} qualified issue{incidents.length === 1 ? "" : "s"} · {sample.fault_kind}</span></span></label><div className="w-[150px]"><label className="block text-[10px] font-bold text-slate-500">Estimated cost · MYR<input type="number" min="0" step="0.01" placeholder="Unknown" value={cost} onChange={event => patchPlan(selectedPlanIndex, { costs: { ...selectedPlan.costs, [id]: event.target.value } })} onBlur={() => { if (selectedPlan.costs[id] === "") { const costs = { ...selectedPlan.costs }; delete costs[id]; patchPlan(selectedPlanIndex, { costs }); } }} className="mt-1 min-h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-right text-xs font-bold text-slate-900" /></label><div className="mt-1 flex items-center justify-end gap-2 text-[10px]"><span className={custom ? "font-bold text-amber-700" : "text-slate-500"}>{custom ? "Custom quote" : sample.cost_estimate_source === "historical_median" ? `Historical median (${sample.cost_estimate_sample_count ?? 0})` : sample.cost_estimate_source === "provisional_benchmark" ? "Provisional reference" : sample.estimated_cost_myr != null ? "Backend estimate" : "No default estimate"}</span>{custom && <button type="button" onClick={() => { const costs = { ...selectedPlan.costs }; delete costs[id]; patchPlan(selectedPlanIndex, { costs }); }} className="font-bold text-blue-600 underline">Reset</button>}</div></div></div>
                   <p className="mt-2 text-[11px] text-slate-500">{sample.affects_routes ? "Reported as affecting routes" : "No route effect recorded"} · {sample.latitude.toFixed(6)}, {sample.longitude.toFixed(6)}</p>
                 </li>;
               })}</ul>}
@@ -656,7 +664,39 @@ export default function WhatIfPlanner() {
       </section>}
 
       {step === 3 && result && selectedResultPlan && <section aria-labelledby="results-title" className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-blue-900 to-slate-950 p-4 text-white"><div><p className="text-xs font-bold uppercase tracking-wide text-blue-200">Calculated repair comparison · {resultMode === "accessible" ? "Accessible" : "Avoid damage"}</p><h2 id="results-title" className="mt-1 text-lg font-extrabold">{recommended.length ? `Recommended: ${result.plans.filter(plan => recommended.includes(plan.id)).map(plan => plan.name).join(" / ")}` : "Compare independent repair plans"}</h2><p className="mt-1 text-xs text-slate-300">{visibleSummary?.facts.explanation ?? "Results reflect the current incident snapshot and backend route calculation."}</p></div>{recommended.includes(selectedResultPlan.id) && <CandidateReviewButton plan={selectedResultPlan} />}</div>
+        <div className="rounded-2xl bg-gradient-to-r from-blue-900 to-slate-950 p-4 text-white">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-blue-200">Calculated repair comparison · {resultMode === "accessible" ? "Accessible" : "Avoid damage"}</p>
+              <h2 id="results-title" className="mt-1 text-lg font-extrabold">{recommended.length ? `Recommended: ${result.plans.filter(plan => recommended.includes(plan.id)).map(plan => plan.name).join(" / ")}` : visibleSummary ? "No time-based recommendation" : "Compare independent repair plans"}</h2>
+            </div>
+            <div role="group" aria-label="Result route mode" className="flex rounded-xl border border-white/20 bg-slate-900/70 p-1">
+              {modes.map(mode => <button type="button" key={mode} aria-pressed={resultMode === mode} onClick={() => setSelectedRoute(`all:${mode}`)} className={`min-h-10 rounded-lg px-3 text-xs font-semibold ${resultMode === mode ? "bg-blue-600 text-white" : "text-blue-200 hover:bg-white/10 hover:text-white"}`}>{mode === "accessible" ? "Accessible" : "Avoid damage"}</button>)}
+            </div>
+          </div>
+          <div aria-label="Repair comparison summary" className="mt-4 space-y-3 border-t border-white/15 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-blue-400/30 bg-blue-500/20 px-3 py-1 font-semibold text-blue-200">{visibleSummary?.source === "ai" ? "AI executive summary & explanation" : visibleSummary ? "Calculated summary · AI unavailable" : "Executive summary"}</span>
+                {visibleSummary && <span className="rounded-lg border border-white/10 bg-white/10 px-2.5 py-1 text-slate-200">{visibleSummary.facts.comparable_path_count} common comparable {visibleSummary.facts.comparable_path_count === 1 ? "route" : "routes"} · {visibleSummary.facts.excluded_path_count} excluded · Budget: {visibleSummary.facts.budget_myr === null ? "Not entered" : money(visibleSummary.facts.budget_myr)}</span>}
+              </div>
+              {visibleSummary && <span className="text-blue-200">{visibleSummary.source === "ai" ? "AI explanation · calculated ranking" : "Calculated ranking · AI unavailable"}</span>}
+            </div>
+            {visibleSummary ? <>
+              <p className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm leading-relaxed text-white">{visibleSummary.text}</p>
+              <p className="text-xs leading-relaxed text-blue-100/80">{visibleSummary.facts.explanation}</p>
+            </> : visibleSummaryFailure ? <div role="status" className="text-sm text-blue-100"><p>{visibleSummaryFailure}</p><button type="button" onClick={() => { setSummaryFailure(null); setSummaryAttempt(value => value + 1); }} className="mt-2 min-h-10 font-semibold text-white underline">Retry summary</button></div> : <p role="status" className="text-sm text-blue-100">Generating the summary… Route comparison is ready to use.</p>}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/15 pt-4">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-blue-100">
+              <span className="w-full text-blue-200">Selected plan · {selectedResultPlan.name}</span>
+              <span>Cost: <strong className="text-sm text-white">{money(selectedResultPlan.total_estimated_cost_myr)}</strong></span>
+              <span>Time change: <strong className="text-sm text-white">{comparableTimeChange === null ? "Unavailable" : `${formatRouteSeconds(Math.abs(comparableTimeChange))} ${comparableTimeChange >= 0 ? "saved" : "longer"}`}</strong></span>
+              <span>Budget status: <strong className="text-sm text-white">{selectedResultPlan.budget_status.replaceAll("_", " ")}</strong></span>
+            </div>
+            {recommended.includes(selectedResultPlan.id) && <CandidateReviewButton plan={selectedResultPlan} />}
+          </div>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase text-slate-400">Selected plan cost</p><p className="mt-2 text-xl font-extrabold">{money(selectedResultPlan.total_estimated_cost_myr)}</p><p className="mt-1 text-xs text-slate-500">Budget: {selectedResultPlan.budget_status.replaceAll("_", " ")}</p></div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase text-slate-400">Available after repair</p><p className="mt-2 text-xl font-extrabold">{planModeSummary ? `${planModeSummary.after_available_path_count} / ${planModeSummary.designated_path_count}` : "Unavailable"}</p><p className="mt-1 text-xs text-slate-500">{planModeSummary?.restored_path_count ?? 0} newly restored · {resultMode === "accessible" ? "verified accessible only" : "avoid damage"}</p></div>
@@ -670,7 +710,6 @@ export default function WhatIfPlanner() {
           <div className="min-w-0 rounded-2xl bg-brand p-4 text-white"><h3 className="mb-3 text-sm font-bold">Spatial Route Comparison · Real map</h3><div className="rounded-xl bg-white p-3 text-slate-900"><RepairPlanRoutes key={`${result.simulation_id}-${selectedResultPlan.id}`} baseline={result.baseline} plan={selectedResultPlan} restrictions={result.routing_restrictions} candidates={issues} selectedKey={selectedRoute} onSelectionChange={setSelectedRoute} compact /></div></div>
         </div>
         {result.warnings.length > 0 && <details className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-500"><summary className="cursor-pointer font-bold">Methodology & disclaimers</summary><ul className="mt-2 list-disc space-y-1 pl-5">{comparisonNotes(result.warnings).map(note => <li key={note}>{note}</li>)}</ul></details>}
-        {selectedRoute.startsWith("all:") && <RepairSummaryPanel plans={result.plans} simulationId={result.simulation_id} mode={selectedRoute === "all:accessible" ? "accessible" : "avoid_damage"} />}
         <div className="flex flex-wrap justify-between gap-3 border-t border-slate-200 pt-3"><button type="button" onClick={() => { setStep(2); setError(""); }} className="flex min-h-10 items-center gap-2 rounded-xl bg-slate-100 px-4 text-xs font-bold"><ArrowLeft size={15} /> Back to Repair Plans</button><span className="text-xs text-slate-500">Snapshot {new Date(result.snapshot_at).toLocaleString()} · Simulation only</span><CandidateReviewButton plan={selectedResultPlan} /></div>
       </section>}
     </div>

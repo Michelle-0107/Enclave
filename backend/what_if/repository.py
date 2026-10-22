@@ -41,6 +41,12 @@ class Snapshot(BaseModel):
                 raise ValueError('Duplicate open incident')
             facilities[issue.facility_id] = identity
             pairs.add(pair)
+        prices = {}
+        for issue in self.issues:
+            estimate = (issue.estimated_cost_myr, issue.cost_estimate_source, issue.cost_estimate_sample_count)
+            if issue.facility_id in prices and prices[issue.facility_id] != estimate:
+                raise ValueError('Inconsistent facility estimate')
+            prices[issue.facility_id] = estimate
         return self
 
 

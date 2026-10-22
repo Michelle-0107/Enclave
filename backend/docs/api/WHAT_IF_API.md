@@ -8,8 +8,9 @@ community incidents, maintenance audits, resident navigation, or existing
 ## Setup and access
 
 - Run `backend/sql/010_management_what_if_snapshot.sql` after SQL 009, then
-  `backend/sql/018_what_if_candidate_review.sql` for candidate approval links.
-  These maintain one private read-only RPC; they create no tables or public grants.
+  `backend/sql/018_what_if_candidate_review.sql` for candidate approval links,
+  then `backend/sql/028_repair_cost_history.sql` for suggested repair costs.
+  SQL 028 creates a private cost source table and updates the same read-only snapshot RPC.
   Deploy SQL 018 before the updated API. Missing review metadata fails closed with 503.
 - Use the normal `main:app` application and a working private routing engine.
 - Send `Authorization: Bearer <Supabase access_token>` from an account whose trusted
@@ -30,6 +31,14 @@ by at least two distinct residents, with a pending report and no approved linked
 (including approval history), are included. The ticket is the earliest pending linked
 report by creation time/id. No reporter IDs, photos, descriptions, or staff notes are exposed.
 Public community/map projections continue to omit report tickets.
+
+Each issue also includes `estimated_cost_myr`, `cost_estimate_source` and
+`cost_estimate_sample_count`. The same facility always receives the same estimate.
+The backend first uses the median of verified, completed repairs of the same
+`facility_type`. Until such rows exist it uses a clearly labelled provisional
+reference amount. SQL 028 seeds ten provisional amounts (MYR 1,800–15,000),
+one per facility type; these are planning assumptions, not historical invoices.
+No source references or invoice details are returned to the browser.
 
 Group candidates by `facility_id` for repair selection. A repair at one selected
 facility hypothetically clears only its current unapproved qualified incidents.
@@ -87,11 +96,29 @@ for each designated path/mode. Accessible reference paths still exclude stairs,
 unknown/inaccessible links, and invalid surveys.
 
 Cost and budget fields accept nonnegative decimal amounts with at most two decimal
-places. Prefer JSON strings to preserve decimal precision. Cost may be omitted/null;
-it is unknown, never silently zero. An explicitly entered zero is a zero estimate.
+places. Prefer JSON strings to preserve decimal precision. A null or omitted cost
+asks the backend to use the current source-backed estimate from the same snapshot.
+If no source amount exists, cost remains unknown, never silently zero. An explicitly
+entered zero is a zero management override.
 Amounts in responses are decimal strings, e.g. `"1200.00"`, or null when unknown.
 `include_geometry` defaults false; when true, returned geometries are capped at
 50,000 total points, otherwise 422 asks the caller to retry without geometry.
+
+To add a verified completed repair after SQL 028, insert its real paid amount and
+unique invoice/work-order reference in Supabase SQL Editor:
+
+```sql
+INSERT INTO public.repair_cost_history
+    (source_reference, facility_type, record_kind, cost_myr, completed_on)
+VALUES
+    ('YOUR-INVOICE-OR-WORK-ORDER', 'path_surface', 'completed_actual', 8000.00, '2026-01-15');
+```
+
+Only insert a completed actual expense; a vendor quote belongs in the editable
+plan cost field. Future comparisons automatically prefer completed actuals over
+the provisional seed of the same facility type. Historical records can be
+reviewed or corrected by a database administrator; no resident-facing table
+access is granted.
 
 ## Response and metric definitions
 

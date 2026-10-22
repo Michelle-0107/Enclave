@@ -36,7 +36,8 @@ class WhatIfPostgresTests(unittest.TestCase):
                 INSERT INTO profiles VALUES (%s,'management'),(%s,'resident'),
                     ('00000000-0000-4000-8000-000000000002','resident');''', (MANAGER, RESIDENT))
             folder = Path(__file__).resolve().parents[1] / 'sql'
-            for name in ['007_report_workflow.sql', '009_community_issue_points.sql', '010_management_what_if_snapshot.sql', '018_what_if_candidate_review.sql']:
+            for name in ['007_report_workflow.sql', '009_community_issue_points.sql', '010_management_what_if_snapshot.sql',
+                         '018_what_if_candidate_review.sql', '028_repair_cost_history.sql']:
                 cursor.execute((folder / name).read_text(encoding='utf-8'))
 
     @classmethod
@@ -103,6 +104,27 @@ class WhatIfPostgresTests(unittest.TestCase):
             cursor.execute("UPDATE community_facilities SET facility_type='bench'")
         self.assertFalse(self.call()['issues'][0]['affects_routes'])
 
+    def test_provisional_cost_then_verified_history_median_without_exposing_source_rows(self):
+        item = self.call()['issues'][0]
+        self.assertEqual(item['estimated_cost_myr'], 12000)
+        self.assertEqual(item['cost_estimate_source'], 'provisional_benchmark')
+        self.assertEqual(item['cost_estimate_sample_count'], 1)
+        with self.db.cursor() as cursor:
+            cursor.execute('''INSERT INTO repair_cost_history
+                (source_reference,facility_type,record_kind,cost_myr,completed_on)
+                VALUES ('test-invoice-1','path_surface','completed_actual',6000,'2025-01-01'),
+                       ('test-invoice-2','path_surface','completed_actual',8000,'2025-02-01'),
+                       ('test-invoice-3','path_surface','completed_actual',10000,'2025-03-01')''')
+        try:
+            item = self.call()['issues'][0]
+            self.assertEqual(item['estimated_cost_myr'], 8000)
+            self.assertEqual(item['cost_estimate_source'], 'historical_median')
+            self.assertEqual(item['cost_estimate_sample_count'], 3)
+            self.assertNotIn('test-invoice', json.dumps(item))
+        finally:
+            with self.db.cursor() as cursor:
+                cursor.execute("DELETE FROM repair_cost_history WHERE source_reference LIKE 'test-invoice-%%'")
+
     def test_pending_review_target_is_stable_and_moves_past_rejected_evidence(self):
         self.assertEqual(self.call()['issues'][0]['review_ticket_id'], 'A')
         with self.db.cursor() as cursor:
@@ -140,6 +162,8 @@ class WhatIfPostgresTests(unittest.TestCase):
                         cursor.execute('SELECT enclave_what_if_snapshot(%s::uuid)', (MANAGER,))
                     with self.assertRaises(psycopg2.errors.InsufficientPrivilege):
                         cursor.execute('SELECT * FROM community_issue_reports')
+                    with self.assertRaises(psycopg2.errors.InsufficientPrivilege):
+                        cursor.execute('SELECT * FROM repair_cost_history')
                 finally:
                     cursor.execute('RESET ROLE')
 
@@ -158,7 +182,10 @@ class WhatIfPostgresTests(unittest.TestCase):
                 SELECT r.id,CASE WHEN e.n%%2=0 THEN %s::uuid ELSE '00000000-0000-4000-8000-000000000002'::uuid END,e.id
                 FROM ranked r JOIN evidence e ON (e.n+1)/2=r.n;''', (MANAGER, F1, RESIDENT, I1, RESIDENT))
         self.assertEqual(self.call()['state'], 'too_many')
-        migration = Path(__file__).resolve().parents[1] / 'sql/018_what_if_candidate_review.sql'
+        migration = Path(__file__).resolve().parents[1] / 'sql/028_repair_cost_history.sql'
         with self.db.cursor() as cursor:
             cursor.execute(migration.read_text(encoding='utf-8'))
         self.assertEqual(self.call()['state'], 'too_many')
+        with self.db.cursor() as cursor:
+            cursor.execute("SELECT count(*) FROM repair_cost_history WHERE record_kind='provisional_benchmark'")
+            self.assertEqual(cursor.fetchone()[0], 10)

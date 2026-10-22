@@ -142,8 +142,10 @@ export type FacilityIssue = {
   affects_routes: boolean;
   created_at: string;
   resolved_at: string | null;
-  // Optional until candidate pricing is supplied by the backend.
+  // SQL 028 supplies an estimate and its provenance; older deployments omit them.
   estimated_cost_myr?: string | null;
+  cost_estimate_source?: 'historical_median' | 'provisional_benchmark' | 'none';
+  cost_estimate_sample_count?: number;
 };
 
 export type RepairCandidate = FacilityIssue & { review_ticket_id: string };

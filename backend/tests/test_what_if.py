@@ -241,6 +241,31 @@ class WhatIfTests(unittest.TestCase):
         self.assertEqual(plan['missing_cost_facility_ids'], [F1])
         self.assertEqual(plan['budget_status'], 'unknown_cost')
 
+    def test_backend_estimate_fills_null_cost_and_management_quote_wins(self):
+        self.issues[0].update(estimated_cost_myr='12000.00',
+                              cost_estimate_source='provisional_benchmark', cost_estimate_sample_count=1)
+        client = self.client()
+        candidate = client.get('/api/v1/management/what-if/candidates',
+                               headers={'Authorization': 'Bearer manager-fixture'}).json()['issues'][0]
+        self.assertEqual(candidate['estimated_cost_myr'], '12000.00')
+        self.assertEqual(candidate['cost_estimate_source'], 'provisional_benchmark')
+        payload = body()
+        payload['plans'][0]['repairs'][0]['estimated_cost_myr'] = None
+        default_plan = self.compare(client, payload).json()['plans'][0]
+        self.assertEqual(default_plan['total_estimated_cost_myr'], '12000.00')
+        self.assertEqual(default_plan['budget_status'], 'over_budget')
+        payload['plans'][0]['repairs'][0]['estimated_cost_myr'] = '15000.00'
+        override_plan = self.compare(client, payload).json()['plans'][0]
+        self.assertEqual(override_plan['total_estimated_cost_myr'], '15000.00')
+
+    def test_completed_repair_median_is_valid_source(self):
+        self.issues[0].update(estimated_cost_myr='8000.00',
+                              cost_estimate_source='historical_median', cost_estimate_sample_count=3)
+        payload = body()
+        del payload['plans'][0]['repairs'][0]['estimated_cost_myr']
+        plan = self.compare(self.client(), payload).json()['plans'][0]
+        self.assertEqual(plan['total_estimated_cost_myr'], '8000.00')
+
     def test_decimal_costs_are_exact_and_budget_optional(self):
         self.issues.append(issue(id=I2, facility_id=F2, facility_name='Second damaged asset'))
         payload = body(); payload.pop('budget_myr')

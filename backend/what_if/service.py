@@ -320,8 +320,12 @@ class WhatIfService:
                     baseline_available_path_count=sum(r.current.state == 'available' for r in old),
                     after_available_path_count=sum(r.after.state == 'available' for r in rows),
                     distance_saved_on_comparable_paths_meters=round(sum(r.distance_saved_meters or 0 for r in rows), 3)))
-            subtotal = sum((r.estimated_cost_myr for r in plan.repairs if r.estimated_cost_myr is not None), Decimal('0.00'))
-            missing = [r.facility_id for r in plan.repairs if r.estimated_cost_myr is None]
+            # A management-entered amount wins. A null amount asks the backend
+            # for the current source-backed estimate from this same frozen snapshot.
+            costs = [(r.facility_id, r.estimated_cost_myr if r.estimated_cost_myr is not None
+                      else by_facility[r.facility_id][0].estimated_cost_myr) for r in plan.repairs]
+            subtotal = sum((cost for _, cost in costs if cost is not None), Decimal('0.00'))
+            missing = [facility_id for facility_id, cost in costs if cost is None]
             total = None if missing else subtotal.quantize(Decimal('0.01'))
             budget_status = ('unknown_cost' if missing else 'not_set' if body.budget_myr is None
                              else 'within_budget' if total <= body.budget_myr else 'over_budget')
@@ -346,6 +350,6 @@ class WhatIfService:
                 'Facility zones are approximate unless linked to mapped road segments.',
                 'Each plan keeps the shortest valid route around remaining damage.',
                 'Unverified walking references and unassessed links do not count as accessible.',
-                'MYR costs are estimates; missing prices remain unknown.',
+                'MYR estimates prefer verified completed-repair medians, then provisional benchmarks; management overrides take precedence and missing prices remain unknown.',
                 'Repair benefits are measured per plan within the KL East pilot.',
             ])

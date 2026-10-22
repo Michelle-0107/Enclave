@@ -134,3 +134,72 @@ test('valid comparison sends real endpoints and estimates, then opens Results; e
   assert.equal(late.state[0], 2);
   assert.equal(late.state[8], null);
 });
+
+test('source-backed default remains editable and comparison asks backend for its latest estimate', async () => {
+  const priced = { ...issue, estimated_cost_myr: '12000.00', cost_estimate_source: 'provisional_benchmark',
+    cost_estimate_sample_count: 1 };
+  let submitted;
+  const ui = setup({ 0: 2, 1: [priced] }, async value => { submitted = value; return { baseline: [], plans: [], simulation_id: 'priced' }; });
+  let tree = ui.render();
+  assert.match(ui.words(tree), /Provisional reference/);
+  const costInput = ui.all(tree).find(node => node.type === 'input' && node.props?.value === '12000.00');
+  assert.ok(costInput);
+  ui.all(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(submitted.plans[0].repairs[0].estimated_cost_myr, null);
+
+  const overridden = setup({ 0: 2, 1: [priced] }, async value => { submitted = value; return { baseline: [], plans: [], simulation_id: 'custom' }; });
+  tree = overridden.render();
+  overridden.all(tree).find(node => node.type === 'input' && node.props?.value === '12000.00')
+    .props.onChange({ target: { value: '15000.00' } });
+  tree = overridden.render();
+  assert.equal(overridden.state[5][0].costs[facilityId], '15000.00');
+  overridden.all(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(submitted.plans[0].repairs[0].estimated_cost_myr, '15000.00');
+});
+
+test('Results shows the summary in the recommendation banner without selecting an all-path map route', () => {
+  const result = { simulation_id: 'simulation-1', snapshot_at: '2026-01-01T00:00:00Z', budget_myr: '1500',
+    baseline_road_obstacle_count: 1, baseline: [], warnings: [], plans: [{ id: 'plan_1', name: 'Repair plan 1',
+      total_estimated_cost_myr: '999.90', budget_status: 'within_budget', summaries: [], paths: [], remaining_road_obstacle_count: 0,
+      improved_major_path_count: 1 }] };
+  const summary = { source: 'ai', text: 'This plan saves the most time within budget.', facts: {
+    route_mode: 'avoid_damage', budget_myr: '1500', comparable_path_count: 1, excluded_path_count: 0,
+    recommended_plan_ids: ['plan_1'], explanation: 'Each journey is counted once.',
+    plans: [{ id: 'plan_1', name: 'Repair plan 1', saved_seconds: 120 }],
+  } };
+  const ui = setup({ 0: 3, 8: result, 9: 'journey-1:avoid_damage', 12: summary });
+  let tree = ui.render();
+  let banner = ui.all(tree).find(node => node.props?.['aria-label'] === 'Repair comparison summary');
+  assert.ok(banner);
+  assert.match(ui.words(banner), /AI executive summary & explanation/);
+  assert.match(ui.words(banner), /This plan saves the most time within budget/);
+  assert.match(ui.words(banner), /Each journey is counted once/);
+  assert.ok(ui.words(tree).indexOf(summary.text) < ui.words(tree).indexOf('Selected plan cost'));
+
+  const accessible = ui.all(tree).find(node => node.type === 'button' && ui.words(node) === 'Accessible');
+  accessible.props.onClick();
+  assert.equal(ui.state[9], 'all:accessible');
+  tree = ui.render();
+  banner = ui.all(tree).find(node => node.props?.['aria-label'] === 'Repair comparison summary');
+  assert.doesNotMatch(ui.words(banner), /This plan saves the most time within budget/);
+
+  ui.state[12] = { source: 'calculated', text: 'No comparable accessible journey is available.', facts: {
+    ...summary.facts, route_mode: 'accessible', comparable_path_count: 0, excluded_path_count: 1,
+    recommended_plan_ids: [], explanation: 'No common before and after durations are available.',
+  } };
+  tree = ui.render();
+  banner = ui.all(tree).find(node => node.props?.['aria-label'] === 'Repair comparison summary');
+  assert.match(ui.words(banner), /Calculated summary · AI unavailable/);
+  assert.match(ui.words(banner), /No comparable accessible journey is available/);
+  assert.match(ui.words(tree), /No time-based recommendation/);
+
+  ui.state[12] = null;
+  ui.state[17] = { key: 'simulation-1:accessible', message: 'Summary unavailable.' };
+  tree = ui.render();
+  assert.match(ui.words(tree), /Summary unavailable/);
+  ui.find(tree, 'button', 'Retry summary').props.onClick();
+  assert.equal(ui.state[17], null);
+  assert.equal(ui.state[18], 1);
+});
