@@ -4,6 +4,8 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
+import logging
+import time
 from uuid import uuid4
 
 from ..navigation.accessibility import VerifiedNetwork
@@ -18,6 +20,8 @@ from .contracts import (BaselinePath, CompareResponse, FacilityImpact, ModeSumma
                         PathImpact, PlanResult, RepairCandidates, RouteOutcome, WalkingReference, RoutingRestriction)
 from .repository import WhatIfRejected, WhatIfUnavailable
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class CalculatedRoute:
@@ -28,7 +32,7 @@ class CalculatedRoute:
 
 
 class WhatIfService:
-    def __init__(self, repository, navigation, *, timeout_seconds=45):
+    def __init__(self, repository, navigation, *, timeout_seconds=120):
         self.repository, self.navigation = repository, navigation
         self.timeout_seconds = timeout_seconds
         self._comparison_slot = asyncio.Lock()
@@ -43,10 +47,13 @@ class WhatIfService:
         if self._comparison_slot.locked():
             raise WhatIfRejected(429, 'Another repair comparison is running; retry shortly')
         async with self._comparison_slot:
+            started = time.monotonic()
             try:
                 async with asyncio.timeout(self.timeout_seconds):
                     return await self._compare_snapshot(snapshot, body)
             except TimeoutError:
+                logger.warning('Repair comparison timed out after %.1fs (%d paths, %d plans, %d modes)',
+                               time.monotonic() - started, len(body.paths), len(body.plans), len(body.route_modes))
                 raise WhatIfUnavailable('timeout') from None
             except NavigationUnavailable:
                 raise WhatIfUnavailable('routing') from None

@@ -13,6 +13,7 @@ import heapq
 import json
 import math
 from pathlib import Path
+from threading import RLock
 from uuid import uuid4
 import xml.etree.ElementTree as ET
 
@@ -29,6 +30,7 @@ OPEN_ACCESS_METERS = 20.0
 ENDPOINT_ACCESS_METERS = 20.0
 OFFSET = 3.0
 SCALE = 111_195.08
+_ROUTE_TOPOLOGY_LOCK = RLock()
 
 
 def xy(p):
@@ -131,6 +133,27 @@ def coverage_bounds(root, service_bounds):
 
 
 class RoadsideGraph:
+    def route_topology(self):
+        """Reuse immutable edge incidence and lengths across route searches.
+
+        A demo overlay replaces ``edges`` after copying its base graph, so the
+        cached topology is valid only for the exact edge list that built it.
+        """
+        with _ROUTE_TOPOLOGY_LOCK:
+            cached = getattr(self, '_route_topology', None)
+            if cached is not None and cached[0] is self.edges and cached[1] == len(self.edges):
+                return cached[2], cached[3]
+            incidence = defaultdict(list)
+            lengths = []
+            for index, edge in enumerate(self.edges):
+                lengths.append(distance(*edge.points))
+                if edge.direction != -1: incidence[edge.a].append((index, False))
+                if edge.direction != 1: incidence[edge.b].append((index, True))
+            topology = {node: tuple(entries) for node, entries in incidence.items()}
+            cached = (self.edges, len(self.edges), topology, tuple(lengths))
+            self._route_topology = cached
+            return topology, cached[3]
+
     def __init__(self, source, bounds, *, resident_access=False):
         root = ET.parse(source).getroot()
         tags = lambda e: {t.attrib['k']: t.attrib['v'] for t in e.findall('tag')}
@@ -652,24 +675,51 @@ class RoadsideGraph:
         access_limit=ENDPOINT_ACCESS_METERS+1e-6 if demo_step_free else 5
         if body.route_mode=='accessible' and ((buildings and not demo_step_free) or (not origin_building and start[0]>access_limit) or (not target_building and end[0]>access_limit)):
             raise NavigationRejected(422,'The building exit or open-land approach is assumed, not verified step-free access.')
-        adjacency=defaultdict(list)
+        topology, edge_lengths = self.route_topology()
+        split_edges = {start[1], end[1]}
+        split_adjacency = defaultdict(list)
         zone_index=BoundsIndex(boxes)
-        def link(a,b,edge,pa,pb):
-            if edge.way_id in excluded_way_ids:return
+        def edge_allowed(edge):
+            if edge.way_id in excluded_way_ids:return False
             if body.route_mode=='accessible':
-                if edge.kind in {'steps','unmarked_crossing','open_access'}:return
+                if edge.kind in {'steps','unmarked_crossing','open_access'}:return False
                 if edge.kind in {'demo_crossing','demo_footbridge','demo_step_free_link','demo_accessible_entrance'} and not (
-                    demo_step_free and edge.way_id in self.step_free_facility_way_ids):return
+                    demo_step_free and edge.way_id in self.step_free_facility_way_ids):return False
+            return True
+        def link(index, order, a,b,edge,pa,pb):
+            if not edge_allowed(edge): return
             length=distance(pa,pb)
             if zone_index.intersects(pa,pb): return
-            if edge.direction != -1: adjacency[a].append((b,length,edge,pa,pb))
-            if edge.direction != 1: adjacency[b].append((a,length,edge,pb,pa))
-        for i,edge in enumerate(self.edges):
+            if edge.direction != -1: split_adjacency[a].append((index,order,b,length,edge,pa,pb))
+            if edge.direction != 1: split_adjacency[b].append((index,order,a,length,edge,pb,pa))
+        for i in sorted(split_edges):
+            edge = self.edges[i]
             cuts=[(0.0,edge.a,edge.points[0]),(1.0,edge.b,edge.points[1])]
             if i==start[1]: cuts.append((start[2],'@start',start[3]))
             if i==end[1]: cuts.append((end[2],'@end',end[3]))
             cuts.sort(key=lambda row:row[0])
-            for a,b in zip(cuts,cuts[1:]): link(a[1],b[1],edge,a[2],b[2])
+            for order,(a,b) in enumerate(zip(cuts,cuts[1:])):
+                link(i,order,a[1],b[1],edge,a[2],b[2])
+        edge_clear = {}
+        def base_neighbors(node):
+            for index,reverse in topology.get(node,()):
+                if index in split_edges: continue
+                clear = edge_clear.get(index)
+                if clear is None:
+                    edge = self.edges[index]
+                    clear = edge_allowed(edge) and not zone_index.intersects(*edge.points)
+                    edge_clear[index] = clear
+                if not clear: continue
+                edge = self.edges[index]
+                pa,pb = edge.points[::-1] if reverse else edge.points
+                yield (index,0,edge.a if reverse else edge.b,edge_lengths[index],edge,pa,pb)
+        def neighbors(node):
+            if node in split_adjacency:
+                # Preserve the original edge order when a snapped endpoint
+                # divides an edge into two or three temporary segments.
+                yield from sorted((*base_neighbors(node),*split_adjacency[node]),key=lambda row:(row[0],row[1]))
+            else:
+                yield from base_neighbors(node)
         if zone_index.intersects(origin,start[3]) or zone_index.intersects(end[3],target):
             raise NavigationRejected(422,'A walking approach intersects a reported damaged area; choose another access point.')
         # Lexicographic cost: recorded roads/facilities first. Only when they
@@ -680,7 +730,7 @@ class RoadsideGraph:
             cost,node=heapq.heappop(queue)
             if cost != best[node]: continue
             if node=='@end': break
-            for to,length,edge,pa,pb in adjacency[node]:
+            for _,_,to,length,edge,pa,pb in neighbors(node):
                 candidate=(cost[0]+(length if edge.kind in {'open_access','demo_step_free_link'} else 0.0),cost[1]+length)
                 if candidate < best.get(to,(float('inf'),float('inf'))):
                     best[to]=candidate; previous[to]=(node,edge,pa,pb,length)

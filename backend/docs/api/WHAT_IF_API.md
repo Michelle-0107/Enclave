@@ -204,7 +204,9 @@ facilities' incident restrictions; other obstacles stay active. Structural stair
 unknown/inaccessible links are never converted into accessible ones by a repair.
 
 Requests are bounded to at most 140 unique route calculations, four in flight and
-45 seconds of calculation after the snapshot read. Equivalent route cases are reused.
+120 seconds of calculation after the snapshot read. Equivalent route cases are reused.
+The bundled routing caches must match the current algorithm signature; a stale
+cache forces a full OSM graph rebuild and can exhaust this calculation budget.
 One comparison runs per API process at a time; another receives 429. This is a local
 process bound, not a distributed quota. Failure/timeout cancels outstanding work and
 returns no misleading partial improvement. Engine/database failures are 503.
@@ -219,7 +221,7 @@ or resident/management policies outside this new RPC.
 
 401 invalid JWT; 403 trusted role not management; 409 stale/missing selected candidate;
 422 invalid fields/bounds/limits/geometry output size; 429 comparison busy; 503 missing
-SQL 010, invalid/oversized snapshot, too many candidates, provider outage or timeout.
+SQL 010, invalid/oversized snapshot, too many candidates or provider outage; 504 timeout.
 Individual supported-route absence is an outcome in a successful comparison, not a
 global 422. Validation responses omit sensitive input values.
 
