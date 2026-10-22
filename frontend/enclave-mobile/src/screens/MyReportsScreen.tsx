@@ -144,7 +144,7 @@ export default function MyReportsScreen({
         </Text>
       </View>
 
-      <View>
+      <View style={styles.reportsSection}>
         <View style={styles.filters}>
           {filters.map((filter) => {
             const selected = activeFilter === filter;
@@ -197,45 +197,51 @@ export default function MyReportsScreen({
             </Text>
           </View>
         ) : (
-          visibleReports.map((report) => (
-            <Pressable
-              key={report.id}
-              accessibilityRole="button"
-              accessibilityLabel={`${report.title}, ${report.status}. View report`}
-              onPress={() => onReportPress(report)}
-              style={({ pressed }) => [
-                styles.reportRow,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.reportTitle}>
-                {report.title}
-              </Text>
-
-              <Text style={styles.reportMeta}>
-                #{report.id} · {report.location}
-              </Text>
-
-              <Text
-                style={[
-                  styles.reportStatus,
-                  {
-                    color: reportStatusTone(report.status).text,
-                    backgroundColor: reportStatusTone(report.status).background,
-                    alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
-                  },
+          <View style={styles.reportList}>
+            {visibleReports.map((report) => (
+              <Pressable
+                key={report.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${report.title}, ${report.status}. View report`}
+                onPress={() => onReportPress(report)}
+                style={({ pressed }) => [
+                  styles.reportCard,
+                  pressed && styles.pressed,
                 ]}
               >
-                {report.status}
-              </Text>
+                <Text
+                  style={[
+                    styles.reportStatus,
+                    {
+                      color: reportStatusTone(report.status).text,
+                      backgroundColor: reportStatusTone(report.status).background,
+                      alignSelf: 'flex-start',
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                    },
+                  ]}
+                >
+                  {report.status}
+                </Text>
 
-              <Text style={styles.reportDate}>
-                {report.date}
-              </Text>
-            </Pressable>
-          ))
+                <Text style={styles.reportTitle}>
+                  {report.title}
+                </Text>
+
+                <Text style={styles.reportMeta}>
+                  #{report.id} · {report.location}
+                </Text>
+
+                <Text style={styles.reportDate}>
+                  {report.date}
+                </Text>
+                <View style={styles.cardDivider} />
+                <Text style={styles.cardAction}>View report →</Text>
+              </Pressable>
+            ))}
+          </View>
         )}
-
       </View>
     </View>
   );
@@ -322,6 +328,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  reportsSection: {
+    gap: 14,
+  },
+
+  reportList: {
+    gap: 12,
+  },
+
   filter: {
     flex: 1,
     maxWidth: 96,
@@ -349,11 +363,25 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 
-  reportRow: {
-    paddingVertical: 24,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  reportCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    padding: 18,
+    gap: 10,
+  },
+
+  cardDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginTop: 2,
+  },
+
+  cardAction: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.navy,
   },
 
   reportTitle: {
@@ -382,8 +410,12 @@ const styles = StyleSheet.create({
   },
 
   emptyState: {
-    paddingVertical: 32,
+    padding: 20,
     gap: 8,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
   },
 
   loadingState: {

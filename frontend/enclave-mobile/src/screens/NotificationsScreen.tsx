@@ -105,7 +105,7 @@ export default function NotificationsScreen({
           </Text>
         </View>
       ) : (
-        <View>
+        <View style={styles.notificationList}>
           {notifications.map((notification) => (
             <Pressable
               key={notification.id}
@@ -122,48 +122,44 @@ export default function NotificationsScreen({
                 setSelectedNotification({ ...notification, read: true });
               }}
               style={({ pressed }) => [
-                styles.notificationRow,
+                styles.notificationCard,
                 pressed && styles.pressed,
               ]}
             >
-              <View style={styles.avatar}>
-                <Image
-                  source={require('../../assets/enclave-logo.png')}
-                  style={styles.logo}
-                  resizeMode="contain"
-                  accessible={false}
-                />
-              </View>
-
-              <View style={styles.notificationContent}>
-                <View style={styles.titleRow}>
-                  <Text
-                    style={[
-                      styles.notificationTitle,
-                      !notification.read &&
-                        styles.unreadTitle,
-                    ]}
-                  >
-                    {notification.title}
-                  </Text>
-
-                  {!notification.read && (
-                    <View style={styles.unreadDot} />
-                  )}
+              <View style={styles.notificationMain}>
+                <View style={styles.avatar}>
+                  <Image
+                    source={require('../../assets/enclave-logo.png')}
+                    style={styles.logo}
+                    resizeMode="contain"
+                    accessible={false}
+                  />
                 </View>
 
-                <Text style={styles.description}>
-                  {notification.description}
-                </Text>
+                <View style={styles.notificationContent}>
+                  <View style={styles.titleRow}>
+                    <Text
+                      style={[
+                        styles.notificationTitle,
+                        !notification.read && styles.unreadTitle,
+                      ]}
+                    >
+                      {notification.title}
+                    </Text>
+                    {!notification.read && <View style={styles.unreadDot} />}
+                  </View>
 
-                <Text style={styles.meta}>
-                  {notification.reference}
-                </Text>
+                  <Text style={styles.description}>
+                    {notification.description}
+                  </Text>
 
-                <Text style={styles.meta}>
-                  {notification.time}
-                </Text>
+                  <Text style={styles.meta}>
+                    {notification.reference} · {notification.time}
+                  </Text>
+                </View>
               </View>
+              <View style={styles.cardDivider} />
+              <Text style={styles.cardAction}>View details →</Text>
             </Pressable>
           ))}
         </View>
@@ -274,13 +270,34 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
 
-  notificationRow: {
+  notificationList: {
+    gap: 12,
+  },
+
+  notificationCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    padding: 18,
+    gap: 14,
+  },
+
+  notificationMain: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 20,
     gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  },
+
+  cardDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+
+  cardAction: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.navy,
   },
 
   avatar: {
@@ -341,8 +358,12 @@ const styles = StyleSheet.create({
   },
 
   emptyState: {
-    paddingVertical: 32,
+    padding: 20,
     gap: 10,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
   },
 
   emptyTitle: {

@@ -130,7 +130,7 @@ export default function FollowedAreasScreen({
         Choose where you want community updates.
       </Text>
 
-      <View>
+      <View style={styles.areaList}>
         {areas.map((area) => {
           const selected = selectedAreas.includes(
             area.id,
@@ -234,13 +234,20 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
 
+  areaList: {
+    gap: 12,
+    marginTop: 8,
+  },
+
   areaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 90,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    padding: 18,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
   },
 
   areaInfo: {

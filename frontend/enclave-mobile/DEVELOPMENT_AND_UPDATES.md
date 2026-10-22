@@ -1,7 +1,7 @@
 # Enclave development and EAS Update
 
-Configuration is prepared locally. No new cloud build, APK, update publication,
-submission, or deployment was created for this setup.
+The personal development and preview profiles target
+`@enclave2210/enclave-mobile-preview`.
 
 ## Daily phone testing
 
@@ -16,6 +16,15 @@ This starts Metro with `--dev-client`, selects the existing personal Expo projec
 and loads the existing local `.env`. Open the installed development app and connect
 to this server. Keep the computer and phone on the same network. If LAN access is
 not available, `npm run dev -- --tunnel` uses Expo's tunnel support instead.
+On the Android development APK, the tunnel QR/manifest may stop at "Reloading"
+even when the tunnel is reachable. Once Metro says "Tunnel ready", open a second
+terminal and run `npm run dev:url -- <Metro port>` (for example, `8099`). Paste
+the complete HTTPS URL it prints into the APK's "Enter URL manually" field.
+This opens the JS bundle directly. The direct bundle URL was verified on an
+Android phone on 2026-10-23; the plain tunnel URL stalled at "Reloading" and
+the HTTP URL failed with a TLS error. Keep Metro and ngrok running while using
+the development APK. Re-run `dev:url` after restarting the tunnel because its
+hostname changes.
 The launcher also forces the personal development-build URL scheme. A locally
 generated `android/` directory may still contain the team scheme, even though
 EAS excludes that directory. Tunnel mode uses a DNS-safe subdomain because an
@@ -26,8 +35,7 @@ launcher; old QR codes and tunnel URLs will not use the new settings.
 The command does not build an APK, publish an update, or consume an EAS cloud build.
 The computer must remain running while the development client uses Metro. An old
 standalone preview APK cannot become a development client just by running Metro;
-one matching development APK must be installed first, when a build is explicitly
-requested. None was built during this configuration task.
+one matching development APK must be installed first.
 
 JavaScript, TypeScript, UI and compatible asset edits can be tested through Metro.
 A new native module, Expo SDK upgrade, native permission/configuration change, or
@@ -60,13 +68,12 @@ EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY. Backend service-role
 keys must never be used in the app. `.easignore` excludes env and signing files
 from future uploads. EAS uses the already configured public environment variables.
 
-## EAS Update is prepared for later use
+## EAS Update
 
 `expo-updates` is installed for SDK 57. Both project variants have their own
 matching `updates.url`; `runtimeVersion.policy` is `fingerprint` so a native-runtime
 change cannot silently target an incompatible binary. Preview and production have
-separate update channels. No update was published and no remote channel or build
-was created by this setup.
+separate update channels.
 
 Development builds normally load code from Metro. Their launcher can also preview
 compatible published updates, but they do not behave like an automatically

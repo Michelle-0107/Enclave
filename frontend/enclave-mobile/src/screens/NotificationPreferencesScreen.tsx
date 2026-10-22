@@ -89,60 +89,60 @@ export default function NotificationPreferencesScreen({
         </Text>
       </View>
 
-      <View>
+      <View style={styles.settingsSection}>
         <Text style={styles.eyebrow}>
           IN-APP NOTIFICATIONS
         </Text>
 
-        {settings.map((setting) => {
-          const enabled = preferences[setting.key];
+        <View style={styles.settingsList}>
+          {settings.map((setting) => {
+            const enabled = preferences[setting.key];
 
-          return (
-            <View
-              key={setting.key}
-              style={styles.settingRow}
-            >
-              <View style={styles.settingText}>
-                <Text style={styles.settingTitle}>
-                  {setting.title}
-                </Text>
-
-                <Text style={styles.settingDescription}>
-                  {setting.description}
-                </Text>
-              </View>
-
-              <Pressable
-                accessibilityRole="switch"
-                accessibilityLabel={setting.title}
-                accessibilityState={{
-                  checked: enabled,
-                }}
-                onPress={() =>
-                  toggleSetting(setting.key)
-                }
-                style={({ pressed }) => [
-                  styles.switchTouchTarget,
-                  pressed && styles.pressed,
-                ]}
+            return (
+              <View
+                key={setting.key}
+                style={styles.settingRow}
               >
-                <View
-                  style={[
-                    styles.switchTrack,
-                    enabled && styles.switchTrackOn,
+                <View style={styles.settingText}>
+                  <Text style={styles.settingTitle}>
+                    {setting.title}
+                  </Text>
+
+                  <Text style={styles.settingDescription}>
+                    {setting.description}
+                  </Text>
+                </View>
+
+                <Pressable
+                  accessibilityRole="switch"
+                  accessibilityLabel={setting.title}
+                  accessibilityState={{
+                    checked: enabled,
+                  }}
+                  onPress={() => toggleSetting(setting.key)}
+                  style={({ pressed }) => [
+                    styles.switchTouchTarget,
+                    pressed && styles.pressed,
                   ]}
                 >
                   <View
                     style={[
-                      styles.switchThumb,
-                      enabled && styles.switchThumbOn,
+                      styles.switchTrack,
+                      enabled && styles.switchTrackOn,
                     ]}
-                  />
-                </View>
-              </Pressable>
-            </View>
-          );
-        })}
+                  >
+                    <View
+                      style={[
+                        styles.switchThumb,
+                        enabled && styles.switchThumbOn,
+                      ]}
+                    />
+                  </View>
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
 
         <View style={styles.deliveryInfo}>
           <Text style={styles.deliveryTitle}>
@@ -201,13 +201,23 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
 
+  settingsSection: {
+    gap: 14,
+  },
+
+  settingsList: {
+    gap: 12,
+  },
+
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    padding: 18,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
   },
 
   settingText: {
@@ -261,8 +271,12 @@ const styles = StyleSheet.create({
   },
 
   deliveryInfo: {
-    paddingTop: 24,
+    padding: 18,
     gap: 8,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
   },
 
   deliveryTitle: {

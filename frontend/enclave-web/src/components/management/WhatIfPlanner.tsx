@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DataSkeleton } from "@/components/ui/DataSkeleton";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ApiError,
   compareRepairPlans,
@@ -180,6 +181,7 @@ export default function WhatIfPlanner() {
   const [initialCandidatesLoaded, setInitialCandidatesLoaded] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [error, setError] = useState("");
+  const [comparisonError, setComparisonError] = useState("");
   const [summaryFailure, setSummaryFailure] = useState<{ key: string; message: string } | null>(null);
   const [summaryAttempt, setSummaryAttempt] = useState(0);
   const comparisonInputs = JSON.stringify({ journeys, plans, modes, budget, issues });
@@ -371,6 +373,7 @@ export default function WhatIfPlanner() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setComparisonError("");
     setResult(null);
     if (modes.length === 0) {
       setError("Select at least one route type.");
@@ -447,7 +450,7 @@ export default function WhatIfPlanner() {
           : reason instanceof Error
             ? reason.message
             : "Unable to compare repair plans.";
-      setError(message);
+      setComparisonError(message);
     } finally {
       setComparing(false);
     }
@@ -581,6 +584,18 @@ export default function WhatIfPlanner() {
       </header>
 
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
+
+      <Dialog open={Boolean(comparisonError)} onOpenChange={open => { if (!open) setComparisonError(""); }} dismissible>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Unable to compare routes</DialogTitle>
+            <DialogDescription>{comparisonError}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button type="button" onClick={() => setComparisonError("")} className="min-h-10 rounded-xl bg-brand px-5 text-sm font-semibold text-white hover:bg-brand/90">Close</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {step === 1 && <section aria-label="Define journey paths" className="flex flex-col gap-4">
         <div>
