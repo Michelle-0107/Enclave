@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useRef,
   useState,
   type ComponentProps,
@@ -7,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import {
   KeyboardAvoidingView,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -62,7 +64,9 @@ import FollowedAreasScreen, {
 import HelpScreen from './src/screens/HelpScreen';
 
 import { colors } from './src/theme';
+import EnclaveLoading from './src/components/EnclaveLoading';
 import { clearAccessToken } from './src/lib/session';
+import { accountPhotoApi } from './src/lib/api';
 import { supabase } from './src/lib/supabase';
 
 type Tab =
@@ -136,6 +140,8 @@ function ResidentApp({
   const [reports, setReports] =
     useState<ResidentReport[]>([]);
 
+  const [avatarUrl, setAvatarUrl] = useState('');
+
   const [preferences, setPreferences] =
     useState<NotificationPreferences>(
       defaultNotificationPreferences,
@@ -149,8 +155,34 @@ function ResidentApp({
   const [showFacilityDemo, setShowFacilityDemo] = useState(true);
 
   const [mapTouchActive, setMapTouchActive] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadProfilePhoto() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        const accessToken = data.session?.access_token;
+        if (!accessToken) return;
+
+        const profile = await accountPhotoApi.get(accessToken);
+        if (mounted && profile.avatar_url?.startsWith('https://')) {
+          setAvatarUrl(profile.avatar_url);
+        }
+      } catch {
+        // The profile photo is optional; keep the resident icon when unavailable.
+      }
+    }
+
+    void loadProfilePhoto();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function scrollToTop() {
     scrollRef.current?.scrollTo({
@@ -322,6 +354,8 @@ function ResidentApp({
       case 'account':
         return (
           <AccountScreen
+            avatarUrl={avatarUrl}
+            onAvatarChange={setAvatarUrl}
             onMyReportsPress={openMyReports}
             onFollowedAreasPress={() =>
               openAccountPage({ page: 'followedAreas' })
@@ -397,9 +431,6 @@ function ResidentApp({
             onReportPress={() => changeTab('Report')}
             onMapPress={() => changeTab('Map')}
             onMyReportsPress={openMyReports}
-            onNotificationsPress={() =>
-              changeTab('Notifications')
-            }
           />
         );
 
@@ -417,6 +448,7 @@ function ResidentApp({
             }}
             onViewReports={openMyReports}
             onReportCreated={addReport}
+            onSubmittingChange={setReportSubmitting}
           />
         );
 
@@ -447,9 +479,14 @@ function ResidentApp({
             <Text style={styles.brand}>ENCLAVE</Text>
             <Text style={styles.tagline}>Your community, connected.</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Settings and account"
-            onPress={() => openAccountPage({ page: 'account' })} style={styles.settingsButton}>
-            <Ionicons name="settings-outline" size={20} color={colors.brand} />
+          <Pressable accessibilityRole="button" accessibilityLabel="My profile"
+            disabled={reportSubmitting}
+            onPress={() => openAccountPage({ page: 'account' })} style={styles.profileButton}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} accessibilityLabel="Your profile photo" style={styles.profilePhoto} />
+            ) : (
+              <Ionicons name="person-outline" size={20} color={colors.brand} />
+            )}
           </Pressable>
         </View>
       </View>
@@ -467,21 +504,28 @@ function ResidentApp({
         </View>
       )}
 
-      <ScrollView
-        ref={scrollRef}
-        scrollEnabled={!mapTouchActive}
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.content,
-          activeTab === 'Report' && styles.fillContent,
-        ]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets
-        showsVerticalScrollIndicator={false}
-      >
-        {renderScreen()}
-      </ScrollView>
+      <View style={styles.screenArea}>
+        <ScrollView
+          ref={scrollRef}
+          scrollEnabled={!mapTouchActive && !reportSubmitting}
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.content,
+            activeTab === 'Report' && styles.fillContent,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
+          showsVerticalScrollIndicator={false}
+        >
+          {renderScreen()}
+        </ScrollView>
+        {activeTab === 'Report' && reportSubmitting && (
+          <View style={styles.reportLoadingOverlay}>
+            <EnclaveLoading message="Submitting report and linking issue..." />
+          </View>
+        )}
+      </View>
 
       <View
         style={[
@@ -498,6 +542,7 @@ function ResidentApp({
               accessibilityRole="tab"
               accessibilityLabel={tab.name === 'Report' ? 'Create a report' : tab.name}
               accessibilityState={{ selected }}
+              disabled={reportSubmitting}
               onPress={() => {
                 if (tab.name === 'My Account') {
                   setAccountFlow({ page: 'account' });
@@ -628,7 +673,8 @@ const styles = StyleSheet.create({
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandCopy: { gap: 5 },
-  settingsButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EEF2F7' },
+  profileButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EEF2F7', overflow: 'hidden' },
+  profilePhoto: { width: 42, height: 42, borderRadius: 21 },
   detailsBackBar: {
     paddingHorizontal: 24,
     paddingBottom: 8,
@@ -657,6 +703,18 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1,
+  },
+  screenArea: {
+    flex: 1,
+  },
+  reportLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 1,
+    elevation: 1,
   },
   content: {
     paddingHorizontal: 24,

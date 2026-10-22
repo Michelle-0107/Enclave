@@ -16,6 +16,8 @@ import { colors } from '../theme';
 import { SkeletonBlock, SkeletonCard } from '../components/DataSkeleton';
 
 type Props = {
+  avatarUrl: string;
+  onAvatarChange: (url: string) => void;
   onMyReportsPress: () => void;
   onFollowedAreasPress: () => void;
   onNotificationPreferencesPress: () => void;
@@ -24,13 +26,14 @@ type Props = {
 };
 
 export default function AccountScreen({
+  avatarUrl,
+  onAvatarChange,
   onMyReportsPress,
   onFollowedAreasPress,
   onNotificationPreferencesPress,
   onHelpPress,
   onLogOut,
 }: Props) {
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [email, setEmail] = useState<string | null>(null);
   const [residency, setResidency] = useState<ResidencyRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -147,7 +150,7 @@ export default function AccountScreen({
         )}
       </View>
 
-      <AccountSettings onAvatarChange={setAvatarUrl} />
+      <AccountSettings onAvatarChange={onAvatarChange} />
 
       {!isLoading && residency ? (
         <View style={styles.detailsCard}>

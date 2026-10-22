@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,16 +18,6 @@ export default function AccountSettings({ onAvatarChange }: { onAvatarChange: (u
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) return;
-      const profile = await accountPhotoApi.get(data.session.access_token);
-      if (live && profile.avatar_url?.startsWith('https://')) onAvatarChange(profile.avatar_url);
-    })().catch(() => { /* Optional until photo storage is connected. */ });
-    return () => { live = false; };
-  }, [onAvatarChange]);
   function close() { if (busy) return; setPanel(null); setCurrent(''); setNext(''); setConfirm(''); setPhoto(null); setError(''); }
   async function choosePhoto() {
     setError('');

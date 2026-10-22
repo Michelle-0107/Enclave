@@ -9,7 +9,7 @@ module.exports = ({ config }) => {
   return {
     ...config,
     name: 'Enclave Preview',
-    owner: 'leekaixuan',
+    owner: 'enclave2210',
     slug: 'enclave-mobile-preview',
     scheme: 'enclave-preview',
     android: { ...config.android, package: 'app.enclavehomes.enclave.preview' },

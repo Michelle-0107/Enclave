@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Image,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -16,7 +17,6 @@ import ReportLocationScreen, {
 import ReportSuccessScreen from './ReportSuccessScreen';
 import type { ResidentReport } from './MyReportsScreen';
 import { SkeletonList } from '../components/DataSkeleton';
-import EnclaveLoading from '../components/EnclaveLoading';
 
 import {
   ApiError,
@@ -42,6 +42,7 @@ type Props = {
   onDescriptionFocus?: () => void;
   onMapTouchChange?: (active: boolean) => void;
   onStepChange?: () => void;
+  onSubmittingChange?: (submitting: boolean) => void;
 };
 
 type Step =
@@ -110,6 +111,7 @@ export default function ReportScreen({
   onDescriptionFocus,
   onMapTouchChange,
   onStepChange,
+  onSubmittingChange,
 }: Props) {
   const [step, setStep] = useState<Step>('photo');
 
@@ -231,7 +233,9 @@ export default function ReportScreen({
     }
 
     submitLock.current = true;
+    Keyboard.dismiss();
     setIsSubmitting(true);
+    onSubmittingChange?.(true);
     setLinkError('');
 
     let uploadedTicket = pendingTicket;
@@ -351,6 +355,7 @@ export default function ReportScreen({
     } finally {
       submitLock.current = false;
       setIsSubmitting(false);
+      onSubmittingChange?.(false);
     }
   }
 
@@ -486,11 +491,6 @@ export default function ReportScreen({
   return (
     <View style={styles.container}>
       {renderStep()}
-      {isSubmitting && (
-        <View style={styles.loadingOverlay}>
-          <EnclaveLoading message="Submitting report and linking issue..." />
-        </View>
-      )}
     </View>
   );
 }
@@ -997,15 +997,5 @@ const styles = StyleSheet.create({
 
   disabled: {
     opacity: 0.5,
-  },
-
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    zIndex: 20,
-    elevation: 20,
   },
 });

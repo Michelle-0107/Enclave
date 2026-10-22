@@ -13,14 +13,12 @@ import { SkeletonCard } from '../components/DataSkeleton';
 
 type Props = {
   onReportPress: () => void;
-  onNotificationsPress: () => void;
   onMapPress: () => void;
   onMyReportsPress: () => void;
 };
 
 export default function HomeScreen({
   onReportPress,
-  onNotificationsPress,
   onMapPress,
   onMyReportsPress,
 }: Props) {
@@ -109,7 +107,7 @@ export default function HomeScreen({
 
         <Pressable
           accessibilityRole="button"
-          onPress={onNotificationsPress}
+          onPress={onMyReportsPress}
           hitSlop={12}
         >
           <Text style={styles.link}>View all</Text>
