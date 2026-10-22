@@ -220,6 +220,26 @@
 .what-if-planner button:not(:disabled)[class*="bg-slate-950"]:hover { background-color: #172033 !important; background-image: none !important; border-color: #172033; color: #fff !important; box-shadow: 0 7px 18px rgb(15 23 42 / 24%); }
 .what-if-planner button.what-if-plan-card-selected { background-color: #eff6ff !important; background-image: none !important; color: #202c46 !important; border-color: #2563eb !important; }
 .what-if-planner button.what-if-plan-card-selected:hover { background-color: #e5eef8 !important; background-image: none !important; color: #202c46 !important; border-color: #2563eb !important; box-shadow: 0 5px 14px rgb(32 44 70 / 12%); }
+/* Text links implemented as buttons stay text-only during pointer interaction. */
+button.underline:hover,
+button.underline:active {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+:is(a.underline, a[class*="hover:underline"], button.underline) {
+  text-underline-offset: 2px;
+  transition: color .2s ease, filter .2s ease, opacity .15s ease, text-underline-offset .2s ease;
+}
+:is(a.underline, a[class*="hover:underline"], button.underline):hover {
+  filter: brightness(1.12);
+  text-underline-offset: 4px;
+}
+:is(a.underline, a[class*="hover:underline"], button.underline):active {
+  opacity: .78;
+}
 .portal-workspace h1 { font-size: 26px; line-height: 1.4; }
 .portal-workspace { overflow-wrap: anywhere; }
 .quick-access { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
