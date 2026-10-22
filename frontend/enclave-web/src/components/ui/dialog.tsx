@@ -7,8 +7,20 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+type DialogProps = DialogPrimitive.Root.Props & { dismissible?: boolean }
+
+function Dialog({ dismissible = false, onOpenChange, ...rootProps }: DialogProps) {
+  return <DialogPrimitive.Root
+    data-slot="dialog"
+    {...rootProps}
+    modal
+    disablePointerDismissal={!dismissible}
+    onOpenChange={(open, details) => {
+      // Forms close through their explicit Cancel action. Read-only dialogs can opt
+      // into normal dismissal because there is no draft to lose.
+      if (open || dismissible) onOpenChange?.(open, details)
+    }}
+  />
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
@@ -42,7 +54,7 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
+  showCloseButton = false,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean

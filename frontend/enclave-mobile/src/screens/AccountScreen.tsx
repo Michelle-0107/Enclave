@@ -44,7 +44,7 @@ export default function AccountScreen({
         { text: 'Cancel', style: 'cancel' },
         { text: 'Log out', style: 'destructive', onPress: onLogOut },
       ],
-      { cancelable: true },
+      { cancelable: false },
     );
   }
 

@@ -56,7 +56,7 @@ export default function ResidentCreate({ modal = false, onClose, onCreated }: Re
   const content = (
     <div className={`flex flex-col ${modal ? 'gap-4' : 'gap-6 max-w-3xl'}`}>
       {modal ? (
-        <button type="button" onClick={onClose} disabled={working} className="w-fit text-sm font-semibold text-primary underline disabled:opacity-60">← Residents</button>
+        <button type="button" onClick={onClose} disabled={working} className="w-fit text-sm font-semibold text-primary underline disabled:opacity-60">Cancel and return to residents</button>
       ) : (
         <Link href="/management/residents" className="w-fit text-sm font-semibold text-primary underline">← Residents</Link>
       )}
@@ -94,7 +94,7 @@ export default function ResidentCreate({ modal = false, onClose, onCreated }: Re
   if (!modal) return content;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/45 p-3 sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !working) onClose?.(); }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/45 p-3 sm:p-4">
       <section role="dialog" aria-modal="true" aria-labelledby="create-resident-title" className="my-auto max-h-[84dvh] w-full max-w-xl overflow-y-auto rounded-3xl border border-border bg-card p-4 shadow-xl sm:p-6">
         {content}
       </section>

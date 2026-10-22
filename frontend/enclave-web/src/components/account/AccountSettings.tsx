@@ -62,7 +62,7 @@ export default function AccountSettings() {
     </div>
     {success && <p role="status" className="rounded-xl bg-[#DFF3F2] p-3 text-sm text-[#216E71]">{success}</p>}
     <Dialog open={panel !== null} onOpenChange={open => { if (!open) close(); }}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-3xl p-6 sm:max-w-md" showCloseButton={!busy}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-3xl p-6 sm:max-w-md" showCloseButton={false}>
         <DialogTitle className="text-xl font-semibold">{panel === 'password' ? 'Change password' : 'Change profile photo'}</DialogTitle>
         <DialogDescription>{panel === 'password' ? 'Confirm your current password, then choose a new one.' : 'Choose a JPG or PNG photo, up to 5 MB.'}</DialogDescription>
         <form onSubmit={save} className="flex flex-col gap-4" aria-busy={busy}>

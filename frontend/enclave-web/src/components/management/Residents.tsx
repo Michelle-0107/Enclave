@@ -241,7 +241,7 @@ export default function Residents() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/45 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving && !deleting) setSelected(null); }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/45 p-4">
           <section role="dialog" aria-modal="true" aria-labelledby="edit-resident-title" className="my-auto w-full max-w-xl rounded-3xl border border-border bg-card p-5 shadow-xl sm:p-7">
             <h2 id="edit-resident-title" className="text-xl font-semibold text-primary">Edit resident record</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Resident values are validated before saving. Email cannot be changed after the resident links an account.</p>

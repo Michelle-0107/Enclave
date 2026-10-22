@@ -606,7 +606,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
         <Text style={styles.hint}>The end point stays fixed. If you accepted a nearby connected start, O marks your original point and S marks the updated point. Mapped access points are shown separately; unrecorded connections are not drawn as roads. Routes can be identical when no relevant restrictions affect this journey.</Text>
       </View>}
     </>}
-    <Modal visible={adjustmentVisible && Boolean(alternative)} transparent animationType="fade" onRequestClose={declineStartAdjustment}>
+    <Modal visible={adjustmentVisible && Boolean(alternative)} transparent animationType="fade" onRequestClose={() => undefined}>
       <View style={styles.modalOverlay}><View style={styles.modalCard}>
         <Text style={styles.modalEyebrow}>STARTING POINT SUGGESTION</Text>
         <Text style={styles.cardTitle}>Move your starting point to a nearby connected place?</Text>

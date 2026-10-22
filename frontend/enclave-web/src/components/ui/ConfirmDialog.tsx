@@ -24,9 +24,7 @@ export default function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-5" onMouseDown={(event) => {
-      if (event.target === event.currentTarget && !busy) onCancel();
-    }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-5">
       <section
         role="alertdialog"
         aria-modal="true"

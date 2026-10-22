@@ -183,10 +183,10 @@ export default function ReportDetailsScreen({
 
       </View>
 
-      <Modal visible={photoExpanded} transparent animationType="fade" onRequestClose={() => setPhotoExpanded(false)} statusBarTranslucent>
+      <Modal visible={photoExpanded} transparent animationType="fade" onRequestClose={() => undefined} statusBarTranslucent>
         <View style={styles.photoModal}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close expanded photo" onPress={() => setPhotoExpanded(false)} style={styles.closePhotoButton}>
-            <Ionicons name="close" size={28} color={colors.white} />
+          <Pressable accessibilityRole="button" onPress={() => setPhotoExpanded(false)} style={styles.closePhotoButton}>
+            <Text style={styles.closePhotoText}>Cancel</Text>
           </Pressable>
           {!!currentReport.photoUri && <Image source={{ uri: currentReport.photoUri }} style={styles.expandedPhoto} resizeMode="contain" accessibilityLabel="Expanded report photo" />}
         </View>
@@ -482,13 +482,15 @@ const styles = StyleSheet.create({
     zIndex: 1,
     top: 44,
     right: 18,
-    width: 44,
+    minWidth: 72,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(32, 44, 70, 0.75)',
   },
+  closePhotoText: { color: colors.white, fontSize: 14, fontWeight: '700' },
 
   photoPlaceholder: {
     fontSize: 12,

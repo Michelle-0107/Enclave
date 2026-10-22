@@ -78,7 +78,7 @@ export default function AccountSettings({ onAvatarChange }: { onAvatarChange: (u
       <Pressable accessibilityRole="button" style={styles.outline} onPress={() => { setSuccess(''); setPanel('password'); }}><Ionicons name="key-outline" size={20} color={colors.brand} /><Text style={styles.actionText}>Change password</Text></Pressable>
     </View>
     {!!success && <Text accessibilityLiveRegion="polite" style={styles.success}>{success}</Text>}
-    <Modal visible={panel !== null} transparent animationType="fade" onRequestClose={close}>
+    <Modal visible={panel !== null} transparent animationType="fade" onRequestClose={() => undefined}>
       <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.dialog} accessibilityViewIsModal><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalContent}>
           <Text accessibilityRole="header" style={styles.title}>{panel === 'password' ? 'Change password' : 'Change profile photo'}</Text>

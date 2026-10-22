@@ -1,15 +1,16 @@
-import { createNotification, getManagementReports, type CreateNotificationInput, type NotificationResult } from './api';
+import { createNotification, getManagementReports, type ApiReportStatus, type CreateNotificationInput, type NotificationResult } from './api';
 import { allPages, getStaffNotifications, markStaffNotificationRead, type BackendTask } from './maintenance/api';
 
 export type ReceivedMessage = {
   id: string; title: string; message: string; createdAt: string;
   source: 'Resident report' | 'Maintenance'; href?: string;
   notificationId?: number; unread: boolean;
+  status?: ApiReportStatus; priority?: string; category?: string; location?: string;
 };
 export type ReceivedMessages = { items: ReceivedMessage[]; warnings: string[] };
 
-/** Existing contracts only. Pending reports are actionable report entries, not
- * notification events, and therefore have no fabricated unread/read state. */
+/** Existing contracts only. Reports are actionable entries, not notification
+ * events, and therefore have no fabricated unread/read state. */
 export async function getReceivedMessages(): Promise<ReceivedMessages> {
   const [reports, notices, tasks] = await Promise.allSettled([
     getManagementReports(), getStaffNotifications(),
@@ -21,10 +22,11 @@ export async function getReceivedMessages(): Promise<ReceivedMessages> {
   const items: ReceivedMessage[] = [];
   const warnings: string[] = [];
   if (reports.status === 'fulfilled') {
-    for (const report of reports.value.filter(report => report.status === 'pending')) items.push({
-      id: `report:${report.id}`, title: 'Report awaiting review', message: report.title,
+    for (const report of reports.value) items.push({
+      id: `report:${report.id}`, title: report.title, message: report.description,
       createdAt: report.createdAt ?? '', source: 'Resident report',
       href: `/management/reports/${encodeURIComponent(report.id)}`, unread: false,
+      status: report.status, priority: report.priority, category: report.category, location: report.location,
     });
   } else warnings.push('Resident reports could not be loaded.');
   if (notices.status === 'fulfilled') {

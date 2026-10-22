@@ -105,6 +105,7 @@ export default function FollowedAreasScreen({
           onPress: onBack,
         },
       ],
+      { cancelable: false },
     );
   }
 

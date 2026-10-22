@@ -98,7 +98,7 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
     Alert.alert('Delete saved place?', `Remove ${item.label} from your saved places?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => { if (version === request.current) void remove(item); } },
-    ]);
+    ], { cancelable: false });
   }
 
   function adjustPositionOnMap() {
@@ -139,12 +139,12 @@ export default function SavedPlacesControl({ field, current, onChoose, onPickMap
     </View>
     {showHelp && <Text style={styles.hint}>Save places like Home or Work once, then reuse them for either point. You can rename or adjust a saved place later.</Text>}
     {notice ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{notice}</Text> : null}
-    <Modal visible={visible} animationType="slide" onRequestClose={close}>
+    <Modal visible={visible} animationType="slide" onRequestClose={() => undefined}>
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView style={styles.safe} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.header}>
             <Text accessibilityRole="header" style={styles.title}>{draft ? (draft.id ? 'Edit saved place' : 'Save selected point') : 'Your saved places'}</Text>
-            <Pressable accessibilityRole="button" disabled={busy} onPress={close} style={styles.button}><Text style={styles.link}>Close</Text></Pressable>
+            <Pressable accessibilityRole="button" disabled={busy} onPress={close} style={styles.button}><Text style={styles.link}>Cancel</Text></Pressable>
           </View>
           <Text style={styles.hint}>Saved places are private to your account. Choose one to set your {field}.</Text>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>

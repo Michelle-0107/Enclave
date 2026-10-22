@@ -170,16 +170,12 @@ export default function NotificationsScreen({
       )}
 
       <Modal visible={selectedNotification !== null} transparent animationType="fade"
-        onRequestClose={() => setSelectedNotification(null)}>
+        onRequestClose={() => undefined}>
         <View style={styles.detailOverlay}>
           <View style={styles.detailCard}>
             {selectedNotification && <>
               <View style={styles.detailHeader}>
                 <Text accessibilityRole="header" style={styles.detailTitle}>{selectedNotification.title}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="Close notification"
-                  onPress={() => setSelectedNotification(null)} style={styles.closeButton}>
-                  <Text style={styles.actionText}>×</Text>
-                </Pressable>
               </View>
               <Text style={styles.detailMeta}>{selectedNotification.time} · {selectedNotification.reference}</Text>
               <ScrollView style={styles.detailBody} contentContainerStyle={styles.detailContent}>
@@ -190,6 +186,9 @@ export default function NotificationsScreen({
                 style={styles.reportButton}>
                 <Text style={styles.reportButtonText}>View my reports</Text>
               </Pressable>}
+              <Pressable accessibilityRole="button" onPress={() => setSelectedNotification(null)} style={styles.cancelButton}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
             </>}
           </View>
         </View>
@@ -246,10 +245,10 @@ const styles = StyleSheet.create({
   detailContent: { paddingBottom: 4 },
   detailTitle: { flex: 1, fontSize: 22, lineHeight: 30, color: colors.navy, fontWeight: '700' },
   detailMessage: { fontSize: 16, lineHeight: 25, color: colors.navy },
-  closeButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', backgroundColor: colors.background },
-  actionText: { color: colors.navy, fontSize: 28, lineHeight: 32, textAlign: 'center' },
   reportButton: { minHeight: 48, borderRadius: 16, backgroundColor: colors.brand, padding: 14, alignItems: 'center', justifyContent: 'center' },
   reportButtonText: { color: colors.white, fontWeight: '700' },
+  cancelButton: { minHeight: 48, borderRadius: 16, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, padding: 14, alignItems: 'center', justifyContent: 'center' },
+  cancelButtonText: { color: colors.navy, fontWeight: '700' },
   container: {
     gap: 20,
   },

@@ -355,7 +355,7 @@ export default function ReportLocationScreen({
           onPress={() => setShowFacilities(value => !value)} style={styles.backButton}><Text style={styles.backText}>{showFacilities ? 'Hide facility markers' : 'Show facility markers'}</Text></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Expand report map" onPress={() => { Keyboard.dismiss(); onMapTouchChange?.(false); setExpanded(true); }} style={styles.backButton}><Text style={styles.backText}>Expand map ↗</Text></Pressable>
       </View>
-      {expanded ? <Modal visible presentationStyle="fullScreen" animationType="slide" hardwareAccelerated onRequestClose={closeMap}>
+      {expanded ? <Modal visible presentationStyle="fullScreen" animationType="slide" hardwareAccelerated onRequestClose={() => undefined}>
         <SafeAreaView style={styles.fullScreen} edges={['top', 'bottom']}>
           <View style={styles.mapToolbar}><Text style={styles.label}>Choose issue location</Text>
             <Pressable accessibilityRole="button" onPress={closeMap} style={styles.backButton}><Text style={styles.backText}>Done</Text></Pressable></View>
