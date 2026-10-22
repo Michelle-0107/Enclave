@@ -156,9 +156,20 @@ export default function MaintenanceLayout({ children }: Props) {
 
       {/* Workspace */}
       <div className="lg:pl-[248px]">
-        <header className="sticky top-0 z-30 flex min-h-[90px] items-center justify-between gap-3 bg-background/95 px-6 py-5 backdrop-blur lg:px-10 lg:py-6">
-          <p className="portal-title text-[24px] leading-tight font-semibold lg:text-[32px]">Maintenance Portal</p>
-          <Link href="/maintenance/account" aria-label="Open maintenance account" className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="maintenance" name={displayName} compact /></Link>
+        <header className="sticky top-0 z-30 flex min-h-[90px] items-center justify-between gap-2 bg-background/95 px-4 py-5 backdrop-blur sm:px-6 lg:gap-3 lg:px-10 lg:py-6">
+          <p className="portal-title min-w-0 flex-1 text-[18px] leading-tight font-semibold sm:text-[24px] lg:flex-none lg:text-[32px]">Maintenance Portal</p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/maintenance/notifications"
+              aria-label="Open notifications"
+              aria-current={isSelected('/maintenance/notifications') ? 'page' : undefined}
+              title="Notifications"
+              className={`flex size-10 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-ring lg:hidden ${isSelected('/maintenance/notifications') ? 'bg-brand text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'}`}
+            >
+              <Bell size={21} strokeWidth={1.8} aria-hidden="true" />
+            </Link>
+            <Link href="/maintenance/account" aria-label="Open maintenance account" aria-current={isSelected('/maintenance/account') ? 'page' : undefined} className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-ring"><StaffProfile role="maintenance" name={displayName} compact /></Link>
+          </div>
         </header>
 
         <main className="portal-workspace min-w-0 px-6 pt-6 pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-10 lg:pb-10">
@@ -171,8 +182,8 @@ export default function MaintenanceLayout({ children }: Props) {
         aria-label="Maintenance mobile navigation"
         className="fixed inset-x-0 bottom-0 z-50 border-t bg-card px-3 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-4 gap-2">
-          {navigation.map((item) => {
+        <div className="mx-auto grid max-w-lg grid-cols-2 gap-2">
+          {navigation.filter(item => item.href !== '/maintenance/notifications' && item.href !== '/maintenance/account').map((item) => {
             const selected = isSelected(item.href);
             const Icon = item.icon;
 

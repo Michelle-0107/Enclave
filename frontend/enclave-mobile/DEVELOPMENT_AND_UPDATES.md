@@ -16,6 +16,12 @@ This starts Metro with `--dev-client`, selects the existing personal Expo projec
 and loads the existing local `.env`. Open the installed development app and connect
 to this server. Keep the computer and phone on the same network. If LAN access is
 not available, `npm run dev -- --tunnel` uses Expo's tunnel support instead.
+The launcher also forces the personal development-build URL scheme. A locally
+generated `android/` directory may still contain the team scheme, even though
+EAS excludes that directory. Tunnel mode uses a DNS-safe subdomain because an
+underscore in the Expo account name can cause Android to show "Android internal
+error" before Metro receives a request. Restart the command after changing the
+launcher; old QR codes and tunnel URLs will not use the new settings.
 
 The command does not build an APK, publish an update, or consume an EAS cloud build.
 The computer must remain running while the development client uses Metro. An old
@@ -30,7 +36,7 @@ other native runtime change requires a new matching development APK.
 ## Project selection
 
 - Default app config: team project `@michelle_0107/enclave-mobile`.
-- `npm run dev`: personal project `@leekaixuan/enclave-mobile-preview`.
+- `npm run dev`: personal project `@enclave2210/enclave-mobile-preview`.
 - `development`: team development profile.
 - `development-personal`: personal development profile; inherits development-client
   behavior and APK output, and uses the existing personal `preview` environment for
