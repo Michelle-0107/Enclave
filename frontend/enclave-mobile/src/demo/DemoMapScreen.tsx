@@ -444,7 +444,7 @@ export default function DemoMapScreen({ areaId = 'built-in-snapshot', data = bui
       </View>
       {(originalOrigin && origin || transport !== 'driving' && (origin?.snap || destination?.snap)) &&
         <Text style={styles.accessHint}>{originalOrigin && origin ? `Updated ${formatDistance(meters(originalOrigin.coordinate, origin.coordinate))} from your original start` :
-          `Mapped access ${Math.round((origin?.snap ?? destination?.snap)?.distance ?? 0)} m from selection`}</Text>}
+          `Nearest map road ≈${Math.round((origin?.snap ?? destination?.snap)?.distance ?? 0)} m · route access checked by server`}</Text>}
       {(transport === 'driving' || (results.length === 0 && !adjustmentVisible)) && <Pressable accessibilityRole="button"
         disabled={calculating} onPress={transport === 'driving' ? () => void openDriving() : showRoutes} style={styles.findRouteButton}>
         <MaterialCommunityIcons name={transport === 'driving' ? 'navigation-variant-outline' : 'navigation-variant'} size={18} color={colors.white} />
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
   divider: { flex: 1, height: 1, backgroundColor: colors.border }, swapButton: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.white, borderWidth: 1, borderColor: '#DFE6EF', alignItems: 'center', justifyContent: 'center', marginRight: 4 },
   disabled: { opacity: 0.45 }, savedSection: { paddingTop: 13, gap: 6 }, savedHeading: { fontSize: 11, color: colors.muted, fontWeight: '600' },
   accessHint: { marginTop: 7, fontSize: 10, lineHeight: 15, color: colors.muted },
-  findRouteButton: { minHeight: 48, marginTop: 13, paddingHorizontal: 14, borderRadius: 13, backgroundColor: '#101729', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  findRouteButton: { minHeight: 54, marginTop: 13, paddingHorizontal: 16, borderRadius: 16, backgroundColor: colors.brand, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   suggestion: { padding: 12, gap: 3, backgroundColor: colors.white, borderRadius: 12 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   transportSwitcher: { flexDirection: 'row', gap: 4, padding: 4, backgroundColor: '#EAF0F5', borderRadius: 14 },

@@ -1,5 +1,6 @@
 """Resident demo routes computed on the same server-side OSM road graph as live routing."""
 
+from copy import copy
 from typing import Literal
 from uuid import uuid4
 
@@ -7,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .contracts import Location, RouteMode, RouteResponse, WalkingRouteRequest
 from .provider import NavigationRejected
-from .roadside import distance
+from .roadside import DEMO_ENDPOINT_ACCESS_METERS, distance
 from .zones import route_intersects_zone, zone_bounds
 
 MAX_DEMO_START_CANDIDATES = 8
@@ -87,6 +88,11 @@ def _options(area_id, dataset, graph, origin, destination, profile, *, modes=Non
             if mode=='accessible' and dataset.get('accessibilityFacilities'):
                 from .demo_accessibility import demo_step_free_graph
                 selected_graph=demo_step_free_graph(area_id)
+            # Cached graphs are shared. Apply the wider, obstacle-checked
+            # endpoint search only to this demo request.
+            selected_graph=copy(selected_graph)
+            selected_graph.endpoint_access_meters=DEMO_ENDPOINT_ACCESS_METERS
+            selected_graph.enable_endpoint_detours=True
             route = selected_graph.route(body, boxes=boxes, area_id=area_id,
                                 community_supported=False, demo_mode=True,
                                 excluded_way_ids=excluded)
