@@ -750,7 +750,7 @@ class RoadsideGraph:
             simulated_crossing_count=len(simulated_ids),demo_facility_ids=sorted(facility_ids),
             accessibility_status='synthetic_network' if demo_mode and body.route_mode == 'accessible' else 'not_requested',
             community_issue_avoidance=('applied' if boxes else 'no_active_obstacles') if snapshot else 'not_applied',
-            obstacle_snapshot_at=snapshot.checked_at if snapshot else None,obstacle_count=len(boxes),obstacle_source='community_reports' if snapshot else None,
+            obstacle_snapshot_at=snapshot.checked_at if snapshot else None,obstacle_count=len({item.issue_id for item in snapshot.items}) if snapshot else 0,obstacle_source='community_reports' if snapshot else None,
             warnings=[
                 'Real OpenStreetMap walking coverage; road-side positions are inferred, not surveyed sidewalks.',
                 ('Includes unmarked private local-road crossings under the resident policy; these are not mapped zebra crossings or verified step-free connections.'

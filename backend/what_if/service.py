@@ -66,8 +66,6 @@ class WhatIfService:
 
         restrictions = [RoutingRestriction(**restriction_for(i)) for i in snapshot.issues if i.affects_routes]
         rings_by_issue = {r.issue_id: r.exclusion_rings for r in restrictions}
-        if sum(len(r.exclusion_rings) for r in restrictions) > 100:
-            raise WhatIfRejected(422, 'Too many affected road sections for one comparison')
 
         def obstacles(repaired=frozenset()):
             return CommunityObstacleSnapshot(checked_at=snapshot.checked_at, items=[
@@ -87,6 +85,11 @@ class WhatIfService:
             network = VerifiedNetwork(document=network.load().model_dump(mode='json'),
                                       assessment_time=snapshot.checked_at)
         navigation = SimulationNavigation(self.navigation.provider, accessibility=network, fixed_snap=True)
+        # A mapped 100 m road section expands into many 5 m exclusion squares.
+        # The resident graph indexes those squares directly; the legacy external
+        # provider has its own bounded polygon request and cannot accept them.
+        if not navigation.uses_resident_facilities and sum(len(r.exclusion_rings) for r in restrictions) > 100:
+            raise WhatIfRejected(422, 'Comparison exceeds the external routing provider limit of 100 exclusion zones')
         anchors = {}
         semaphore = asyncio.Semaphore(4)
         tasks = {}

@@ -149,7 +149,7 @@ class NavigationService:
                 destination_snap_distance_meters=destination_snap,maneuvers=maneuvers,
                 data_source=self.provider.settings.source,
                 community_issue_avoidance=('applied' if boxes else 'no_active_obstacles') if snapshot else 'not_applied',
-                obstacle_snapshot_at=snapshot.checked_at if snapshot else None,obstacle_count=len(boxes),warnings=[
+                obstacle_snapshot_at=snapshot.checked_at if snapshot else None,obstacle_count=len({item.issue_id for item in snapshot.items}) if snapshot else 0,warnings=[
                     ('Open road-facility issues reported by at least two distinct verified residents were checked; refresh when conditions change.'
                      if snapshot else 'Community issue reports have not been applied as route restrictions.'),
                     'Public map paths and access conditions have not been field verified.'],

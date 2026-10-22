@@ -157,7 +157,7 @@ class VerifiedNetwork:
             origin_snap_distance_meters=distance(origin,geometry[0]),destination_snap_distance_meters=distance(destination,geometry[-1]),
             maneuvers=maneuvers,data_source='synthetic_demo' if synthetic else 'verified_accessibility_network',
             field_verified=not synthetic,accessibility_status='synthetic_network' if synthetic else 'verified_network',
-            community_issue_avoidance='applied' if boxes else 'no_active_obstacles',obstacle_count=len(boxes),
+            community_issue_avoidance='applied' if boxes else 'no_active_obstacles',obstacle_count=len({item.issue_id for item in snapshot.items}),
             obstacle_snapshot_at=snapshot.checked_at,obstacle_source='community_reports',warnings=[
                 'Synthetic accessibility graph; not a real accessible path.' if synthetic else 'Uses only surveyed, currently valid accessible connections.',
                 'Duration assumes 1 meter per second; conditions and personal pace vary.',

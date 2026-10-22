@@ -6,13 +6,17 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import unittest
+from uuid import uuid4
 
 from backend.navigation.contracts import WalkingRouteRequest
 from backend.navigation.demo_accessibility import shared_demo_walking_graph
 from backend.navigation.service import distance_meters
 from backend.navigation.zones import route_intersects_zone
+from backend.navigation.facility_segments import restriction_for
+from backend.reports.road_sections import catalog
 from backend.reports.issues import CommunityObstacleSnapshot
 from backend.tests import test_what_if as fixtures
+from backend.what_if.candidates import ReviewIssue
 
 
 class SharedSimulationTests(unittest.TestCase):
@@ -59,6 +63,22 @@ class SharedSimulationTests(unittest.TestCase):
             self.assertEqual(len({row['path_id'] for row in result['paths']}), 10)
             for row in result['paths']:
                 if row['route_mode'] == 'avoid_damage': self.assertEqual(row['after']['state'], 'available')
+
+    def test_multiple_mapped_sections_do_not_count_each_coverage_square_as_a_road(self):
+        sections = [point for point in catalog().values() if point.road_section.length_meters >= 95][:6]
+        self.assertEqual(len(sections), 6)
+        self.case.issues = [fixtures.issue(id=str(uuid4()), facility_id=str(point.id),
+            facility_name=point.name, latitude=point.latitude, longitude=point.longitude)
+            for point in sections]
+        ring_count = sum(len(restriction_for(ReviewIssue.model_validate(item))['exclusion_rings'])
+                         for item in self.case.issues)
+        self.assertGreater(ring_count, 100)
+        self.payload['plans'][0]['repairs'] = [{'facility_id': str(sections[0].id)}]
+        data = self.compare()
+        self.assertEqual(len(data['routing_restrictions']), 6)
+        self.assertEqual(sum(len(item['exclusion_rings']) for item in data['routing_restrictions']), ring_count)
+        self.assertEqual(data['baseline_road_obstacle_count'], 6)
+        self.assertEqual(data['plans'][0]['remaining_road_obstacle_count'], 5)
 
     def assert_avoids(self, outcome, restrictions):
         self.assertEqual(outcome['state'], 'available')
