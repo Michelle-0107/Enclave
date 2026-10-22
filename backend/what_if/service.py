@@ -12,7 +12,7 @@ from ..navigation.provider import NavigationRejected, NavigationUnavailable
 from ..navigation.service import distance_meters
 from .routing import SimulationNavigation
 from ..navigation.facility_segments import restriction_for
-from ..navigation.zones import zone_bounds, zone_ring, route_intersects_zone
+from ..navigation.zones import BoundsIndex, zone_bounds, zone_ring, route_intersects_zone
 from ..reports.issues import CommunityObstacle, CommunityObstacleSnapshot
 from .contracts import (BaselinePath, CompareResponse, FacilityImpact, ModeSummary,
                         PathImpact, PlanResult, RepairCandidates, RouteOutcome, WalkingReference, RoutingRestriction)
@@ -46,8 +46,10 @@ class WhatIfService:
             try:
                 async with asyncio.timeout(self.timeout_seconds):
                     return await self._compare_snapshot(snapshot, body)
-            except (TimeoutError, NavigationUnavailable):
-                raise WhatIfUnavailable() from None
+            except TimeoutError:
+                raise WhatIfUnavailable('timeout') from None
+            except NavigationUnavailable:
+                raise WhatIfUnavailable('routing') from None
 
     async def _compare_snapshot(self, snapshot, body):
         from ..navigation.road_bindings import road_reference_bindings
@@ -90,12 +92,38 @@ class WhatIfService:
         # provider has its own bounded polygon request and cannot accept them.
         if not navigation.uses_resident_facilities and sum(len(r.exclusion_rings) for r in restrictions) > 100:
             raise WhatIfRejected(422, 'Comparison exceeds the external routing provider limit of 100 exclusion zones')
+        # One source issue may contribute many overlapping 5 m squares. Index
+        # the frozen zones once per distinct repair state and test entire route
+        # geometry, including its origin and destination approaches.
+        zone_indexes = {}
+
+        def snapshot_key(selected_snapshot):
+            return tuple(sorted({item.issue_id for item in selected_snapshot.items}, key=str))
+
+        def zone_index(selected_snapshot):
+            key = snapshot_key(selected_snapshot)
+            if key not in zone_indexes:
+                zone_indexes[key] = BoundsIndex([
+                    (item.exclusion_ring[0][0], item.exclusion_ring[0][1],
+                     item.exclusion_ring[2][0], item.exclusion_ring[2][1])
+                    for item in selected_snapshot.items])
+            return zone_indexes[key]
+
+        def route_clear(route, path, selected_snapshot):
+            index = zone_index(selected_snapshot)
+            if not index.bounds:
+                return True
+            coordinates = [(path.origin.longitude, path.origin.latitude),
+                           *route.geometry.coordinates,
+                           (path.destination.longitude, path.destination.latitude)]
+            return not any(index.intersects(a, b) for a, b in zip(coordinates, coordinates[1:]))
+
         anchors = {}
         semaphore = asyncio.Semaphore(4)
         tasks = {}
 
         async def calculate(path, mode, selected_snapshot, anchored_request=None, expected_endpoints=None):
-            key = (path.id, mode, tuple(sorted(str(i.issue_id) for i in selected_snapshot.items)))
+            key = (path.id, mode, snapshot_key(selected_snapshot))
             if key not in tasks:
                 async def run():
                     async with semaphore:
@@ -137,8 +165,16 @@ class WhatIfService:
                     # graph anchors: a snapped building boundary can belong to a
                     # neighbouring footprint when treated as a fresh selection.
                     anchored_request = WalkingRouteRequest(origin=path.origin, destination=path.destination, route_mode=mode)
-            before = await calculate(path, mode, before_snapshot, anchored_request, expected_endpoints)
-            after = {p.id: await calculate(path, mode, plan_snapshots[p.id], anchored_request, expected_endpoints) for p in body.plans}
+            # The damage-free reference is already the shortest route on the
+            # same graph. If all remaining restrictions leave it clear, another
+            # graph search cannot improve it, regardless of the repair plan.
+            before = (reference if navigation.uses_resident_facilities and route_clear(reference.route, path, before_snapshot)
+                      else await calculate(path, mode, before_snapshot, anchored_request, expected_endpoints))
+            after = {}
+            for plan in body.plans:
+                target = plan_snapshots[plan.id]
+                after[plan.id] = (reference if navigation.uses_resident_facilities and route_clear(reference.route, path, target)
+                                  else await calculate(path, mode, target, anchored_request, expected_endpoints))
             # Every candidate was validated by NavigationService for this exact
             # origin/destination pair, mode, and frozen network. Revalidate its
             # whole geometry against each target's remaining damage zones.
@@ -146,16 +182,12 @@ class WhatIfService:
             # clamping numbers or inventing a shorter geometry.
             pool = [item.route for item in [reference, before, *after.values()] if item.route is not None]
             def best_for(original, target_snapshot):
-                bounds = [zone_bounds_from_ring(i.exclusion_ring) for i in target_snapshot.items]
                 feasible = []
                 for route in pool:
                     if expected_endpoints is not None:
                         if any(distance_meters(a,b)>1 for a,b in zip((route.geometry.coordinates[0],route.geometry.coordinates[-1]),expected_endpoints)):
                             continue
-                    coordinates = [(path.origin.longitude, path.origin.latitude),
-                                   *route.geometry.coordinates,
-                                   (path.destination.longitude, path.destination.latitude)]
-                    if not any(route_intersects_zone(coordinates, box) for box in bounds):
+                    if route_clear(route, path, target_snapshot):
                         feasible.append(route)
                 if not feasible:
                     if original.route is not None:

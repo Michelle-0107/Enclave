@@ -308,6 +308,17 @@ class WhatIfTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('private-provider-fixture', response.text)
 
+    def test_slow_comparison_reports_timeout_instead_of_missing_sql(self):
+        client = self.client()
+        async def stall(snapshot, request):
+            await asyncio.sleep(0.1)
+        client.app.state.what_if._compare_snapshot = stall
+        client.app.state.what_if.timeout_seconds = 0.01
+        response = self.compare(client)
+        self.assertEqual(response.status_code, 504)
+        self.assertIn('timed out', response.json()['detail'])
+        self.assertNotIn('SQL 010', response.text)
+
     def test_snapshot_failure_overflow_stale_and_malformed_data_fail_closed(self):
         now = datetime.now(timezone.utc).isoformat()
         cases = [{'state': 'too_many'}, {'state': 'ok', 'checked_at': now, 'issues': [issue(reporter_count=1)]},
@@ -492,8 +503,9 @@ class WhatIfCapacityTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(1)
         service._compare_snapshot = slow
         from backend.what_if.repository import WhatIfUnavailable
-        with self.assertRaises(WhatIfUnavailable):
+        with self.assertRaises(WhatIfUnavailable) as timeout:
             await service.compare(UUID(MANAGER), CompareRequest.model_validate(body()))
+        self.assertEqual(timeout.exception.reason, 'timeout')
         self.assertFalse(service._comparison_slot.locked())
 
 

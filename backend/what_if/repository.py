@@ -10,7 +10,9 @@ from .candidates import ReviewIssue
 
 
 class WhatIfUnavailable(RuntimeError):
-    pass
+    def __init__(self, reason='dependency'):
+        self.reason = reason
+        super().__init__(reason)
 
 
 class WhatIfRejected(Exception):
