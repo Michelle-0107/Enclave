@@ -96,7 +96,7 @@ def comparison_facts(result,mode):
         notes.append('No budget entered: compare time saved per MYR of repair cost, then total time saved.')
     if not common: notes.append('No common before/after durations are available, so no time-based recommendation can be made.')
     elif not winners: notes.append('No plan has a positive comparable time saving while meeting the assessed budget and route-availability conditions.')
-    notes.append('Unverified accessible walking references are excluded. Restored routes have no invented before time. Totals assume each listed journey is walked once; no usage volume or daily savings is inferred.')
+    notes.append('Ordinary walking fallback references do not count as step-free routes. Simulated step-free facilities are hypothetical and not field verified. Restored routes have no invented before time. Totals assume each listed journey is walked once; no usage volume or daily savings is inferred.')
     return SummaryFacts(route_mode=mode,basis=basis,budget_myr=budget,comparable_path_count=len(common),
         excluded_path_count=len(baseline)-len(common),recommended_plan_ids=winners,plans=plans,explanation=' '.join(notes))
 

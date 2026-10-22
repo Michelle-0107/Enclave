@@ -9,7 +9,7 @@ import unittest
 from uuid import uuid4
 
 from backend.navigation.contracts import WalkingRouteRequest
-from backend.navigation.demo_accessibility import shared_demo_walking_graph
+from backend.navigation.demo_accessibility import demo_step_free_graph, shared_demo_walking_graph
 from backend.navigation.service import distance_meters
 from backend.navigation.zones import route_intersects_zone
 from backend.navigation.facility_segments import restriction_for
@@ -58,11 +58,17 @@ class SharedSimulationTests(unittest.TestCase):
         self.assertEqual(len(data['plans']), 5)
         for row in data['baseline']:
             if row['route_mode'] == 'avoid_damage': self.assertEqual(row['current']['state'], 'available')
+            if row['route_mode'] == 'accessible':
+                self.assertEqual(row['current']['state'], 'available')
+                self.assertFalse(row['current']['field_verified'])
         for result in data['plans']:
             self.assertEqual(len(result['paths']), 20)
             self.assertEqual(len({row['path_id'] for row in result['paths']}), 10)
             for row in result['paths']:
                 if row['route_mode'] == 'avoid_damage': self.assertEqual(row['after']['state'], 'available')
+                if row['route_mode'] == 'accessible':
+                    self.assertEqual(row['after']['state'], 'available')
+                    self.assertFalse(row['after']['field_verified'])
 
     def test_multiple_mapped_sections_do_not_count_each_coverage_square_as_a_road(self):
         sections = [point for point in catalog().values() if point.road_section.length_meters >= 95][:6]
@@ -124,17 +130,26 @@ class SharedSimulationTests(unittest.TestCase):
         self.assertGreater(impact['distance_saved_meters'], 100)
         self.assertEqual(data['plans'][0]['remaining_road_obstacle_count'], 1)
 
-    def test_hypothetical_walking_facilities_never_become_verified_accessibility(self):
+    def test_accessible_comparison_uses_demo_step_free_facilities_without_claiming_verification(self):
         self.payload['route_modes'] = ['accessible']
+        # The fictional facility comparison must not depend on a survey file.
+        from backend.navigation.accessibility import VerifiedNetwork
+        self.client.app.state.navigation.accessibility = VerifiedNetwork(path='missing-survey.json')
         data = self.compare()
-        for result in (data['baseline'][0]['current'], data['plans'][0]['paths'][0]['after']):
-            self.assertEqual(result['state'], 'not_assessable')
-            self.assertEqual(result['reason'], 'no_verified_accessible_reference')
-            fallback = result['fallback']
-            self.assertTrue(fallback['reference_only'])
-            self.assertFalse(fallback['accessibility_verified'])
-            self.assertGreater(fallback['distance_meters'], 290)
-            self.assertLess(fallback['distance_meters'], 350)
+        baseline = data['baseline'][0]
+        after = data['plans'][0]['paths'][0]['after']
+        for result in (baseline['reference_without_damage'], baseline['current'], after):
+            self.assertEqual(result['state'], 'available')
+            self.assertFalse(result['field_verified'])
+            self.assertIsNone(result['fallback'])
+        self.assert_avoids(baseline['current'], data['routing_restrictions'])
+        self.assert_avoids(after, [r for r in data['routing_restrictions'] if r['facility_id'] != self.ids[0]])
+        route = demo_step_free_graph('kl-east-pilot').route(WalkingRouteRequest(
+            origin=self.payload['paths'][0]['origin'], destination=self.payload['paths'][0]['destination'],
+            route_mode='accessible'), boxes=[], area_id='kl-east-pilot', demo_mode=True)
+        self.assertAlmostEqual(baseline['reference_without_damage']['distance_meters'], route.distance_meters)
+        self.assertTrue(any('not surveyed' in warning for warning in data['warnings']))
+        self.assertEqual(data['plans'][0]['summaries'][0]['reference_assessable_path_count'], 1)
 
     def test_adjacent_building_boundary_does_not_move_fixed_entrance_or_hide_before_detour(self):
         self.payload['paths'][0].update(origin={'latitude':3.220461, 'longitude':101.723051},

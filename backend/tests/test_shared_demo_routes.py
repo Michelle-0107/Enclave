@@ -135,7 +135,7 @@ class SharedDemoRouteTests(unittest.TestCase):
         from backend.tools.audit_shared_demo_routes import acceptance
         from backend.tools.audit_demo_accessibility import FROZEN,CATEGORIES
         from backend.navigation.areas import service_areas
-        reports={batch:{'summary':[dict(area=area.id,category=category,total=30,shortest=30,accessible=30,ordering_failures=0)
+        reports={batch:{'summary':[dict(area=area.id,category=category,total=30,shortest=30,avoid_damage=30,accessible=30,ordering_failures=0)
             for area in service_areas().items if area.resident_demo_supported for category in CATEGORIES]} for batch in FROZEN}
         self.assertTrue(acceptance(reports)['passed'])
         reports['walking-primary']['summary'][0]['ordering_failures']=1

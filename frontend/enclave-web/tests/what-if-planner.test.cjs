@@ -161,7 +161,7 @@ test('source-backed default remains editable and comparison asks backend for its
 
 test('Results shows the summary in the recommendation banner without selecting an all-path map route', () => {
   const result = { simulation_id: 'simulation-1', snapshot_at: '2026-01-01T00:00:00Z', budget_myr: '1500',
-    baseline_road_obstacle_count: 1, baseline: [], warnings: [], plans: [{ id: 'plan_1', name: 'Repair plan 1',
+    baseline_road_obstacle_count: 1, baseline: [], warnings: ['Accessible comparisons use simulated step-free facilities from the resident demo map; these routes are not surveyed.'], plans: [{ id: 'plan_1', name: 'Repair plan 1',
       total_estimated_cost_myr: '999.90', budget_status: 'within_budget', summaries: [], paths: [], remaining_road_obstacle_count: 0,
       improved_major_path_count: 1 }] };
   const summary = { source: 'ai', text: 'This plan saves the most time within budget.', facts: {
@@ -182,6 +182,7 @@ test('Results shows the summary in the recommendation banner without selecting a
   accessible.props.onClick();
   assert.equal(ui.state[9], 'all:accessible');
   tree = ui.render();
+  assert.match(ui.words(tree), /Simulated step-free facilities · not field verified/);
   banner = ui.all(tree).find(node => node.props?.['aria-label'] === 'Repair comparison summary');
   assert.doesNotMatch(ui.words(banner), /This plan saves the most time within budget/);
 

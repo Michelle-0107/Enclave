@@ -79,14 +79,16 @@ class WhatIfService:
         before_snapshot = obstacles()
         reference_snapshot = CommunityObstacleSnapshot(checked_at=snapshot.checked_at, items=[])
         plan_snapshots = {p.id: obstacles({r.facility_id for r in p.repairs}) for p in body.plans}
-        network = self.navigation.accessibility
-        if 'accessible' in body.route_modes:
+        navigation = SimulationNavigation(self.navigation.provider,
+                                          accessibility=self.navigation.accessibility, fixed_snap=True)
+        if 'accessible' in body.route_modes and not navigation.uses_resident_facilities:
+            network = navigation.accessibility
             if network is None:
                 raise WhatIfUnavailable()
             # Freeze survey data and validity time too, so all plans use the same assumptions.
-            network = VerifiedNetwork(document=network.load().model_dump(mode='json'),
-                                      assessment_time=snapshot.checked_at)
-        navigation = SimulationNavigation(self.navigation.provider, accessibility=network, fixed_snap=True)
+            navigation.accessibility = VerifiedNetwork(
+                document=network.load().model_dump(mode='json'),
+                assessment_time=snapshot.checked_at)
         # A mapped 100 m road section expands into many 5 m exclusion squares.
         # The resident graph indexes those squares directly; the legacy external
         # provider has its own bounded polygon request and cannot accept them.
@@ -145,11 +147,12 @@ class WhatIfService:
 
         async def compare_path(path, mode):
             reference = await calculate(path, mode, reference_snapshot)
-            if mode == 'accessible' and reference.route is None:
+            if mode == 'accessible' and reference.route is None and not navigation.uses_resident_facilities:
                 unknown = CalculatedRoute(None, 'not_assessable', 'no_verified_accessible_reference', reference.details)
                 return path, mode, unknown, unknown, {p.id: unknown for p in body.plans}
             if reference.route is None:
-                unknown = CalculatedRoute(None, 'not_assessable', 'no_fixed_reference_endpoints', reference.details)
+                reason = 'no_simulated_step_free_reference' if mode == 'accessible' else 'no_fixed_reference_endpoints'
+                unknown = CalculatedRoute(None, 'not_assessable', reason, reference.details)
                 return path, mode, unknown, unknown, {p.id: unknown for p in body.plans}
             anchored_request = None
             expected_endpoints = None
@@ -159,7 +162,7 @@ class WhatIfService:
                 anchored_request = WalkingRouteRequest(origin={'longitude':a[0],'latitude':a[1]},
                     destination={'longitude':b[0],'latitude':b[1]},route_mode=mode)
                 anchors[(path.id,mode)] = (anchored_request.origin,anchored_request.destination)
-                if mode == 'avoid_damage' and navigation.uses_resident_facilities:
+                if navigation.uses_resident_facilities:
                     # This graph chooses access deterministically, independently
                     # of damage. Repeat the original request to retain the SAME
                     # graph anchors: a snapped building boundary can belong to a
@@ -344,6 +347,7 @@ class WhatIfService:
             warnings=[
                 'Simulation only; do not use these routes for live navigation.',
                 *(['Walking simulations share the resident app facility model, including hypothetical crossings, bridges, ramps and entrances; these are not field verified.'] if navigation.uses_resident_facilities else []),
+                *(['Accessible comparisons use simulated step-free facilities from the resident demo map; these routes are not surveyed or safe to use as verified accessibility guidance.'] if navigation.uses_resident_facilities and 'accessible' in body.route_modes else []),
                 'Paths are management-defined journeys, counted once across route modes.',
                 'Affected paths cross selected damage zones on the damage-free reference route.',
                 'Before and after routes share fixed endpoints.',

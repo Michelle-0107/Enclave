@@ -92,8 +92,13 @@ are management labels, not official or measured popular routes.
 `route_modes` defaults to both `avoid_damage` and `accessible`. `shortest` is not a
 repair-comparison mode: it ignores damage already, so removing damage constraints
 would not model that repair's benefit. A separate damage-free reference is computed
-for each designated path/mode. Accessible reference paths still exclude stairs,
-unknown/inaccessible links, and invalid surveys.
+for each designated path/mode. In the resident-facility simulation, `accessible`
+uses the same validated, fictional step-free graph as the app demo: simulated
+crossings, ramps, lift-access bridges and building entrances. It excludes stairs
+and unassessed links and retains the 20 m outdoor approach and barrier rules.
+The result is hypothetical (`field_verified=false`), not a certified accessible
+route. Provider-based comparisons continue to use the time-frozen surveyed
+network and exclude invalid surveys.
 
 Cost and budget fields accept nonnegative decimal amounts with at most two decimal
 places. Prefer JSON strings to preserve decimal precision. A null or omitted cost
@@ -179,21 +184,22 @@ Path effects:
 | `longer` | Both available; calculated distance increases by at least 1 m |
 | `lost_route` | Previously available supported route is unavailable in the simulated result |
 | `still_unavailable` | No supported route in either current or simulated result |
-| `not_assessable` | No verified accessible damage-free reference for those endpoints |
+| `not_assessable` | No damage-free reference for those endpoints on the selected mode's graph |
 
 Distance/time savings are signed before-minus-after values for comparable available
 routes. An unavailable baseline is not infinity: restoration has null savings rather
 than an invented distance. Summary distance totals include only comparable paths;
 the same journey in different mode summaries must not be added as unique user demand.
-No verified accessible reference means unknown coverage, not a claim that a physical
-accessible route cannot exist. Its intersecting-path flag is null, not false.
+No simulated step-free or verified accessible reference means unknown coverage,
+not a claim that a physical accessible route cannot exist. Its intersecting-path
+flag is null, not false.
 
 ## Consistency, privacy, and limits
 
 The service validates management role and reads candidate data through one private
-STABLE SQL function. It freezes that incident snapshot and, when requested, the
-accessible survey document and its validity time. Baseline, reference and all plans
-use the same routing provider and assumptions. Repairs remove only selected
+STABLE SQL function. It freezes that incident snapshot and, for provider-based
+accessible comparisons, the surveyed document and its validity time. Baseline,
+reference and all plans use the same routing graph and assumptions. Repairs remove only selected
 facilities' incident restrictions; other obstacles stay active. Structural stairs and
 unknown/inaccessible links are never converted into accessible ones by a repair.
 
@@ -234,8 +240,9 @@ python -B -m backend.what_if.demo
 Open `http://127.0.0.1:8007/docs`, Authorize `demo-management-token`, GET candidates,
 then execute the complete POST example. It uses synthetic management/damage/cost
 data with the real local KL East engine on 8002. There are no cloud writes or email
-requests. `demo-resident-token` returns 403. Real accessibility coverage is empty;
-the accessible results are explicitly not assessable. Never deploy the sandbox.
+requests. `demo-resident-token` returns 403. This sandbox uses provider-based
+comparison and its empty verified network returns accessible results as not assessable;
+the resident-facility simulation uses the fictional step-free graph. Never deploy the sandbox.
 
 ```powershell
 python -B -m unittest -q backend.tests.test_what_if
